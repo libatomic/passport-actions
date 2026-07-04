@@ -1,0 +1,37 @@
+name: cm-subscriber-update
+description: Update a subscriber on a Campaign Monitor list
+
+inputs:
+  api_key:
+    required: true
+  list_id:
+    required: true
+  email:
+    required: true
+  new_email:
+    default: ""
+  name:
+    default: ""
+  custom_fields:
+    default: ""
+  resubscribe:
+    default: "false"
+  consent_to_track:
+    default: "unchanged"
+
+steps:
+  - id: update
+    action: http.put
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      query:
+        email: ${{ inputs.email }}
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: ${{ inputs.new_email != "" ? inputs.new_email : inputs.email }}
+        Name: ${{ inputs.name }}
+        Resubscribe: ${{ inputs.resubscribe == "true" }}
+        ConsentToTrack: ${{ inputs.consent_to_track }}
+      expect_status: [200]

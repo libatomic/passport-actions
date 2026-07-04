@@ -1,0 +1,21 @@
+name: "Stripe Webhook Validator"
+description: "Validates incoming Stripe webhook signatures using the Stripe-Signature header"
+inputs:
+  body:
+    description: "Raw request body"
+    required: true
+  headers:
+    description: "Request headers (JSON object)"
+    required: true
+  STRIPE_WEBHOOK_SECRET:
+    description: "Stripe webhook endpoint signing secret (whsec_...)"
+    required: true
+  tolerance:
+    description: "Maximum age of the webhook event in seconds (default: 300)"
+    default: "300"
+outputs:
+  valid:
+    description: "Whether the signature is valid"
+runs:
+  using: "node20"
+  main: "dist/index.js"

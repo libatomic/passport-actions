@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "name": "@libatomic/passport-actions",
+  "description": "Pre-built actions and recipes for the Passport Atomic workflow engine",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.0"
+  }
+}

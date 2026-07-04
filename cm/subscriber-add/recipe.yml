@@ -1,0 +1,33 @@
+name: cm-subscriber-add
+description: Add a subscriber to a Campaign Monitor list
+
+inputs:
+  api_key:
+    required: true
+  list_id:
+    required: true
+  email:
+    required: true
+  name:
+    default: ""
+  custom_fields:
+    default: ""
+  resubscribe:
+    default: "true"
+  consent_to_track:
+    default: "yes"
+
+steps:
+  - id: add
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: ${{ inputs.email }}
+        Name: ${{ inputs.name }}
+        Resubscribe: ${{ inputs.resubscribe == "true" }}
+        ConsentToTrack: ${{ inputs.consent_to_track }}
+      expect_status: [200, 201]

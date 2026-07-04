@@ -1,0 +1,22 @@
+name: cm-subscriber-get
+description: Get a subscriber's details from a Campaign Monitor list
+
+inputs:
+  api_key:
+    required: true
+  list_id:
+    required: true
+  email:
+    required: true
+
+steps:
+  - id: get
+    action: http.get
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      query:
+        email: ${{ inputs.email }}
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+        Accept: application/json
+      expect_status: [200]

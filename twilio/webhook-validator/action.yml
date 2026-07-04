@@ -1,0 +1,21 @@
+name: "Twilio Webhook Validator"
+description: "Validates incoming Twilio webhook signatures using the X-Twilio-Signature header"
+inputs:
+  body:
+    description: "Raw request body"
+    required: true
+  headers:
+    description: "Request headers (JSON object)"
+    required: true
+  url:
+    description: "Request URL"
+    required: true
+  TWILIO_AUTH_TOKEN:
+    description: "Twilio auth token (passed from secrets)"
+    required: true
+outputs:
+  valid:
+    description: "Whether the signature is valid"
+runs:
+  using: "node20"
+  main: "dist/index.js"

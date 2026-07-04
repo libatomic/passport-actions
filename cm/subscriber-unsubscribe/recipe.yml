@@ -1,0 +1,22 @@
+name: cm-subscriber-unsubscribe
+description: Unsubscribe a subscriber from a Campaign Monitor list
+
+inputs:
+  api_key:
+    required: true
+  list_id:
+    required: true
+  email:
+    required: true
+
+steps:
+  - id: unsubscribe
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}/unsubscribe.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: ${{ inputs.email }}
+      expect_status: [200]
