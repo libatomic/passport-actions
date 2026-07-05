@@ -1,0 +1,56 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/entitlement
+version: "1.0.0"
+title: Entitlement
+description: >
+  Atomic entitlement as serialized in event bodies and API responses.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  instance_id:
+    type: string
+    format: uuid
+  user_id:
+    type: string
+    format: uuid
+  application_id:
+    type: string
+    format: uuid
+  expires_at:
+    type: string
+    format: date-time
+  active:
+    type: boolean
+  permissions:
+    type: array
+    items:
+      type: string
+  categories:
+    type: array
+    items:
+      type: object
+  metadata:
+    type: object
+  plan_id:
+    type: string
+    format: uuid
+  price_id:
+    type: string
+    format: uuid
+  stripe_invoice:
+    type: string
+  subscription_id:
+    type: string
+    format: uuid
+  status:
+    type: string
+    enum: [active, trialing, canceled, expired, past_due, unpaid, paused, incomplete, incomplete_expired]

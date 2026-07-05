@@ -1,0 +1,81 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/subscription
+version: "1.0.0"
+title: Subscription
+description: >
+  Atomic subscription as serialized in event bodies and API responses.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  instance_id:
+    type: string
+    format: uuid
+  user_id:
+    type: string
+    format: uuid
+  type:
+    type: string
+  name:
+    type: string
+  admin_email:
+    type: string
+    format: email
+  begins_at:
+    type: string
+    format: date-time
+  ends_at:
+    type: string
+    format: date-time
+  trial_ends_at:
+    type: string
+    format: date-time
+  paused_at:
+    type: string
+    format: date-time
+  status:
+    type: string
+    enum: [active, trialing, canceled, expired, past_due, unpaid, paused, incomplete, incomplete_expired]
+  plan_id:
+    type: string
+    format: uuid
+  price_id:
+    type: string
+    format: uuid
+  quantity:
+    type: integer
+  recurring_interval:
+    type: string
+  recurring_frequency:
+    type: integer
+  canceled:
+    type: boolean
+  cancel_at:
+    type: string
+    format: date-time
+  auto_renew:
+    type: boolean
+  metadata:
+    type: object
+  no_entitlement:
+    type: boolean
+  stripe_subscription:
+    type: string
+  stripe_item:
+    type: string
+  credit_id:
+    type: string
+    format: uuid
+  terms:
+    type: object
+  last_stripe_sync:
+    type: string
+    format: date-time

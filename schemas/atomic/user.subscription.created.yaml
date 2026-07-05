@@ -3,20 +3,48 @@ $id: libatomic/passport-actions/schemas/atomic/user.subscription.created
 version: "1.0.0"
 title: user.subscription.created
 description: >
-  Event body schema for user.subscription.created. Contains the
-  subscription creation parameters.
+  Emitted when a subscription is created. Body is the serialized
+  SubscriptionCreateInput plus the new subscription_id.
 
 type: object
 properties:
-  plan_id:
+  user_id:
     type: string
+    format: uuid
+  status:
+    type: string
+  stripe_subscription:
+    type: string
+    description: Stripe subscription ID
+  stripe_item:
+    type: string
+  credit_id:
+    type: string
+    format: uuid
+  begins_at:
+    type: string
+    format: date-time
+  ends_at:
+    type: string
+    format: date-time
+  cancel_at:
+    type: string
+    format: date-time
+  trial_ends_at:
+    type: string
+    format: date-time
   price_id:
     type: string
+    format: uuid
   quantity:
     type: integer
-  payment_method_id:
-    type: string
-  coupon:
-    type: string
-  trial_days:
+  max_quantity:
     type: integer
+  metadata:
+    type: object
+  auto_renew:
+    type: boolean
+  subscription_id:
+    type: string
+    format: uuid
+    description: The created subscription's ID

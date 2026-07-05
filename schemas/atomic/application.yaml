@@ -1,0 +1,73 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/application
+version: "1.0.0"
+title: Application
+description: >
+  Atomic application (OAuth client) as serialized in event bodies
+  and API responses.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  name:
+    type: string
+  slug:
+    type: string
+  description:
+    type: string
+  type:
+    type: string
+  client_id:
+    type: string
+  client_secret:
+    type: string
+  token_lifetime:
+    type: integer
+  session_cookie:
+    type: string
+  refresh_token_lifetime:
+    type: integer
+  metadata:
+    type: object
+  settings:
+    type: object
+  integration_type:
+    type: string
+  integration:
+    type: string
+    format: base64
+  redirects:
+    type: array
+    items:
+      type: string
+  allowed_grants:
+    type: array
+    items:
+      type: string
+  permissions:
+    type: array
+    items:
+      type: string
+  roles:
+    type: array
+    items:
+      type: string
+  custom_scope:
+    type: array
+    items:
+      type: string
+  session_lifetime:
+    type: integer
+  session_domain:
+    type: string

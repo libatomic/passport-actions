@@ -24,8 +24,8 @@ properties:
   preferences:
     type: object
   profile:
-    type: object
     description: OpenID profile
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
   roles:
     type: array
     items:

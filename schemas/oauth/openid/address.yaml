@@ -1,0 +1,24 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/oauth/openid/address
+version: "1.0.0"
+title: OpenID Address
+description: >
+  OpenID Connect address claim (section 5.1.1 of the connect core 1.0 spec).
+
+type: object
+properties:
+  country:
+    type: string
+  formatted:
+    type: string
+    description: Full mailing address formatted for display
+  locality:
+    type: string
+    description: City or locality
+  postal_code:
+    type: string
+  region:
+    type: string
+    description: State, province, prefecture, or region
+  street_address:
+    type: string

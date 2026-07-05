@@ -1,0 +1,58 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user
+version: "1.0.0"
+title: User
+description: >
+  Atomic user as serialized in event bodies and API responses.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  login:
+    type: string
+  password_expires_at:
+    type: string
+    format: date-time
+  preferences:
+    type: object
+  profile:
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
+  metadata:
+    type: object
+  phone_number:
+    type: string
+    description: E.164 format
+  subject:
+    type: string
+    format: uuid
+  permissions:
+    type: array
+    items:
+      type: string
+  roles:
+    type: array
+    items:
+      type: string
+  entitlements:
+    type: array
+    items:
+      $ref: libatomic/passport-actions/schemas/atomic/entitlement@v1.0.0
+  subscriptions:
+    type: array
+    items:
+      $ref: libatomic/passport-actions/schemas/atomic/subscription@v1.0.0
+  stripe_account:
+    type: object
+  mfa_required:
+    type: boolean

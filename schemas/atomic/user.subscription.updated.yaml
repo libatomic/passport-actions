@@ -3,16 +3,43 @@ $id: libatomic/passport-actions/schemas/atomic/user.subscription.updated
 version: "1.0.0"
 title: user.subscription.updated
 description: >
-  Event body schema for user.subscription.updated. Contains the updated
-  subscription fields.
+  Emitted when a subscription is updated. Body is the serialized
+  SubscriptionUpdateInput.
 
 type: object
 properties:
-  plan_id:
+  subscription_id:
     type: string
-  price_id:
-    type: string
-  quantity:
-    type: integer
+    format: uuid
   status:
     type: string
+  stripe_subscription:
+    type: string
+  stripe_item:
+    type: string
+  credit_id:
+    type: string
+    format: uuid
+  begins_at:
+    type: string
+    format: date-time
+  ends_at:
+    type: string
+    format: date-time
+  cancel_at:
+    type: string
+    format: date-time
+  trial_ends_at:
+    type: string
+    format: date-time
+  price_id:
+    type: string
+    format: uuid
+  quantity:
+    type: integer
+  max_quantity:
+    type: integer
+  metadata:
+    type: object
+  auto_renew:
+    type: boolean

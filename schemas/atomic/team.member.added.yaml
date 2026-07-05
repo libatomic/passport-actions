@@ -3,12 +3,15 @@ $id: libatomic/passport-actions/schemas/atomic/team.member.added
 version: "1.0.0"
 title: team.member.added
 description: >
-  Event body schema for team.member.added. Contains the team membership
-  details for the added user.
+  Placeholder for team member additions. This event type is defined but
+  not currently emitted from application code.
 
 type: object
 properties:
   team_id:
+    type: string
+    format: uuid
+  user_id:
     type: string
     format: uuid
   role:

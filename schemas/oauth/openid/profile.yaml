@@ -1,0 +1,81 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/oauth/openid/profile
+version: "1.0.0"
+title: OpenID Profile
+description: >
+  OpenID Connect standard claims profile. Includes embedded email, phone,
+  and address claims flattened at the top level.
+
+type: object
+properties:
+  sub:
+    type: string
+    description: Subject identifier
+  name:
+    type: string
+    description: Full name in displayable form
+  given_name:
+    type: string
+  family_name:
+    type: string
+  middle_name:
+    type: string
+  nickname:
+    type: string
+  preferred_username:
+    type: string
+  profile:
+    type: string
+    format: uri
+    description: URL of the user's profile page
+  picture:
+    type: string
+    format: uri
+  website:
+    type: string
+    format: uri
+  gender:
+    type: string
+  birthdate:
+    type: string
+    format: date-time
+  zoneinfo:
+    type: string
+    description: Time zone (e.g. America/Los_Angeles)
+  locale:
+    type: string
+    description: BCP47 language tag (e.g. en-US)
+  updated_at:
+    type: integer
+    description: Unix timestamp of last profile update
+  address:
+    $ref: libatomic/passport-actions/schemas/oauth/openid/address@v1.0.0
+  email:
+    type: string
+    format: email
+  email_verified:
+    type: boolean
+  email_suppressed:
+    type: boolean
+  email_suppress_type:
+    type: string
+  email_suppress_reason:
+    type: string
+  email_soft_bounce_time:
+    type: string
+  email_soft_bounce_type:
+    type: string
+  email_soft_bounce_reason:
+    type: string
+  email_risk_score:
+    type: integer
+  phone_number:
+    type: string
+    description: E.164 format
+  phone_number_verified:
+    type: boolean
+  beta_enabled:
+    type: boolean
+  claims:
+    type: object
+    description: Additional custom claims

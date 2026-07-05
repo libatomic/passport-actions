@@ -3,27 +3,7 @@ $id: libatomic/passport-actions/schemas/atomic/user.entitlement.canceled
 version: "1.0.0"
 title: user.entitlement.canceled
 description: >
-  Event body schema for user.entitlement.canceled. Contains the canceled
-  entitlement object.
+  Emitted when an entitlement is canceled. Same Entitlement struct as
+  user.entitlement.created.
 
-type: object
-properties:
-  id:
-    type: string
-    format: uuid
-  plan_id:
-    type: string
-  status:
-    type: string
-  begins_at:
-    type: string
-    format: date-time
-  ends_at:
-    type: string
-    format: date-time
-  quantity:
-    type: integer
-  recurring_interval:
-    type: string
-  recurring_frequency:
-    type: integer
+$ref: libatomic/passport-actions/schemas/atomic/entitlement@v1.0.0

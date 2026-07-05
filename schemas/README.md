@@ -1,21 +1,34 @@
-# Event Trigger Schemas
+# Event Body Schemas
 
-YAML-formatted JSON Schemas describing the **trigger context** available to
-workflows when an event fires. These schemas define what fields exist on the
-`trigger` object — the data a workflow can access via `${{ trigger.* }}` expressions.
+YAML-formatted JSON Schemas describing the **event body** emitted by each event
+type. These schemas define the shape of the object available at `trigger.body.*`
+in workflow expressions.
 
-They do **not** describe the event metadata (`event` name, `source`) — those are
-already declared in the workflow's `on:` syntax.
+They do **not** describe event metadata (`event` name, `source`) or the trigger
+context wrapper (`user_id`) — those are handled by the workflow engine.
 
 ## Directory Structure
 
 ```
 schemas/
-  atomic/              # Events emitted by the Atomic core
+  atomic/              # Atomic core event schemas and shared types
     user.email.verify.yaml
     user.email.verified.yaml
+    user.created.yaml
+    user.updated.yaml
+    user.subscription.created.yaml
+    user.entitlement.created.yaml
     ...
-  stripe/              # Events from Stripe webhooks
+    instance.yaml      # Shared instance type
+    user.yaml          # Shared user type (embeds oauth/openid/profile)
+    application.yaml   # Shared application type
+    subscription.yaml  # Shared subscription type
+    entitlement.yaml   # Shared entitlement type
+  oauth/
+    openid/            # OpenID Connect types
+      profile.yaml     # Full profile (embeds email, phone, address claims)
+      address.yaml     # Address claim
+  stripe/              # Events from Stripe webhooks (raw data.object)
     customer.subscription.created.yaml
     invoice.payment_failed.yaml
     ...
@@ -35,69 +48,97 @@ on:
         ref: libatomic/passport-actions/schemas/atomic/user.email.verify@v1.0.0
 ```
 
-- The ref format is: `<org>/<repo>/schemas/<namespace>/<event-name>@v<semver>`
+- The ref format is: `<org>/<repo>/schemas/<namespace>/<name>@v<semver>`
 - The `@v<semver>` suffix maps to the `version` field inside the schema document
-- On the filesystem, the file is always `<event-name>.yaml` (the `.yaml` extension is
-  implied and not included in the ref)
 - The version in the ref must match the schema's `version` field for validation
 
 **Breaking changes** bump the major version. Additive changes (new optional fields)
 bump the minor version. Documentation-only changes bump the patch.
 
-**Why not git tags?** Git tags are too heavy for individual schema versions — a single
-repo may have hundreds of schemas evolving independently. Instead, the version lives
-in the schema document itself and the ref resolver reads the file at HEAD and validates
-that its `version` field matches the `@v<semver>` in the ref. This is lightweight,
-requires no release process, and allows any schema to evolve independently of others
-in the same repo.
+### File naming
 
-**Backwards compatibility guarantee:** A workflow pinned to `@v1.0.0` will continue to
-work even if the schema at HEAD is bumped to `v1.1.0` (new optional fields added). The
-workflow only uses `${{ trigger.* }}` paths it knows about. A major version bump
-(`v2.0.0`) signals that required fields were removed or renamed — workflows pinned to
-`@v1.x` should be reviewed.
+The default file (`<name>.yaml`) is always v1.0.x. No versioned filename is needed
+until the schema evolves past v1.0:
+
+```
+oauth/openid/
+  profile.yaml           # v1.0.0 (default — always v1)
+  profile@v1.1.yaml      # v1.1.0 (added optional fields)
+  profile@v2.yaml        # v2.0.0 (breaking change)
+  profile@v2.1.yaml      # v2.1.0
+```
+
+The resolver maps a ref to a filename:
+
+| Ref version | File tried first | Fallback |
+|---|---|---|
+| `@v1.0.0` or unversioned | `profile.yaml` | — |
+| `@v1.1.0` | `profile@v1.1.yaml` | `profile.yaml` |
+| `@v2.0.0` | `profile@v2.yaml` | `profile.yaml` |
+| `@v2.1.0` | `profile@v2.1.yaml` | `profile.yaml` |
+
+The fallback ensures refs resolve even before versioned files are created. The
+`version` field inside the file is still validated — a mismatch produces a console
+warning.
+
+## Nested `$ref` References
+
+Schemas can reference other schemas using the same versioned ref syntax in a `$ref`
+property. This avoids duplicating shared types (like OpenID profile) across every
+event schema.
+
+```yaml
+# In an event schema:
+properties:
+  member:
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
+  instance:
+    $ref: libatomic/passport-actions/schemas/atomic/instance@v1.0.0
+  profile:
+    description: OpenID profile (partial update)
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
+```
+
+When a property has both `$ref` and `description`, the description overrides the
+referenced schema's description (useful for adding context like "partial update").
+
+The schema resolver fetches and caches referenced schemas recursively, with cycle
+detection to prevent infinite loops.
 
 ## What the Schema Describes
 
-The schema defines the **trigger context object** — the complete set of fields available
-via `${{ trigger.* }}` in workflow steps:
+For **atomic events**, the schema describes the full event body as emitted by the
+code. Notification events (verify, signup, password) typically include:
 
-- `user_id` — the subject user (present on virtually all events)
-- `body` — the event-specific payload (e.g. verification code, Stripe invoice)
-- `member` — user's OpenID profile (when provided by the emitter)
-- `instance` — instance context (when provided by the emitter)
-- `context` — previous state for update events (Stripe previous_attributes)
-- `subscription` — subscription struct (for subscription events)
+- `code` — OTP code (when applicable)
+- `link` — action URL with embedded token
+- `token` — access token
+- `member` — user's OpenID profile (`$ref` to `oauth/openid/profile`)
+- `instance` — instance context (`$ref` to `atomic/instance`)
+- `template_options` — admin-only template rendering options
 
-The `required` array indicates which top-level fields are **always** present. In
-practice, `required` can often be derived from the workflow itself — if a step
-references `${{ trigger.user_id }}`, that field is implicitly required for the
-workflow to execute successfully.
+For **Stripe events**, the schema describes the raw Stripe `data.object` as it
+arrives from the webhook — the actual Stripe API object (Charge, Invoice,
+Subscription, etc.) with no atomic-specific wrapping.
 
 ## Usage in Workflows
 
 ```yaml
-name: Stripe Dunning Email
+name: Welcome Email
 on:
   - event:
-      name: invoice.payment_failed
+      name: user.email.verified
       schema:
-        ref: libatomic/passport-actions/schemas/stripe/invoice.payment_failed@v1.0.0
-    source: stripe
+        ref: libatomic/passport-actions/schemas/atomic/user.email.verified@v1.0.0
 
 steps:
-  - id: load-user
-    action: user.get
-    with:
-      id: ${{ trigger.user_id }}
-
-  - id: send-dunning
+  - id: send-welcome
     action: sendmail
     with:
-      to: ${{ steps.load-user.outputs.user.profile.email }}
+      to: ${{ trigger.body.member.email }}
+      template: welcome
       data:
-        amount_due: ${{ trigger.body.amount_due }}
-        invoice_url: ${{ trigger.body.hosted_invoice_url }}
+        name: ${{ trigger.body.member.name }}
 ```
 
 The admin UI uses these schemas to:
@@ -105,3 +146,4 @@ The admin UI uses these schemas to:
 2. Generate smart input prompts for manual test runs (only fields actually used)
 3. Validate trigger context at runtime
 4. Show field documentation and examples in the visual builder
+5. Resolve `$ref` references to display nested type documentation

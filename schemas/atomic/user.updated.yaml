@@ -3,23 +3,34 @@ $id: libatomic/passport-actions/schemas/atomic/user.updated
 version: "1.0.0"
 title: user.updated
 description: >
-  Event body schema for user.updated. Contains changed fields only
-  (partial update), not the full user object.
+  Emitted when a user is updated. Body is the serialized UserUpdateInput
+  params plus an event_filter for routing.
 
 type: object
 properties:
+  instance_id:
+    type: string
+    format: uuid
+  user_id:
+    type: string
+    format: uuid
   login:
     type: string
-  email:
+  password_expires_at:
     type: string
-    format: email
-  phone_number:
-    type: string
-  profile:
-    type: object
+    format: date-time
   preferences:
     type: object
-  audiences:
-    type: array
-    items:
-      type: string
+  profile:
+    description: OpenID profile (partial update)
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
+  roles:
+    type: object
+    description: Role add/remove operations
+  mfa_required:
+    type: boolean
+  metadata:
+    type: object
+  event_filter:
+    type: string
+    description: GJSON path of changed fields for event routing

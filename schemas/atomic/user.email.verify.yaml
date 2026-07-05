@@ -23,32 +23,9 @@ properties:
     type: string
     description: Access token for verification
   member:
-    type: object
-    description: User's OpenID profile
-    properties:
-      name:
-        type: string
-      email:
-        type: string
-        format: email
-      given_name:
-        type: string
-      family_name:
-        type: string
-      picture:
-        type: string
-        format: uri
-      phone_number:
-        type: string
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0
   instance:
-    type: object
-    description: Instance context
-    properties:
-      name:
-        type: string
-      uuid:
-        type: string
-        format: uuid
+    $ref: libatomic/passport-actions/schemas/atomic/instance@v1.0.0
   template_options:
     type: object
     description: Template rendering options (admin users only)

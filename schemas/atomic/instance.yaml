@@ -1,0 +1,52 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/instance
+version: "1.0.0"
+title: Instance
+description: >
+  Atomic instance as serialized in event bodies. Contains the full instance
+  struct including configuration fields.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  name:
+    type: string
+    description: Instance hostname/identifier
+  title:
+    type: string
+  description:
+    type: string
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  token_lifetime:
+    type: integer
+  token_algorithm:
+    type: string
+  session_cookie:
+    type: string
+  session_lifetime:
+    type: integer
+  metadata:
+    type: object
+  parent_id:
+    type: string
+    format: uuid
+  domains:
+    type: array
+    items:
+      type: object
+      properties:
+        domain:
+          type: string
+        primary:
+          type: boolean
+  origins:
+    type: array
+    items:
+      type: string
