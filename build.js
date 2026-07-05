@@ -1,11 +1,9 @@
 const { execSync } = require("child_process");
 const path = require("path");
 
-// Only node-based actions need building. Recipes (cm/*) use built-in
-// workflow actions and don't require compilation.
 const actions = [
-  "twilio/webhook-validator",
-  "stripe/webhook-validator",
+  "actions/twilio/webhook-validator",
+  "actions/stripe/webhook-validator",
 ];
 
 for (const action of actions) {

@@ -75,8 +75,8 @@ trigger.
 
 | Action | Description |
 |--------|-------------|
-| `libatomic/passport-actions/twilio/webhook-validator@v1` | Validates Twilio X-Twilio-Signature (HMAC-SHA1) |
-| `libatomic/passport-actions/stripe/webhook-validator@v1` | Validates Stripe-Signature (HMAC-SHA256 with timestamp tolerance) |
+| `libatomic/passport-actions/actions/twilio/webhook-validator@v1` | Validates Twilio X-Twilio-Signature (HMAC-SHA1) |
+| `libatomic/passport-actions/actions/stripe/webhook-validator@v1` | Validates Stripe-Signature (HMAC-SHA256 with timestamp tolerance) |
 
 #### Usage
 
@@ -84,7 +84,7 @@ trigger.
 on:
   - webhook: true
     name: twilio-inbound
-    validate: libatomic/passport-actions/twilio/webhook-validator@v1
+    validate: libatomic/passport-actions/actions/twilio/webhook-validator@v1
 ```
 
 The validator reads secrets from the workflow's secrets store:
@@ -98,17 +98,17 @@ These use the built-in `http.*` actions — no node runtime overhead.
 
 | Recipe | Description |
 |--------|-------------|
-| `libatomic/passport-actions/cm/subscriber-add@v1` | Add a subscriber to a list |
-| `libatomic/passport-actions/cm/subscriber-get@v1` | Get subscriber details |
-| `libatomic/passport-actions/cm/subscriber-update@v1` | Update a subscriber |
-| `libatomic/passport-actions/cm/subscriber-unsubscribe@v1` | Unsubscribe from a list |
+| `libatomic/passport-actions/actions/cm/subscriber-add@v1` | Add a subscriber to a list |
+| `libatomic/passport-actions/actions/cm/subscriber-get@v1` | Get subscriber details |
+| `libatomic/passport-actions/actions/cm/subscriber-update@v1` | Update a subscriber |
+| `libatomic/passport-actions/actions/cm/subscriber-unsubscribe@v1` | Unsubscribe from a list |
 
 #### Usage
 
 ```yaml
 steps:
   - id: add-to-cm
-    includes: libatomic/passport-actions/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/actions/cm/subscriber-add@v1
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}
@@ -218,7 +218,7 @@ Recipes don't need building — they're YAML files parsed directly by the workfl
 
 ### Creating a Recipe
 
-1. Create a directory: `<vendor>/<recipe-name>/`
+1. Create a directory: `actions/<vendor>/<recipe-name>/`
 2. Add `recipe.yml`:
    ```yaml
    name: my-recipe
@@ -242,7 +242,7 @@ Recipes don't need building — they're YAML files parsed directly by the workfl
 
 ### Creating an Action
 
-1. Create a directory: `<vendor>/<action-name>/`
+1. Create a directory: `actions/<vendor>/<action-name>/`
 2. Add `action.yml` with inputs, outputs, and `runs.using: node20`
 3. Write `index.js`
 4. Run `npm run build` (or add to `build.js`)
