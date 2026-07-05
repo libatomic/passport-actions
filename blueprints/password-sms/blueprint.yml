@@ -1,7 +1,7 @@
-name: password-sms
+name: Passwordless Login (SMS)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/message-lock-outline.svg
 description: |
-  Send a one-time password via SMS for passwordless login.
-  Replaces the template trigger for event: user.password.sms
+  Sends a one-time password via SMS for passwordless authentication. Triggered when a user requests passwordless login, this workflow loads their profile and delivers the code to their phone number.
 category: authentication
 replaces:
   event_type: user.password.sms
@@ -11,7 +11,9 @@ inputs:
     description: The SMS template name
     default: password-sms
 definition:
-  name: password-sms
+  name: Passwordless Login (SMS)
+  description: Sends a one-time password via SMS for passwordless authentication. Triggered when a user requests passwordless login, this workflow loads their profile and delivers the code to their phone number.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/message-lock-outline.svg
   version: 1
 
   on:

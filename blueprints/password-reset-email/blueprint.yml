@@ -1,7 +1,7 @@
-name: password-reset-email
+name: Password Reset (Email)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/lock-reset.svg
 description: |
-  Send a password reset email when a user requests a password change.
-  Replaces the template trigger for event: user.password.reset.email
+  Sends a password reset link or code via email when a user requests to change their password. Loads the user profile and renders the reset email template with the reset code and link.
 category: authentication
 replaces:
   event_type: user.password.reset.email
@@ -11,7 +11,9 @@ inputs:
     description: The password reset email template
     default: password-reset
 definition:
-  name: password-reset-email
+  name: Password Reset (Email)
+  description: Sends a password reset link or code via email when a user requests to change their password. Loads the user profile and renders the reset email template with the reset code and link.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/lock-reset.svg
   version: 1
 
   on:

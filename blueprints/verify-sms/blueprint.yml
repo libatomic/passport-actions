@@ -1,7 +1,7 @@
-name: verify-sms
+name: SMS Verification
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cellphone-check.svg
 description: |
-  Send an SMS verification code when a user signs up or requests phone verification.
-  Replaces the template trigger for event: user.sms.verify
+  Sends a verification code via SMS when a user signs up or requests phone verification. Loads the user profile to retrieve their phone number and sends the code using the configured SMS template.
 category: authentication
 replaces:
   event_type: user.sms.verify
@@ -11,7 +11,9 @@ inputs:
     description: The SMS template name
     default: verify-sms
 definition:
-  name: verify-sms
+  name: SMS Verification
+  description: Sends a verification code via SMS when a user signs up or requests phone verification. Loads the user profile to retrieve their phone number and sends the code using the configured SMS template.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cellphone-check.svg
   version: 1
 
   on:

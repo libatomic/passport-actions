@@ -1,7 +1,7 @@
-name: subscription-canceled
+name: Subscription Canceled
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-off-outline.svg
 description: |
-  Send an email when a user's subscription is canceled.
-  Replaces the template trigger for event: user.entitlement.canceled
+  Sends a notification email when a user's subscription is canceled. Confirms the cancellation and may include information about what access the user retains.
 category: billing
 replaces:
   event_type: user.entitlement.canceled
@@ -11,7 +11,9 @@ inputs:
     description: The cancellation email template
     default: subscription-canceled
 definition:
-  name: subscription-canceled
+  name: Subscription Canceled
+  description: Sends a notification email when a user's subscription is canceled. Confirms the cancellation and may include information about what access the user retains.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-off-outline.svg
   version: 1
 
   on:

@@ -1,7 +1,7 @@
-name: signup-email
+name: Signup Confirmation (Email)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
-  Send a signup confirmation or verification email when a new user registers via email.
-  Replaces the template trigger for event: user.signup.email
+  Sends a signup confirmation or verification email when a new user registers. Welcomes the user and provides a verification code or link to confirm their email address.
 category: onboarding
 replaces:
   event_type: user.signup.email
@@ -11,7 +11,9 @@ inputs:
     description: The signup email template
     default: signup
 definition:
-  name: signup-email
+  name: Signup Confirmation (Email)
+  description: Sends a signup confirmation or verification email when a new user registers. Welcomes the user and provides a verification code or link to confirm their email address.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
   version: 1
 
   on:

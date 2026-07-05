@@ -1,7 +1,7 @@
-name: signup-sms
+name: Signup Confirmation (SMS)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
-  Send a signup verification code via SMS when a new user registers with a phone number.
-  Replaces the template trigger for event: user.signup.sms
+  Sends a signup verification code via SMS when a new user registers. Delivers a verification code to the user's phone number to confirm their account.
 category: onboarding
 replaces:
   event_type: user.signup.sms
@@ -11,7 +11,9 @@ inputs:
     description: The SMS template name
     default: signup-sms
 definition:
-  name: signup-sms
+  name: Signup Confirmation (SMS)
+  description: Sends a signup verification code via SMS when a new user registers. Delivers a verification code to the user's phone number to confirm their account.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
   version: 1
 
   on:

@@ -1,7 +1,7 @@
-name: welcome-on-verify
+name: Welcome Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/hand-wave-outline.svg
 description: |
-  Send a welcome email when a user verifies their email address.
-  Replaces the template trigger for event: user.email.verified
+  Sends a welcome email after a user successfully verifies their email address. This is typically the first branded communication a new user receives after completing registration.
 category: onboarding
 replaces:
   event_type: user.email.verified
@@ -11,7 +11,9 @@ inputs:
     description: The email template to render
     default: welcome
 definition:
-  name: welcome-on-verify
+  name: Welcome Email
+  description: Sends a welcome email after a user successfully verifies their email address. This is typically the first branded communication a new user receives after completing registration.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/hand-wave-outline.svg
   version: 1
 
   on:

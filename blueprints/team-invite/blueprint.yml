@@ -1,7 +1,7 @@
-name: team-invite
+name: Team Invitation
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-group-outline.svg
 description: |
-  Send an email when a user is invited to join a team.
-  Replaces the template trigger for event: team.member.added
+  Sends an invitation email when a user is added to a team. Notifies the invited user with team details and any relevant onboarding information.
 category: engagement
 replaces:
   event_type: team.member.added
@@ -11,7 +11,9 @@ inputs:
     description: The team invite email template
     default: team-invite
 definition:
-  name: team-invite
+  name: Team Invitation
+  description: Sends an invitation email when a user is added to a team. Notifies the invited user with team details and any relevant onboarding information.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-group-outline.svg
   version: 1
 
   on:

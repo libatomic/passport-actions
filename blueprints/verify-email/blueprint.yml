@@ -1,7 +1,7 @@
-name: verify-email
+name: Email Verification
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/shield-check-outline.svg
 description: |
-  Send an email verification code/link when a user signs up or requests verification.
-  Replaces the template trigger for event: user.email.verify
+  Sends a verification code or magic link to the user's email address when they sign up or request email verification. The workflow loads the user profile and renders the configured email template with the verification code and link.
 category: authentication
 replaces:
   event_type: user.email.verify
@@ -11,7 +11,9 @@ inputs:
     description: The verification email template
     default: verify-email
 definition:
-  name: verify-email
+  name: Email Verification
+  description: Sends a verification code or magic link to the user's email address when they sign up or request email verification. The workflow loads the user profile and renders the configured email template with the verification code and link.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/shield-check-outline.svg
   version: 1
 
   on:

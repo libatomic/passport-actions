@@ -1,7 +1,7 @@
-name: gift-invite
+name: Gift Invitation
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/gift-outline.svg
 description: |
-  Send a gift invitation email when a gift invite is created.
-  Replaces the template trigger for event: gift.invite.created
+  Sends a gift invitation email to the recipient when a user purchases a gift. Loads the sender's profile and delivers the invitation with gift details to the recipient's email address.
 category: engagement
 replaces:
   event_type: gift.invite.created
@@ -11,7 +11,9 @@ inputs:
     description: The gift invite email template
     default: gift-invite
 definition:
-  name: gift-invite
+  name: Gift Invitation
+  description: Sends a gift invitation email to the recipient when a user purchases a gift. Loads the sender's profile and delivers the invitation with gift details to the recipient's email address.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/gift-outline.svg
   version: 1
 
   on:

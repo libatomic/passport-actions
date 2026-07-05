@@ -1,7 +1,7 @@
-name: entitlement-created
+name: Subscription Confirmation
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
 description: |
-  Send a confirmation email when a user's subscription/entitlement is created.
-  Replaces the template trigger for event: user.entitlement.created
+  Sends a confirmation email when a new subscription or entitlement is created for a user. Includes subscription details and serves as a receipt for the purchase.
 category: billing
 replaces:
   event_type: user.entitlement.created
@@ -11,7 +11,9 @@ inputs:
     description: The entitlement confirmation email template
     default: entitlement-created
 definition:
-  name: entitlement-created
+  name: Subscription Confirmation
+  description: Sends a confirmation email when a new subscription or entitlement is created for a user. Includes subscription details and serves as a receipt for the purchase.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
   version: 1
 
   on:

@@ -1,7 +1,7 @@
-name: password-email
+name: Passwordless Login (Email)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-lock-outline.svg
 description: |
-  Send a one-time password or magic link via email for passwordless login.
-  Replaces the template trigger for event: user.password.email
+  Sends a one-time password or magic link via email for passwordless authentication. Triggered when a user requests passwordless login, this workflow loads their profile and delivers the login credentials to their email.
 category: authentication
 replaces:
   event_type: user.password.email
@@ -11,7 +11,9 @@ inputs:
     description: The passwordless login email template
     default: password-email
 definition:
-  name: password-email
+  name: Passwordless Login (Email)
+  description: Sends a one-time password or magic link via email for passwordless authentication. Triggered when a user requests passwordless login, this workflow loads their profile and delivers the login credentials to their email.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-lock-outline.svg
   version: 1
 
   on:

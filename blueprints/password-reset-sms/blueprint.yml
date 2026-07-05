@@ -1,7 +1,7 @@
-name: password-reset-sms
+name: Password Reset (SMS)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/lock-reset.svg
 description: |
-  Send a password reset code via SMS.
-  Replaces the template trigger for event: user.password.reset.sms
+  Sends a password reset code via SMS when a user requests to change their password. Loads the user profile to retrieve their phone number and delivers the reset code.
 category: authentication
 replaces:
   event_type: user.password.reset.sms
@@ -11,7 +11,9 @@ inputs:
     description: The SMS template name
     default: password-reset-sms
 definition:
-  name: password-reset-sms
+  name: Password Reset (SMS)
+  description: Sends a password reset code via SMS when a user requests to change their password. Loads the user profile to retrieve their phone number and delivers the reset code.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/lock-reset.svg
   version: 1
 
   on:
