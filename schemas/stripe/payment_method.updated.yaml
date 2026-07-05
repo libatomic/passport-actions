@@ -1,0 +1,31 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/payment_method.updated
+version: "1.0.0"
+title: payment_method.updated
+description: >
+  Event body schema for Stripe payment_method.updated. The Stripe
+  PaymentMethod object after update.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  type:
+    type: string
+  card:
+    type: object
+    properties:
+      brand:
+        type: string
+      last4:
+        type: string
+      exp_month:
+        type: integer
+      exp_year:
+        type: integer
+      fingerprint:
+        type: string
+  metadata:
+    type: object

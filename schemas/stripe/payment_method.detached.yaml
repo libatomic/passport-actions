@@ -1,0 +1,27 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/payment_method.detached
+version: "1.0.0"
+title: payment_method.detached
+description: >
+  Event body schema for Stripe payment_method.detached. The Stripe
+  PaymentMethod object after being detached from a customer.
+
+type: object
+properties:
+  id:
+    type: string
+  type:
+    type: string
+  card:
+    type: object
+    properties:
+      brand:
+        type: string
+      last4:
+        type: string
+      exp_month:
+        type: integer
+      exp_year:
+        type: integer
+  metadata:
+    type: object

@@ -1,0 +1,50 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/invoice.payment_succeeded
+version: "1.0.0"
+title: invoice.payment_succeeded
+description: >
+  Event body schema for Stripe invoice.payment_succeeded. The Stripe
+  invoice object for a successful payment.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  subscription:
+    type: string
+  amount_paid:
+    type: integer
+    description: Amount paid in cents
+  currency:
+    type: string
+  status:
+    type: string
+  hosted_invoice_url:
+    type: string
+    format: uri
+  invoice_pdf:
+    type: string
+    format: uri
+  lines:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            description:
+              type: string
+            amount:
+              type: integer
+            price:
+              type: object
+              properties:
+                id:
+                  type: string
+                product:
+                  type: string
+  metadata:
+    type: object

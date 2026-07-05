@@ -1,0 +1,32 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/charge.succeeded
+version: "1.0.0"
+title: charge.succeeded
+description: >
+  Event body schema for Stripe charge.succeeded. The Stripe charge object
+  for a successful charge.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  amount:
+    type: integer
+  currency:
+    type: string
+  status:
+    type: string
+    const: succeeded
+  payment_method:
+    type: string
+  receipt_url:
+    type: string
+    format: uri
+  description:
+    type: string
+  invoice:
+    type: string
+  metadata:
+    type: object

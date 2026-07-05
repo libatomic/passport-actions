@@ -1,0 +1,29 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/payment_intent.processing
+version: "1.0.0"
+title: payment_intent.processing
+description: >
+  Event body schema for Stripe payment_intent.processing. The Stripe
+  PaymentIntent object in processing state.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  amount:
+    type: integer
+  currency:
+    type: string
+  status:
+    type: string
+    const: processing
+  payment_method:
+    type: string
+  payment_method_types:
+    type: array
+    items:
+      type: string
+  metadata:
+    type: object

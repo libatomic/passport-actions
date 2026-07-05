@@ -1,0 +1,33 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/invoice.payment_failed
+version: "1.0.0"
+title: invoice.payment_failed
+description: >
+  Event body schema for Stripe invoice.payment_failed. The Stripe invoice
+  object for a failed payment attempt.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  subscription:
+    type: string
+  amount_due:
+    type: integer
+    description: Amount due in cents
+  currency:
+    type: string
+  status:
+    type: string
+  attempt_count:
+    type: integer
+  next_payment_attempt:
+    type: integer
+    description: Unix timestamp of next retry
+  hosted_invoice_url:
+    type: string
+    format: uri
+  metadata:
+    type: object

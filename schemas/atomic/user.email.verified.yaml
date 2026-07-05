@@ -1,0 +1,40 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.email.verified
+version: "1.0.0"
+title: user.email.verified
+description: >
+  Emitted when a user's email is confirmed. Contains the member profile and
+  instance context.
+
+type: object
+required:
+  - member
+  - instance
+properties:
+  member:
+    type: object
+    description: User's OpenID profile
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+        format: email
+      given_name:
+        type: string
+      family_name:
+        type: string
+      picture:
+        type: string
+        format: uri
+      phone_number:
+        type: string
+  instance:
+    type: object
+    description: Instance context
+    properties:
+      name:
+        type: string
+      uuid:
+        type: string
+        format: uuid

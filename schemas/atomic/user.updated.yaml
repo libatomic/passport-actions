@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.updated
+version: "1.0.0"
+title: user.updated
+description: >
+  Event body schema for user.updated. Contains changed fields only
+  (partial update), not the full user object.
+
+type: object
+properties:
+  login:
+    type: string
+  email:
+    type: string
+    format: email
+  phone_number:
+    type: string
+  profile:
+    type: object
+  preferences:
+    type: object
+  audiences:
+    type: array
+    items:
+      type: string

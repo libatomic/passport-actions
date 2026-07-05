@@ -1,0 +1,38 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/customer.subscription.deleted
+version: "1.0.0"
+title: customer.subscription.deleted
+description: >
+  Event body schema for Stripe customer.subscription.deleted. The Stripe
+  subscription object in canceled state.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  status:
+    type: string
+    const: canceled
+  canceled_at:
+    type: integer
+  ended_at:
+    type: integer
+  items:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            price:
+              type: object
+              properties:
+                id:
+                  type: string
+                product:
+                  type: string
+  metadata:
+    type: object

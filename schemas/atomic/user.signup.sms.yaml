@@ -1,0 +1,58 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.signup.sms
+version: "1.0.0"
+title: user.signup.sms
+description: >
+  SMS signup verification. Sent through the PrincipalNotify path with
+  signup=true.
+
+type: object
+required:
+  - code
+  - link
+  - member
+  - instance
+properties:
+  code:
+    type: string
+    description: OTP verification code
+  link:
+    type: string
+    format: uri
+    description: Verification URL with embedded access token
+  token:
+    type: string
+    description: Access token for verification
+  member:
+    type: object
+    description: User's OpenID profile
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+        format: email
+      given_name:
+        type: string
+      family_name:
+        type: string
+      picture:
+        type: string
+        format: uri
+      phone_number:
+        type: string
+  instance:
+    type: object
+    description: Instance context
+    properties:
+      name:
+        type: string
+      uuid:
+        type: string
+        format: uuid
+  template_options:
+    type: object
+    description: Template rendering options (admin users only)
+    properties:
+      skip_sender_verification:
+        type: boolean

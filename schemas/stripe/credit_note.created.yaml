@@ -1,0 +1,47 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/credit_note.created
+version: "1.0.0"
+title: credit_note.created
+description: >
+  Event body schema for Stripe credit_note.created. The Stripe CreditNote
+  object.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  invoice:
+    type: string
+  amount:
+    type: integer
+  currency:
+    type: string
+  status:
+    type: string
+    enum: [issued, void]
+  type:
+    type: string
+    enum: [pre_payment, post_payment]
+  reason:
+    type: string
+    enum: [duplicate, fraudulent, order_change, product_unsatisfactory]
+  memo:
+    type: string
+  lines:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            description:
+              type: string
+            amount:
+              type: integer
+            type:
+              type: string
+  metadata:
+    type: object

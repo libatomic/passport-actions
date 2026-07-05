@@ -1,0 +1,59 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/customer.subscription.created
+version: "1.0.0"
+title: customer.subscription.created
+description: >
+  Event body schema for Stripe customer.subscription.created. The Stripe
+  subscription object.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  status:
+    type: string
+    enum: [incomplete, incomplete_expired, trialing, active, past_due, canceled, unpaid, paused]
+  current_period_start:
+    type: integer
+  current_period_end:
+    type: integer
+  cancel_at_period_end:
+    type: boolean
+  items:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            price:
+              type: object
+              properties:
+                id:
+                  type: string
+                product:
+                  type: string
+                unit_amount:
+                  type: integer
+                currency:
+                  type: string
+                recurring:
+                  type: object
+                  properties:
+                    interval:
+                      type: string
+                    interval_count:
+                      type: integer
+            quantity:
+              type: integer
+  trial_start:
+    type: integer
+  trial_end:
+    type: integer
+  metadata:
+    type: object

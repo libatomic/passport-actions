@@ -17,7 +17,10 @@ definition:
   version: 1
 
   on:
-    - event: user.entitlement.canceled
+    - event:
+        name: user.entitlement.canceled
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.entitlement.canceled@v1.0.0
 
   steps:
     - id: load-user

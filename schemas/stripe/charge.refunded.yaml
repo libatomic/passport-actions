@@ -1,0 +1,40 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/charge.refunded
+version: "1.0.0"
+title: charge.refunded
+description: >
+  Event body schema for Stripe charge.refunded. The Stripe charge object
+  with refund information.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  amount:
+    type: integer
+  amount_refunded:
+    type: integer
+  currency:
+    type: string
+  refunded:
+    type: boolean
+  refunds:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            amount:
+              type: integer
+            reason:
+              type: string
+            status:
+              type: string
+  metadata:
+    type: object

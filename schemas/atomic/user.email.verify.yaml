@@ -1,0 +1,57 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.email.verify
+version: "1.0.0"
+title: user.email.verify
+description: >
+  Email verification request. Sent via the oauth verify flow (with code) or
+  when a user updates their email (without code).
+
+type: object
+required:
+  - link
+  - member
+  - instance
+properties:
+  code:
+    type: string
+    description: OTP verification code (present when sent via the oauth verify flow)
+  link:
+    type: string
+    format: uri
+    description: Verification URL with embedded access token
+  token:
+    type: string
+    description: Access token for verification
+  member:
+    type: object
+    description: User's OpenID profile
+    properties:
+      name:
+        type: string
+      email:
+        type: string
+        format: email
+      given_name:
+        type: string
+      family_name:
+        type: string
+      picture:
+        type: string
+        format: uri
+      phone_number:
+        type: string
+  instance:
+    type: object
+    description: Instance context
+    properties:
+      name:
+        type: string
+      uuid:
+        type: string
+        format: uuid
+  template_options:
+    type: object
+    description: Template rendering options (admin users only)
+    properties:
+      skip_sender_verification:
+        type: boolean

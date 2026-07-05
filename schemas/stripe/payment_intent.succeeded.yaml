@@ -1,0 +1,29 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/payment_intent.succeeded
+version: "1.0.0"
+title: payment_intent.succeeded
+description: >
+  Event body schema for Stripe payment_intent.succeeded. The Stripe
+  PaymentIntent object for a successful payment.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  amount:
+    type: integer
+  currency:
+    type: string
+  status:
+    type: string
+    const: succeeded
+  payment_method:
+    type: string
+  invoice:
+    type: string
+  description:
+    type: string
+  metadata:
+    type: object

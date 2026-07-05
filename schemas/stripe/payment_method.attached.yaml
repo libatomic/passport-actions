@@ -1,0 +1,40 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/payment_method.attached
+version: "1.0.0"
+title: payment_method.attached
+description: >
+  Event body schema for Stripe payment_method.attached. The Stripe
+  PaymentMethod object after being attached to a customer.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  type:
+    type: string
+  card:
+    type: object
+    properties:
+      brand:
+        type: string
+      last4:
+        type: string
+      exp_month:
+        type: integer
+      exp_year:
+        type: integer
+      fingerprint:
+        type: string
+  us_bank_account:
+    type: object
+    properties:
+      bank_name:
+        type: string
+      last4:
+        type: string
+      account_type:
+        type: string
+  metadata:
+    type: object

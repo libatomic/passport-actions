@@ -1,0 +1,45 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/invoice.upcoming
+version: "1.0.0"
+title: invoice.upcoming
+description: >
+  Event body schema for Stripe invoice.upcoming. The upcoming Stripe
+  invoice object (not yet finalized), fired a few days before renewal.
+
+type: object
+properties:
+  customer:
+    type: string
+  subscription:
+    type: string
+  amount_due:
+    type: integer
+  currency:
+    type: string
+  period_start:
+    type: integer
+  period_end:
+    type: integer
+  next_payment_attempt:
+    type: integer
+  lines:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            description:
+              type: string
+            amount:
+              type: integer
+            price:
+              type: object
+              properties:
+                id:
+                  type: string
+                product:
+                  type: string
+  metadata:
+    type: object

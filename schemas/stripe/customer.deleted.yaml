@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/customer.deleted
+version: "1.0.0"
+title: customer.deleted
+description: >
+  Event body schema for Stripe customer.deleted. The Stripe customer
+  object marked as deleted.
+
+type: object
+properties:
+  id:
+    type: string
+  deleted:
+    type: boolean
+    const: true
+  email:
+    type: string
+    format: email
+  metadata:
+    type: object

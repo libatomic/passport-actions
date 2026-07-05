@@ -1,0 +1,31 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/charge.failed
+version: "1.0.0"
+title: charge.failed
+description: >
+  Event body schema for Stripe charge.failed. The Stripe charge object
+  for a failed charge.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  amount:
+    type: integer
+  currency:
+    type: string
+  status:
+    type: string
+    const: failed
+  failure_code:
+    type: string
+  failure_message:
+    type: string
+  payment_method:
+    type: string
+  invoice:
+    type: string
+  metadata:
+    type: object

@@ -1,0 +1,28 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/customer.updated
+version: "1.0.0"
+title: customer.updated
+description: >
+  Event body schema for Stripe customer.updated. The Stripe customer
+  object after update.
+
+type: object
+properties:
+  id:
+    type: string
+  email:
+    type: string
+    format: email
+  name:
+    type: string
+  phone:
+    type: string
+  default_source:
+    type: string
+  invoice_settings:
+    type: object
+    properties:
+      default_payment_method:
+        type: string
+  metadata:
+    type: object

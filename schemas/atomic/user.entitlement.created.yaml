@@ -1,0 +1,33 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.entitlement.created
+version: "1.0.0"
+title: user.entitlement.created
+description: >
+  Event body schema for user.entitlement.created. Contains the full
+  entitlement object.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  plan_id:
+    type: string
+  status:
+    type: string
+    enum: [active, trialing, canceled, expired]
+  begins_at:
+    type: string
+    format: date-time
+  ends_at:
+    type: string
+    format: date-time
+  trial_ends_at:
+    type: string
+    format: date-time
+  quantity:
+    type: integer
+  recurring_interval:
+    type: string
+  recurring_frequency:
+    type: integer

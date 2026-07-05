@@ -1,0 +1,49 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/invoice.created
+version: "1.0.0"
+title: invoice.created
+description: >
+  Event body schema for Stripe invoice.created. The Stripe invoice object.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  subscription:
+    type: string
+  status:
+    type: string
+    enum: [draft, open, paid, uncollectible, void]
+  amount_due:
+    type: integer
+  currency:
+    type: string
+  due_date:
+    type: integer
+  period_start:
+    type: integer
+  period_end:
+    type: integer
+  lines:
+    type: object
+    properties:
+      data:
+        type: array
+        items:
+          type: object
+          properties:
+            description:
+              type: string
+            amount:
+              type: integer
+            price:
+              type: object
+              properties:
+                id:
+                  type: string
+                product:
+                  type: string
+  metadata:
+    type: object

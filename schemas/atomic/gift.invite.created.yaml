@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/gift.invite.created
+version: "1.0.0"
+title: gift.invite.created
+description: >
+  Event body schema for gift.invite.created. Contains the gift details
+  including recipient email.
+
+type: object
+required:
+  - recipient_email
+properties:
+  recipient_email:
+    type: string
+    format: email
+    description: The gift recipient's email address
+  plan_id:
+    type: string
+  message:
+    type: string
+    description: Optional personal message from the sender
+  quantity:
+    type: integer
+  duration:
+    type: string

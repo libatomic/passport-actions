@@ -1,0 +1,38 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.created
+version: "1.0.0"
+title: user.created
+description: >
+  Emitted when a new user is created. Body is the serialized
+  UserCreateInput struct.
+
+type: object
+required:
+  - instance_id
+  - login
+properties:
+  instance_id:
+    type: string
+    format: uuid
+  login:
+    type: string
+  password:
+    type: string
+  password_expires_at:
+    type: string
+    format: date-time
+  preferences:
+    type: object
+  profile:
+    type: object
+    description: OpenID profile
+  roles:
+    type: array
+    items:
+      type: string
+  mfa_required:
+    type: boolean
+  metadata:
+    type: object
+  stripe_account:
+    type: object

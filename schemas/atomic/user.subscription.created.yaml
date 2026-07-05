@@ -1,0 +1,22 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.created
+version: "1.0.0"
+title: user.subscription.created
+description: >
+  Event body schema for user.subscription.created. Contains the
+  subscription creation parameters.
+
+type: object
+properties:
+  plan_id:
+    type: string
+  price_id:
+    type: string
+  quantity:
+    type: integer
+  payment_method_id:
+    type: string
+  coupon:
+    type: string
+  trial_days:
+    type: integer

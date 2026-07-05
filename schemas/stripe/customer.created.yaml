@@ -1,0 +1,23 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/customer.created
+version: "1.0.0"
+title: customer.created
+description: >
+  Event body schema for Stripe customer.created. The Stripe customer
+  object.
+
+type: object
+properties:
+  id:
+    type: string
+  email:
+    type: string
+    format: email
+  name:
+    type: string
+  phone:
+    type: string
+  metadata:
+    type: object
+  created:
+    type: integer

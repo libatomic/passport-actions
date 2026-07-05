@@ -1,0 +1,40 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/stripe/setup_intent.requires_action
+version: "1.0.0"
+title: setup_intent.requires_action
+description: >
+  Event body schema for Stripe setup_intent.requires_action. The Stripe
+  SetupIntent object requiring customer action.
+
+type: object
+properties:
+  id:
+    type: string
+  customer:
+    type: string
+  status:
+    type: string
+    const: requires_action
+  payment_method:
+    type: string
+  payment_method_types:
+    type: array
+    items:
+      type: string
+  next_action:
+    type: object
+    properties:
+      type:
+        type: string
+      verify_with_microdeposits:
+        type: object
+        properties:
+          arrival_date:
+            type: integer
+          hosted_verification_url:
+            type: string
+            format: uri
+  client_secret:
+    type: string
+  metadata:
+    type: object
