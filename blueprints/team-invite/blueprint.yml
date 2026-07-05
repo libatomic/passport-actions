@@ -1,0 +1,33 @@
+name: team-invite
+description: |
+  Send an email when a user is invited to join a team.
+  Replaces the template trigger for event: team.member.added
+category: engagement
+replaces:
+  event_type: team.member.added
+  channel: email
+inputs:
+  template:
+    description: The team invite email template
+    default: team-invite
+definition:
+  name: team-invite
+  version: 1
+
+  on:
+    - event: team.member.added
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-invite
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          team: ${{ trigger.body }}

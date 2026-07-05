@@ -1,0 +1,33 @@
+name: subscription-canceled
+description: |
+  Send an email when a user's subscription is canceled.
+  Replaces the template trigger for event: user.entitlement.canceled
+category: billing
+replaces:
+  event_type: user.entitlement.canceled
+  channel: email
+inputs:
+  template:
+    description: The cancellation email template
+    default: subscription-canceled
+definition:
+  name: subscription-canceled
+  version: 1
+
+  on:
+    - event: user.entitlement.canceled
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-cancellation
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          entitlement: ${{ trigger.body }}

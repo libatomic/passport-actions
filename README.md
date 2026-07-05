@@ -3,14 +3,69 @@
 Pre-built actions and recipes for the [Passport Atomic](https://github.com/libatomic/atomic)
 workflow engine.
 
-This repository contains two kinds of reusable components:
+This repository contains three kinds of reusable components:
 
+- **Blueprints** (`blueprint.yml`) — Complete workflow definitions ready to import into your
+  instance. These replace the legacy template trigger system with full workflow control.
 - **Actions** (`action.yml`) — GitHub Actions-compatible node scripts bundled via `@vercel/ncc`.
   Referenced in workflows with `uses:`.
 - **Recipes** (`recipe.yml`) — Reusable step sequences using built-in Atomic actions (http, user,
   etc.). Referenced in workflows with `includes:`. No compilation needed.
 
 ## Available Components
+
+### Blueprints
+
+Ready-to-use workflow definitions that replace the legacy template trigger system. Import these
+directly from the admin UI's Template Library tab or copy the `definition` block into a new
+workflow via the API.
+
+#### Authentication
+
+| Blueprint | Replaces Event | Channel |
+|-----------|---------------|---------|
+| `blueprints/verify-email` | `user.email.verify` | email |
+| `blueprints/verify-sms` | `user.sms.verify` | sms |
+| `blueprints/password-email` | `user.password.email` | email |
+| `blueprints/password-sms` | `user.password.sms` | sms |
+| `blueprints/password-reset-email` | `user.password.reset.email` | email |
+| `blueprints/password-reset-sms` | `user.password.reset.sms` | sms |
+| `blueprints/signup-email` | `user.signup.email` | email |
+| `blueprints/signup-sms` | `user.signup.sms` | sms |
+
+#### Onboarding
+
+| Blueprint | Replaces Event | Channel |
+|-----------|---------------|---------|
+| `blueprints/welcome-on-verify` | `user.email.verified` | email |
+
+#### Engagement
+
+| Blueprint | Replaces Event | Channel |
+|-----------|---------------|---------|
+| `blueprints/gift-invite` | `gift.invite.created` | email |
+| `blueprints/team-invite` | `team.member.added` | email |
+
+#### Billing
+
+| Blueprint | Replaces Event | Channel |
+|-----------|---------------|---------|
+| `blueprints/entitlement-created` | `user.entitlement.created` | email |
+| `blueprints/subscription-canceled` | `user.entitlement.canceled` | email |
+
+#### Usage
+
+Each blueprint contains a `definition` block that is a complete workflow YAML document. The
+`inputs` section documents customizable parameters (like which template to render). The `replaces`
+field indicates which legacy template trigger event/channel combination it supersedes.
+
+```yaml
+# Import via the admin UI "Templates" tab, or via the API:
+POST /api/1.0.0/workflows?name=verify-email&enabled=true
+Content-Type: application/x-yaml
+
+# paste the definition block from the blueprint
+```
 
 ### Webhook Validators (actions)
 
@@ -68,7 +123,17 @@ All CM recipes require:
 
 URL parameters (like `{listid}.json?email={email}`) are handled internally by each recipe.
 
-## Actions vs Recipes
+## Actions vs Recipes vs Blueprints
+
+| | Blueprints | Actions (`uses:`) | Recipes (`includes:`) |
+|---|---|---|---|
+| File | `blueprint.yml` | `action.yml` + `dist/index.js` | `recipe.yml` |
+| Purpose | Complete importable workflows | Reusable step logic | Reusable step sequences |
+| Runtime | Workflow engine | Node.js child process | Inline (native actions) |
+| Used via | Admin UI import / API | `uses:` in a step | `includes:` in a step |
+| Best for | Replacing template triggers, starter templates | Signature validation, vendor SDKs | API calls, composing built-ins |
+
+## Actions vs Recipes (detail)
 
 | | Actions (`uses:`) | Recipes (`includes:`) |
 |---|---|---|
@@ -77,6 +142,22 @@ URL parameters (like `{listid}.json?email={email}`) are handled internally by ea
 | Dependencies | Bundled via `@vercel/ncc` | None (uses built-in `http.*`, `user.*`, etc.) |
 | Build step | Required (`npm run build`) | None |
 | Best for | Signature validation, complex logic, vendor SDKs | API calls, HTTP integrations, composing built-ins |
+
+## Migrating from Template Triggers
+
+The legacy template trigger system (`TemplateEvent` records tied to event types) is being
+deprecated in favor of workflows. Each blueprint in `blueprints/` is a drop-in replacement for
+a specific template trigger event/channel combination.
+
+**Migration steps:**
+
+1. In the admin UI, go to **Workflows** → **Templates** tab
+2. Find the blueprint matching your current template trigger (same event type)
+3. Click **Use Template** — this pre-fills the YAML editor
+4. Customize the `template` input to match your existing template name
+5. Save and enable the workflow
+6. Disable the corresponding template event trigger
+7. Verify the workflow fires correctly on the next event
 
 ## Caching
 
@@ -96,6 +177,44 @@ npm run build
 Recipes don't need building — they're YAML files parsed directly by the workflow engine.
 
 ## Creating New Components
+
+### Creating a Blueprint
+
+1. Create a directory: `blueprints/<blueprint-name>/`
+2. Add `blueprint.yml`:
+   ```yaml
+   name: my-blueprint
+   description: |
+     What this workflow does.
+     Replaces the template trigger for event: some.event
+   category: onboarding | authentication | engagement | billing | scheduled | webhook
+   replaces:
+     event_type: the.event.type
+     channel: email | sms
+   inputs:
+     template:
+       description: The template to render
+       default: my-template
+   definition:
+     name: my-workflow
+     version: 1
+     on:
+       - event: the.event.type
+     steps:
+       - id: load-user
+         action: user.get
+         with:
+           id: ${{ trigger.user_id }}
+       - id: send
+         action: sendmail
+         with:
+           to: ${{ steps.load-user.outputs.user.profile.email }}
+           template: ${{ inputs.template }}
+           data:
+             user: ${{ steps.load-user.outputs.user }}
+   ```
+3. The `replaces` field is metadata for the admin UI to indicate which legacy trigger this replaces
+4. The `definition` block is the complete workflow YAML that gets imported
 
 ### Creating a Recipe
 

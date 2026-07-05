@@ -1,0 +1,34 @@
+name: password-reset-email
+description: |
+  Send a password reset email when a user requests a password change.
+  Replaces the template trigger for event: user.password.reset.email
+category: authentication
+replaces:
+  event_type: user.password.reset.email
+  channel: email
+inputs:
+  template:
+    description: The password reset email template
+    default: password-reset
+definition:
+  name: password-reset-email
+  version: 1
+
+  on:
+    - event: user.password.reset.email
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-reset
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          code: ${{ trigger.body.code }}
+          link: ${{ trigger.body.link }}

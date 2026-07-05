@@ -1,0 +1,32 @@
+name: welcome-on-verify
+description: |
+  Send a welcome email when a user verifies their email address.
+  Replaces the template trigger for event: user.email.verified
+category: onboarding
+replaces:
+  event_type: user.email.verified
+  channel: email
+inputs:
+  template:
+    description: The email template to render
+    default: welcome
+definition:
+  name: welcome-on-verify
+  version: 1
+
+  on:
+    - event: user.email.verified
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-welcome
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
