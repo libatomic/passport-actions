@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.entitlement.failed
+version: "1.0.0"
+title: user.entitlement.failed
+description: >
+  Emitted when an entitlement operation fails.
+
+type: object
+properties:
+  entitlement_id:
+    type: string
+    format: uuid
+  user_id:
+    type: string
+    format: uuid
+  application_id:
+    type: string
+    format: uuid

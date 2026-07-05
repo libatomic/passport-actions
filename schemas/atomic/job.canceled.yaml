@@ -1,0 +1,8 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/job.canceled
+version: "1.0.0"
+title: job.canceled
+description: >
+  Emitted when a job is canceled.
+
+$ref: libatomic/passport-actions/schemas/atomic/job@v1.0.0

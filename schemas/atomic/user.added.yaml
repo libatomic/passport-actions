@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.added
+version: "1.0.0"
+title: user.added
+description: >
+  Emitted when a user is added to an instance (first role assignment).
+
+type: object
+required:
+  - roles
+  - user
+properties:
+  roles:
+    type: array
+    items:
+      type: string
+  user:
+    $ref: libatomic/passport-actions/schemas/atomic/user@v1.0.0

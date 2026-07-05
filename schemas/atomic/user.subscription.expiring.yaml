@@ -1,0 +1,8 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.expiring
+version: "1.0.0"
+title: user.subscription.expiring
+description: >
+  Emitted when a subscription is approaching expiration.
+
+$ref: libatomic/passport-actions/schemas/atomic/subscription@v1.0.0

@@ -1,0 +1,41 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.update.failed
+version: "1.0.0"
+title: user.subscription.update.failed
+description: >
+  Emitted when a subscription update fails. Body is the serialized
+  SubscriptionUpdateInput.
+
+type: object
+properties:
+  subscription_id:
+    type: string
+    format: uuid
+  status:
+    type: string
+  stripe_subscription:
+    type: string
+  stripe_item:
+    type: string
+  credit_id:
+    type: string
+    format: uuid
+  begins_at:
+    type: string
+    format: date-time
+  ends_at:
+    type: string
+    format: date-time
+  canceled:
+    type: boolean
+  quantity:
+    type: integer
+  max_quantity:
+    type: integer
+  metadata:
+    type: object
+  auto_renew:
+    type: boolean
+  trial_ends_at:
+    type: string
+    format: date-time

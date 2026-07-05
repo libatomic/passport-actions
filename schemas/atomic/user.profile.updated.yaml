@@ -1,0 +1,18 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.profile.updated
+version: "1.0.0"
+title: user.profile.updated
+description: >
+  Emitted when a user's OpenID profile is updated. Includes the full
+  updated profile and a GJSON event_filter for routing.
+
+type: object
+required:
+  - profile
+properties:
+  event_filter:
+    type: string
+    description: GJSON path of changed profile fields for event routing
+  profile:
+    description: Full updated OpenID profile
+    $ref: libatomic/passport-actions/schemas/oauth/openid/profile@v1.0.0

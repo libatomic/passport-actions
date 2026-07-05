@@ -1,0 +1,20 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/email.sender.verify
+version: "1.0.0"
+title: email.sender.verify
+description: >
+  Emitted when an admin requests to verify an email sender address.
+  Body is the serialized EmailSenderVerifyInput.
+
+type: object
+required:
+  - instance_id
+properties:
+  instance_id:
+    type: string
+    format: uuid
+  address:
+    type: string
+    format: email
+  name:
+    type: string

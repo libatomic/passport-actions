@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.item.updated
+version: "1.0.0"
+title: user.subscription.item.updated
+description: >
+  Emitted when a subscription item is updated.
+
+type: object
+properties:
+  subscription_id:
+    type: string
+    format: uuid
+  stripe_item:
+    type: string
+  quantity:
+    type: integer

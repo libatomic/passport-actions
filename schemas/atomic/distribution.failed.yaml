@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/distribution.failed
+version: "1.0.0"
+title: distribution.failed
+description: >
+  Emitted when a distribution fails.
+
+type: object
+required:
+  - distribution_id
+  - channel
+properties:
+  distribution_id:
+    type: integer
+  channel:
+    type: string

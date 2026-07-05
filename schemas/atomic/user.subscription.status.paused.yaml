@@ -1,0 +1,25 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.status.paused
+version: "1.0.0"
+title: user.subscription.status.paused
+description: >
+  Emitted when a subscription transitions to paused status.
+
+type: object
+required:
+  - status
+  - subscription
+properties:
+  prev_status:
+    type: string
+    description: Previous subscription status
+  status:
+    type: string
+    description: New subscription status
+  subscription:
+    type: string
+    format: uuid
+    description: Subscription ID
+  stripe_subscription:
+    type: string
+    description: Stripe subscription ID (when applicable)

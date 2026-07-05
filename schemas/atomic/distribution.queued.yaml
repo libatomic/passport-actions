@@ -1,0 +1,13 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/distribution.queued
+version: "1.0.0"
+title: distribution.queued
+description: >
+  Emitted when distribution queuing is completed, before finalize.
+
+type: object
+properties:
+  distribution_id:
+    type: integer
+  channel:
+    type: string

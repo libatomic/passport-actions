@@ -1,0 +1,26 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.email.suppressed
+version: "1.0.0"
+title: user.email.suppressed
+description: >
+  Emitted when a user's email is suppressed by the mail provider.
+
+type: object
+required:
+  - email
+  - type
+properties:
+  email:
+    type: string
+    format: email
+  type:
+    type: string
+    description: Suppression type (e.g. bounce, complaint)
+  reason:
+    type: string
+  mta:
+    type: string
+    description: Mail transfer agent status
+  details:
+    type: string
+    description: MTA status code details

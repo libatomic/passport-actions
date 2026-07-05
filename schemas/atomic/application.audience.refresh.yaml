@@ -1,0 +1,21 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/application.audience.refresh
+version: "1.0.0"
+title: application.audience.refresh
+description: >
+  Emitted when an application's audience memberships are refreshed.
+
+type: object
+properties:
+  added:
+    type: array
+    items:
+      type: string
+  existing:
+    type: array
+    items:
+      type: string
+  removed:
+    type: array
+    items:
+      type: string

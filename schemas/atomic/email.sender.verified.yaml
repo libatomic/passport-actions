@@ -1,0 +1,15 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/email.sender.verified
+version: "1.0.0"
+title: email.sender.verified
+description: >
+  Emitted when an admin's email sender address is verified.
+
+type: object
+properties:
+  instance_id:
+    type: string
+    format: uuid
+  address:
+    type: string
+    format: email

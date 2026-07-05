@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.deleted
+version: "1.0.0"
+title: user.deleted
+description: >
+  Emitted when a user is permanently deleted from the parent instance.
+  Body is the full serialized User object.
+
+$ref: libatomic/passport-actions/schemas/atomic/user@v1.0.0

@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.entitlement.deleted
+version: "1.0.0"
+title: user.entitlement.deleted
+description: >
+  Emitted when an entitlement is deleted. Body is the full serialized
+  Entitlement struct.
+
+$ref: libatomic/passport-actions/schemas/atomic/entitlement@v1.0.0

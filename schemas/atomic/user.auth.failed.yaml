@@ -1,0 +1,13 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.auth.failed
+version: "1.0.0"
+title: user.auth.failed
+description: >
+  Emitted when a user authentication attempt fails.
+
+type: object
+required:
+  - login
+properties:
+  login:
+    type: string

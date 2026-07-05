@@ -1,0 +1,15 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.feed.build
+version: "1.0.0"
+title: user.feed.build
+description: >
+  Emitted when a user's content feed is built.
+
+type: object
+properties:
+  user_id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid

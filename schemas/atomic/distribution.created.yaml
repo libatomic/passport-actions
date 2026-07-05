@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/distribution.created
+version: "1.0.0"
+title: distribution.created
+description: >
+  Emitted when a distribution is created.
+
+type: object
+required:
+  - distribution_id
+  - channel
+properties:
+  distribution_id:
+    type: integer
+  audience_id:
+    type: string
+    format: uuid
+  channel:
+    type: string

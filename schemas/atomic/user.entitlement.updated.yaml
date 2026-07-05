@@ -1,0 +1,26 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.entitlement.updated
+version: "1.0.0"
+title: user.entitlement.updated
+description: >
+  Emitted when an entitlement is updated. Body is the serialized
+  EntitlementUpdateInput.
+
+type: object
+required:
+  - entitlement_id
+properties:
+  entitlement_id:
+    type: string
+    format: uuid
+  active:
+    type: boolean
+  expires_at:
+    type: string
+    format: date-time
+  metadata:
+    type: object
+  categories:
+    type: array
+    items:
+      type: object

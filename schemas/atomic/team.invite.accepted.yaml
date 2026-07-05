@@ -1,0 +1,15 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/team.invite.accepted
+version: "1.0.0"
+title: team.invite.accepted
+description: >
+  Emitted when a team (entitlement) invite is accepted. Body is the
+  serialized CreditInviteAcceptInput.
+
+type: object
+properties:
+  user_id:
+    type: string
+    format: uuid
+  invite_code:
+    type: string

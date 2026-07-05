@@ -11,27 +11,93 @@ context wrapper (`user_id`) — those are handled by the workflow engine.
 
 ```
 schemas/
-  atomic/              # Atomic core event schemas and shared types
-    user.email.verify.yaml
-    user.email.verified.yaml
-    user.created.yaml
-    user.updated.yaml
+  atomic/                    # Atomic core events + shared types
+    # Shared types (referenced via $ref)
+    user.yaml                # User object (embeds oauth/openid/profile)
+    instance.yaml            # Instance object
+    application.yaml         # Application (OAuth client)
+    subscription.yaml        # Subscription object
+    entitlement.yaml         # Entitlement object
+    job.yaml                 # Job object
+    # User lifecycle
+    user.created.yaml        user.deleted.yaml
+    user.added.yaml          user.removed.yaml
+    user.updated.yaml        user.profile.updated.yaml
+    user.preferences.updated.yaml
+    user.role.added.yaml     user.role.removed.yaml
+    user.account.created.yaml
+    # Auth
+    user.auth.success.yaml   user.auth.failed.yaml
+    user.token.revoked.yaml
+    # Notifications (email + sms)
+    user.email.verify.yaml   user.sms.verify.yaml
+    user.email.verified.yaml user.sms.verified.yaml
+    user.signup.email.yaml   user.signup.sms.yaml
+    user.password.email.yaml user.password.sms.yaml
+    user.password.reset.email.yaml
+    user.password.reset.sms.yaml
+    user.email.suppressed.yaml
+    user.email.bounced.yaml
+    email.sender.verify.yaml email.sender.verified.yaml
+    # Subscriptions
     user.subscription.created.yaml
+    user.subscription.updated.yaml
+    user.subscription.deleted.yaml
+    user.subscription.expiring.yaml
+    user.subscription.create.failed.yaml
+    user.subscription.update.failed.yaml
+    user.subscription.item.updated.yaml
+    user.subscription.status.{active,trialing,...}.yaml
+    # Entitlements
     user.entitlement.created.yaml
-    ...
-    instance.yaml      # Shared instance type
-    user.yaml          # Shared user type (embeds oauth/openid/profile)
-    application.yaml   # Shared application type
-    subscription.yaml  # Shared subscription type
-    entitlement.yaml   # Shared entitlement type
+    user.entitlement.updated.yaml
+    user.entitlement.deleted.yaml
+    user.entitlement.canceled.yaml
+    user.entitlement.failed.yaml
+    # Distributions
+    distribution.created.yaml
+    distribution.published.yaml
+    distribution.failed.yaml
+    distribution.queued.yaml
+    distribution.feed.invalidated.yaml
+    # Feeds + Audiences
+    user.feed.build.yaml     user.audience.refresh.yaml
+    application.feed.built.yaml
+    application.audience.refresh.yaml
+    # Credits + Gifts + Teams
+    credit.created.yaml      credit.deleted.yaml
+    gift.created.yaml        gift.invite.created.yaml
+    gift.invite.redeemed.yaml gift.invite.rejected.yaml
+    team.member.added.yaml   team.member.removed.yaml
+    team.invite.accepted.yaml team.invite.rejected.yaml
+    # Jobs
+    job.started.yaml         job.completed.yaml
+    job.failed.yaml          job.canceled.yaml
   oauth/
-    openid/            # OpenID Connect types
-      profile.yaml     # Full profile (embeds email, phone, address claims)
-      address.yaml     # Address claim
-  stripe/              # Events from Stripe webhooks (raw data.object)
+    openid/                  # OpenID Connect types
+      profile.yaml           # Full profile (embeds address)
+      address.yaml           # Address claim
+  stripe/                    # Stripe webhooks (raw data.object)
+    charge.succeeded.yaml    charge.failed.yaml
+    charge.refunded.yaml
+    customer.created.yaml    customer.updated.yaml
+    customer.deleted.yaml
     customer.subscription.created.yaml
+    customer.subscription.updated.yaml
+    customer.subscription.deleted.yaml
+    invoice.created.yaml     invoice.upcoming.yaml
+    invoice.payment_succeeded.yaml
     invoice.payment_failed.yaml
-    ...
+    invoiceitem.created.yaml
+    payment_intent.succeeded.yaml
+    payment_intent.processing.yaml
+    payment_intent.requires_action.yaml
+    payment_intent.payment_failed.yaml
+    payment_method.attached.yaml
+    payment_method.updated.yaml
+    payment_method.detached.yaml
+    setup_intent.requires_action.yaml
+    credit_note.created.yaml
 ```
 
 ## Versioning Convention

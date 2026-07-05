@@ -1,0 +1,11 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.preferences.updated
+version: "1.0.0"
+title: user.preferences.updated
+description: >
+  Emitted when a user's channel delivery preferences are updated.
+
+type: object
+properties:
+  preferences:
+    type: object

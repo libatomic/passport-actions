@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.removed
+version: "1.0.0"
+title: user.removed
+description: >
+  Emitted when a user is removed from an instance. When triggered by
+  role removal the body includes roles and a nested user object; when
+  triggered by deletion the body is the flat User object.
+
+type: object
+properties:
+  roles:
+    type: array
+    items:
+      type: string
+    description: Roles that were removed (present when triggered by role removal)
+  user:
+    description: User object (present when triggered by role removal)
+    $ref: libatomic/passport-actions/schemas/atomic/user@v1.0.0

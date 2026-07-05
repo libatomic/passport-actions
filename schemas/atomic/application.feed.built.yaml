@@ -1,0 +1,15 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/application.feed.built
+version: "1.0.0"
+title: application.feed.built
+description: >
+  Emitted when an application's content feed is built.
+
+type: object
+properties:
+  application_id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid

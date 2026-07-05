@@ -1,0 +1,58 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/credit.created
+version: "1.0.0"
+title: credit.created
+description: >
+  Emitted when a credit is created. Body is the serialized
+  CreditCreateInput.
+
+type: object
+required:
+  - type
+properties:
+  owner_id:
+    type: string
+    format: uuid
+  owner_email:
+    type: string
+    format: email
+  type:
+    type: string
+  name:
+    type: string
+  description:
+    type: string
+  plan_id:
+    type: string
+    format: uuid
+  amount:
+    type: integer
+  percent_off:
+    type: number
+  credit_interval:
+    type: string
+  credit_quantity:
+    type: integer
+  subscription_id:
+    type: string
+    format: uuid
+  stripe_payment_intent:
+    type: string
+  stripe_coupon:
+    type: string
+  duration:
+    type: integer
+  term:
+    type: string
+  status:
+    type: string
+  expires_at:
+    type: string
+    format: date-time
+  max_redemptions:
+    type: integer
+  metadata:
+    type: object
+  entitlement_id:
+    type: string
+    format: uuid

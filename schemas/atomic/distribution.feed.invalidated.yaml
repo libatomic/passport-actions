@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/distribution.feed.invalidated
+version: "1.0.0"
+title: distribution.feed.invalidated
+description: >
+  Emitted when a distribution feed is invalidated.
+
+type: object
+properties:
+  instance_id:
+    type: string
+    format: uuid
+  distribution_id:
+    type: string
+    format: uuid
+  paths:
+    type: array
+    items:
+      type: string

@@ -1,0 +1,53 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/job
+version: "1.0.0"
+title: Job
+description: >
+  Atomic job as serialized in event bodies.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid
+  application_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  completed_at:
+    type: string
+    format: date-time
+  retry_at:
+    type: string
+    format: date-time
+  interval:
+    type: integer
+    description: Recurring interval in nanoseconds
+  type:
+    type: string
+  hash:
+    type: string
+  group_id:
+    type: string
+    format: uuid
+  params:
+    type: object
+  state:
+    type: object
+  artifact_id:
+    type: string
+    format: uuid
+  protected:
+    type: boolean
+  child_job_id:
+    type: string
+    format: uuid
+  silent:
+    type: boolean
+  canceled:
+    type: boolean

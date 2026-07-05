@@ -1,0 +1,50 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.token.revoked
+version: "1.0.0"
+title: user.token.revoked
+description: >
+  Emitted when an access token is revoked. Body is the serialized
+  AccessToken struct.
+
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+  instance_id:
+    type: string
+    format: uuid
+  created_at:
+    type: string
+    format: date-time
+  updated_at:
+    type: string
+    format: date-time
+  application_id:
+    type: string
+    format: uuid
+  user_id:
+    type: string
+    format: uuid
+  expires_at:
+    type: string
+    format: date-time
+  revoked_at:
+    type: string
+    format: date-time
+  redirect_uri:
+    type: string
+  claims:
+    type: object
+  type:
+    type: string
+  last_accessed:
+    type: string
+    format: date-time
+  bearer:
+    type: string
+  distribution_id:
+    type: string
+    format: uuid
+  uri:
+    type: string

@@ -1,0 +1,8 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/job.completed
+version: "1.0.0"
+title: job.completed
+description: >
+  Emitted when a job completes successfully.
+
+$ref: libatomic/passport-actions/schemas/atomic/job@v1.0.0

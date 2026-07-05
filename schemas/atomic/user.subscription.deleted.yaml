@@ -1,0 +1,9 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.deleted
+version: "1.0.0"
+title: user.subscription.deleted
+description: >
+  Emitted when a subscription is deleted. Body is the full serialized
+  Subscription struct.
+
+$ref: libatomic/passport-actions/schemas/atomic/subscription@v1.0.0

@@ -1,0 +1,16 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.account.created
+version: "1.0.0"
+title: user.account.created
+description: >
+  Emitted when a user's Stripe account is created. Referenced in
+  templateEvents but not directly emitted from core — may be emitted
+  by workflow or external integration.
+
+type: object
+properties:
+  user_id:
+    type: string
+    format: uuid
+  stripe_account:
+    type: object
