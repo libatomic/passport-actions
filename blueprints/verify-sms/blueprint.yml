@@ -1,0 +1,32 @@
+name: verify-sms
+description: |
+  Send an SMS verification code when a user signs up or requests phone verification.
+  Replaces the template trigger for event: user.sms.verify
+category: authentication
+replaces:
+  event_type: user.sms.verify
+  channel: sms
+inputs:
+  template:
+    description: The SMS template name
+    default: verify-sms
+definition:
+  name: verify-sms
+  version: 1
+
+  on:
+    - event: user.sms.verify
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-code
+      action: sendsms
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.phone_number }}
+        template: ${{ inputs.template }}
+        data:
+          code: ${{ trigger.body.code }}

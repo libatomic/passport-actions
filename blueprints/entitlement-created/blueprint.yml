@@ -1,0 +1,33 @@
+name: entitlement-created
+description: |
+  Send a confirmation email when a user's subscription/entitlement is created.
+  Replaces the template trigger for event: user.entitlement.created
+category: billing
+replaces:
+  event_type: user.entitlement.created
+  channel: email
+inputs:
+  template:
+    description: The entitlement confirmation email template
+    default: entitlement-created
+definition:
+  name: entitlement-created
+  version: 1
+
+  on:
+    - event: user.entitlement.created
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-confirmation
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          entitlement: ${{ trigger.body }}

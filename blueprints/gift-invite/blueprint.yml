@@ -1,0 +1,33 @@
+name: gift-invite
+description: |
+  Send a gift invitation email when a gift invite is created.
+  Replaces the template trigger for event: gift.invite.created
+category: engagement
+replaces:
+  event_type: gift.invite.created
+  channel: email
+inputs:
+  template:
+    description: The gift invite email template
+    default: gift-invite
+definition:
+  name: gift-invite
+  version: 1
+
+  on:
+    - event: gift.invite.created
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        id: ${{ trigger.user_id }}
+
+    - id: send-invite
+      action: sendmail
+      with:
+        to: ${{ trigger.body.recipient_email }}
+        template: ${{ inputs.template }}
+        data:
+          sender: ${{ steps.load-user.outputs.user }}
+          gift: ${{ trigger.body }}
