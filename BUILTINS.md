@@ -27,6 +27,19 @@ These variables are available in all expressions:
 
 ---
 
+## Schema Definitions
+
+Where the shapes referenced in workflow expressions are formally defined:
+
+| What | Definition |
+|---|---|
+| **Event bodies** — `trigger.body.*` for event triggers | [`schemas/`](schemas/) — one JSON Schema per event type; see [`schemas/README.md`](schemas/README.md) |
+| **Shared types** — embedded via `$ref` | [`user`](schemas/atomic/user.yaml) · [`instance`](schemas/atomic/instance.yaml) · [`application`](schemas/atomic/application.yaml) · [`subscription`](schemas/atomic/subscription.yaml) · [`entitlement`](schemas/atomic/entitlement.yaml) · [`job`](schemas/atomic/job.yaml) · [`profile`](schemas/oauth/openid/profile.yaml) |
+| **Builtin action inputs/outputs** — `steps.<id>.outputs.*` | Served live at `GET /api/1.0.0/workflows/actions`; documented under [Builtin Actions](#builtin-actions) |
+| **External actions & recipes** — `uses:` / `includes:` | [`actions/`](actions/) and [`recipes/`](recipes/) — see the [README](README.md) |
+
+---
+
 # Builtin Actions
 
 Actions are the steps a workflow runs. Reference one with `action:` and pass parameters under `with:`:
@@ -47,6 +60,8 @@ steps:
 ```
 
 Every action returns an outputs map, referenceable downstream as `${{ steps.<id>.outputs.<key> }}`. Only steps that run **before** a given step are in scope.
+
+The machine-readable version of everything below (each action's inputs and outputs) is served by the engine at `GET /api/1.0.0/workflows/actions` — the admin UI builds its catalog and autocomplete from it.
 
 ## User
 
