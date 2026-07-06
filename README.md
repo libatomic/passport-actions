@@ -266,7 +266,7 @@ Recipes don't need building — they're YAML files parsed directly by the workfl
        - id: load-user
          action: user.get
          with:
-           id: ${{ trigger.user_id }}
+           user_id: ${{ trigger.user_id }}
        - id: send
          action: sendmail
          with:
