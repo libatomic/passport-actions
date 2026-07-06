@@ -1,4 +1,9 @@
-# Workflow Expression Functions
+# Workflow Builtins
+
+Built-in **actions** and **expression functions** available to workflows.
+
+- [Builtin Actions](#builtin-actions) — steps you invoke with `action:` (e.g. `sendmail`, `user.get`), with their inputs and outputs.
+- [Expression Functions](#expression-functions) — helpers for `${{ }}` expression blocks (strings, math, etc.).
 
 Built-in functions available in workflow expressions. Use these in any `${{ }}` expression block — conditions, switch expressions, and input values.
 
@@ -21,6 +26,266 @@ These variables are available in all expressions:
 | `loop.value` | Current loop item value (inside foreach) |
 
 ---
+
+# Builtin Actions
+
+Actions are the steps a workflow runs. Reference one with `action:` and pass parameters under `with:`:
+
+```yaml
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: ${{ trigger.user_id }}
+  - id: welcome
+    action: sendmail
+    with:
+      to: ${{ steps.load-user.outputs.user.login }}
+      template: welcome
+      data:
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+```
+
+Every action returns an outputs map, referenceable downstream as `${{ steps.<id>.outputs.<key> }}`. Only steps that run **before** a given step are in scope.
+
+## User
+
+### `user.get`
+Loads a user into the run context (also sets `user.*`). A missing user classifies as `not_found`.
+
+| Input | Required | Description |
+|---|---|---|
+| `user_id` | one of these | User ID |
+| `login` | one of these | Login / email |
+| `subject` | one of these | Subject (external ID) |
+| `phone` | one of these | Phone number |
+
+| Output | Description |
+|---|---|
+| `user` | The loaded user object (`user.id`, `user.login`, `user.profile.*`, `user.roles`) |
+
+### `user.create`
+Creates a user (also sets `user.*`). A duplicate login classifies as `conflict`.
+
+| Input | Required | Description |
+|---|---|---|
+| `login` | yes | Login / email |
+| `password` | no | Initial password |
+| `profile` | no | OIDC profile object |
+| `roles` | no | Permissions list |
+| `metadata` | no | Arbitrary metadata object |
+
+| Output | Description |
+|---|---|
+| `user` | The created user object |
+
+### `user.update`
+Updates a user (also sets `user.*`). Not-found classifies as `not_found`.
+
+| Input | Required | Description |
+|---|---|---|
+| `user_id` / `subject` / `login` | one required | User selector |
+| `profile` | no | Profile updates |
+| `preferences` | no | Channel preferences object |
+| `metadata` | no | Metadata object |
+
+| Output | Description |
+|---|---|
+| `user` | The updated user object |
+
+### `user.audienceRefresh`
+Schedules an audience-membership refresh for a user (deduped within a 10-minute window).
+
+| Input | Required | Description |
+|---|---|---|
+| `user_id` | yes | User to refresh |
+
+| Output | Description |
+|---|---|
+| `job_id` | The refresh job ID |
+
+### `user.feed.invalidate`
+Invalidates CDN-cached feeds for the instance.
+
+| Input | Required | Description |
+|---|---|---|
+| `channel` | no | `podcast` or `rss` (omit for all channels) |
+| `user_id` | no | Limit to a user |
+| `distribution_id` | no | Limit to a distribution |
+
+| Output | Description |
+|---|---|
+| `invalidated` | `true` when feeds were invalidated |
+
+## Messaging
+
+### `sendmail`
+Sends an email using a template (by id or name) or a raw body.
+
+| Input | Required | Description |
+|---|---|---|
+| `to` | yes* | Recipient(s): a string, comma-separated string, list of strings, or list of `{address, name}` |
+| `template` | template or body | Template name (alias: `template_name`; or `template_id`) |
+| `body` | template or body | Raw email body |
+| `subject` | no | Subject line |
+| `data` | no | Template context object (alias: `context`) |
+| `user_id` | no | Associate the send with a user |
+
+\* When `user_id` resolves a recipient, `to` may be omitted.
+
+| Output | Description |
+|---|---|
+| `count` | Number of messages sent |
+
+### `sendsms`
+Sends a templated or raw SMS (SMS-channel parity with `sendmail`).
+
+| Input | Required | Description |
+|---|---|---|
+| `template_id` / `template_name` | template or body | Template selector |
+| `body` | template or body | Raw message body |
+| `user_id` | no | Recipient user |
+| `context` | no | Template context object |
+
+| Output | Description |
+|---|---|
+| `count` | Number of messages sent |
+
+## Data & Templates
+
+### `audience.view`
+Returns an audience's members, suitable for a `foreach` loop. Streams every page (bounded by `max`).
+
+| Input | Required | Description |
+|---|---|---|
+| `audience_id` / `audience` | one required | Audience by ID or slug/name |
+| `created_after` | no | Only members created after this timestamp |
+| `limit` | no | Page size (default 500) |
+| `max` | no | Total cap (default 10000) |
+
+| Output | Description |
+|---|---|
+| `users` | Array of `{id, login, email, name}` |
+| `count` | Number of members returned |
+| `truncated` | `true` if capped by `max` |
+
+### `template.render`
+Renders a template (by id or name) or a raw body against a context, returning the result as a string.
+
+| Input | Required | Description |
+|---|---|---|
+| `template_id` / `template_name` | template or body | Template selector |
+| `body` | template or body | Raw template body |
+| `context` | no | Render context object |
+| `user_id` | no | User context |
+| `channel` | no | Channel override |
+
+| Output | Description |
+|---|---|
+| `body` | The rendered output string |
+
+### `instance.cache.flush`
+Flushes the instance cache.
+
+| Input | Required | Description |
+|---|---|---|
+| `prefix` | prefix or all | Targeted prefix (supports trailing `*`, e.g. `user:*`) |
+| `all` | prefix or all | `true` to flush the entire instance cache |
+
+| Output | Description |
+|---|---|
+| `flushed` | The prefix flushed (or `"all"`) |
+
+## Utility & Flow Control
+
+### `log`
+Logs a message (the sample action).
+
+| Input | Required | Description |
+|---|---|---|
+| `message` | yes | Message to log |
+
+| Output | Description |
+|---|---|
+| `message` | The logged message |
+
+### `sleep`
+Pauses the workflow. Accepts a Go duration string; capped at 90s.
+
+| Input | Required | Description |
+|---|---|---|
+| `duration` | yes | e.g. `5s`, `1m30s`, `500ms` |
+
+| Output | Description |
+|---|---|
+| `slept` | Actual duration slept |
+
+### `set-output`
+Records its `with:` inputs as this step's outputs, exposing values downstream.
+
+| Input | Required | Description |
+|---|---|---|
+| *(any keys)* | — | Each key becomes an output of the same name |
+
+| Output | Description |
+|---|---|
+| *(echoes inputs)* | Every input key is returned as an output |
+
+### `vars.set`
+Writes its `with:` inputs into the shared run `vars` context (readable later as `${{ vars.<key> }}`).
+
+| Input | Required | Description |
+|---|---|---|
+| *(any keys)* | — | Each key is written to `vars` and returned as an output |
+
+| Output | Description |
+|---|---|
+| *(echoes inputs)* | Every input key is returned as an output |
+
+### `event.emit`
+Emits an atomic event, enabling workflow chaining. Suppressed inside a silent run.
+
+| Input | Required | Description |
+|---|---|---|
+| `name` | yes | Event name |
+| `source` | no | Event source (default `workflow`) |
+| `body` | no | Event body |
+| `user_id` | no | Associated user |
+
+| Output | Description |
+|---|---|
+| `emitted` | Whether the event was emitted |
+| `event_id` | The emitted event ID |
+| `suppressed` | `true` if suppressed in a silent run |
+
+### `workflow.run`
+Triggers another workflow by ID or slug. A workflow cannot invoke itself (circular runs are rejected).
+
+| Input | Required | Description |
+|---|---|---|
+| `workflow` | yes | Target workflow ID or slug |
+| `inputs` | no | Input map passed to the child run |
+| `async` | no | Default `true`; synchronous mode waits for completion |
+
+| Output | Description |
+|---|---|
+| `triggered` | Whether the child run started |
+| `run_id` | Child workflow run ID |
+| `workflow_id` | Child workflow ID |
+| `reason` | Reason if not triggered (e.g. workflow disabled) |
+
+### `workflow.exit`
+Terminates the run cleanly — records a success and stops executing further steps.
+
+| Input | Required | Description |
+|---|---|---|
+| `reason` | no | Reason recorded on the run (default `workflow exited`) |
+
+Returns no outputs (the run ends).
+
+---
+
+# Expression Functions
 
 ## Strings
 
