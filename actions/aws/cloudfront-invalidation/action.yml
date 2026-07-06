@@ -1,0 +1,29 @@
+name: "CloudFront Create Invalidation"
+description: "Creates a CloudFront cache invalidation for the specified distribution and paths"
+inputs:
+  AWS_ACCESS_KEY_ID:
+    description: "AWS access key ID"
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: "AWS secret access key"
+    required: true
+  AWS_REGION:
+    description: "AWS region (default: us-east-1)"
+    default: "us-east-1"
+  DISTRIBUTION_ID:
+    description: "CloudFront distribution ID"
+    required: true
+  PATHS:
+    description: "Comma-separated list of paths to invalidate (e.g. /index.html,/images/*)"
+    required: true
+  CALLER_REFERENCE:
+    description: "Unique caller reference for idempotency (auto-generated if empty)"
+    default: ""
+outputs:
+  invalidation_id:
+    description: "The ID of the created invalidation"
+  status:
+    description: "The status of the invalidation (InProgress or Completed)"
+runs:
+  using: "node20"
+  main: "dist/index.js"

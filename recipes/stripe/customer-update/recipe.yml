@@ -1,0 +1,31 @@
+name: stripe-customer-update
+description: Update a Stripe customer
+
+inputs:
+  api_key:
+    required: true
+  customer_id:
+    required: true
+  email:
+    default: ""
+  name:
+    default: ""
+  description:
+    default: ""
+  metadata:
+    default: ""
+
+steps:
+  - id: update
+    action: http.post
+    with:
+      url: "https://api.stripe.com/v1/customers/${{ inputs.customer_id }}"
+      headers:
+        Authorization: "Bearer ${{ inputs.api_key }}"
+        Content-Type: application/x-www-form-urlencoded
+        Accept: application/json
+      body:
+        email: ${{ inputs.email }}
+        name: ${{ inputs.name }}
+        description: ${{ inputs.description }}
+      expect_status: [200]

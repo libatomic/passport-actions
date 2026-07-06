@@ -4,6 +4,7 @@ const path = require("path");
 const actions = [
   "actions/twilio/webhook-validator",
   "actions/stripe/webhook-validator",
+  "actions/aws/cloudfront-invalidation",
 ];
 
 for (const action of actions) {

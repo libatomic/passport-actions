@@ -77,6 +77,7 @@ trigger.
 |--------|-------------|
 | `libatomic/passport-actions/actions/twilio/webhook-validator@v1` | Validates Twilio X-Twilio-Signature (HMAC-SHA1) |
 | `libatomic/passport-actions/actions/stripe/webhook-validator@v1` | Validates Stripe-Signature (HMAC-SHA256 with timestamp tolerance) |
+| `libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1` | Creates a CloudFront cache invalidation |
 
 #### Usage
 
@@ -91,6 +92,38 @@ The validator reads secrets from the workflow's secrets store:
 - **Twilio**: `TWILIO_AUTH_TOKEN`
 - **Stripe**: `STRIPE_WEBHOOK_SECRET`
 
+### AWS CloudFront (action)
+
+Cache invalidation action for [CloudFront](https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_CreateInvalidation.html).
+Uses AWS Signature Version 4 — no SDK dependency.
+
+| Action | Description |
+|--------|-------------|
+| `libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1` | Create a cache invalidation for a distribution |
+
+#### Usage
+
+```yaml
+steps:
+  - id: invalidate
+    uses: libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1
+    with:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      DISTRIBUTION_ID: E1234567890ABC
+      PATHS: "/index.html,/images/*"
+```
+
+Inputs:
+- `AWS_ACCESS_KEY_ID` — AWS access key (store as a secret)
+- `AWS_SECRET_ACCESS_KEY` — AWS secret key (store as a secret)
+- `AWS_REGION` — AWS region (default: `us-east-1`)
+- `DISTRIBUTION_ID` — CloudFront distribution ID
+- `PATHS` — Comma-separated invalidation paths (e.g. `/index.html,/images/*`)
+- `CALLER_REFERENCE` — Optional unique reference for idempotency (auto-generated if empty)
+
+Outputs: `invalidation_id`, `status`.
+
 ### Campaign Monitor (recipes)
 
 Subscriber management recipes for the [Campaign Monitor API v3.3](https://www.campaignmonitor.com/api/v3-3/subscribers/).
@@ -98,17 +131,17 @@ These use the built-in `http.*` actions — no node runtime overhead.
 
 | Recipe | Description |
 |--------|-------------|
-| `libatomic/passport-actions/actions/cm/subscriber-add@v1` | Add a subscriber to a list |
-| `libatomic/passport-actions/actions/cm/subscriber-get@v1` | Get subscriber details |
-| `libatomic/passport-actions/actions/cm/subscriber-update@v1` | Update a subscriber |
-| `libatomic/passport-actions/actions/cm/subscriber-unsubscribe@v1` | Unsubscribe from a list |
+| `libatomic/passport-actions/recipes/cm/subscriber-add@v1` | Add a subscriber to a list |
+| `libatomic/passport-actions/recipes/cm/subscriber-get@v1` | Get subscriber details |
+| `libatomic/passport-actions/recipes/cm/subscriber-update@v1` | Update a subscriber |
+| `libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1` | Unsubscribe from a list |
 
 #### Usage
 
 ```yaml
 steps:
   - id: add-to-cm
-    includes: libatomic/passport-actions/actions/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}
@@ -122,6 +155,35 @@ All CM recipes require:
 - `email` — The subscriber email address
 
 URL parameters (like `{listid}.json?email={email}`) are handled internally by each recipe.
+
+### Stripe (recipes)
+
+Stripe API recipes for customer and subscription management via the
+[Stripe REST API](https://docs.stripe.com/api). These use the built-in `http.*` actions with
+Bearer token auth — no node runtime overhead.
+
+| Recipe | Description |
+|--------|-------------|
+| `libatomic/passport-actions/recipes/stripe/customer-get@v1` | Retrieve a customer by ID |
+| `libatomic/passport-actions/recipes/stripe/customer-update@v1` | Update a customer |
+| `libatomic/passport-actions/recipes/stripe/subscription-get@v1` | Retrieve a subscription by ID |
+
+#### Usage
+
+```yaml
+steps:
+  - id: customer
+    includes: libatomic/passport-actions/recipes/stripe/customer-get@v1
+    with:
+      api_key: ${{ secrets.STRIPE_SECRET_KEY }}
+      customer_id: ${{ trigger.body.data.object.customer }}
+```
+
+All Stripe recipes require:
+- `api_key` — Your Stripe secret key (store as a secret)
+- The resource ID (`customer_id` or `subscription_id`)
+
+Optional: `expand` — A Stripe expand field (e.g. `subscriptions`, `default_source`).
 
 ## Actions vs Recipes vs Blueprints
 
@@ -218,7 +280,7 @@ Recipes don't need building — they're YAML files parsed directly by the workfl
 
 ### Creating a Recipe
 
-1. Create a directory: `actions/<vendor>/<recipe-name>/`
+1. Create a directory: `recipes/<vendor>/<recipe-name>/`
 2. Add `recipe.yml`:
    ```yaml
    name: my-recipe

@@ -1,0 +1,21 @@
+name: stripe-customer-get
+description: Retrieve a Stripe customer by ID
+
+inputs:
+  api_key:
+    required: true
+  customer_id:
+    required: true
+  expand:
+    default: ""
+
+steps:
+  - id: get
+    action: http.get
+    with:
+      url: "https://api.stripe.com/v1/customers/${{ inputs.customer_id }}"
+      query: ${{ inputs.expand != "" ? { "expand[]": inputs.expand } : {} }}
+      headers:
+        Authorization: "Bearer ${{ inputs.api_key }}"
+        Accept: application/json
+      expect_status: [200]
