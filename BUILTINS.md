@@ -13,7 +13,7 @@ These variables are available in all expressions:
 | `trigger.*` | Data from the event/webhook that started the workflow |
 | `steps.<id>.outputs.*` | Outputs from a previous step |
 | `user.*` | Current user object (when available) |
-| `vars.*` | Workflow variables set with `vars.set` |
+| `vars.*` | Workflow variables — pre-populated from definition `vars:` and settable at runtime with `vars.set` |
 | `inputs.*` | Workflow input parameters |
 | `secrets.*` | Instance secrets |
 | `instance.*` | Current instance data |
@@ -152,6 +152,58 @@ hasSuffix(str, suffix) → bool
 ```yaml
 # Example — check email domain
 if: ${{ hasSuffix(user.login, "@microsoft.com") }}
+```
+
+### containsAny
+
+Check if a string contains any of the given substrings. Accepts individual string arguments or an array variable.
+
+```
+containsAny(str, values...) → bool
+```
+
+```yaml
+# Example — match multiple substrings
+if: ${{ containsAny(user.login, "@microsoft.com", "@cisco.com") }}
+
+# Example — match against a variable list
+if: ${{ containsAny(user.login, vars.ENTERPRISE_DOMAINS) }}
+```
+
+### hasPrefixAny
+
+Check if a string starts with any of the given prefixes. Accepts individual string arguments or an array variable.
+
+```
+hasPrefixAny(str, values...) → bool
+```
+
+```yaml
+# Example — match multiple prefixes
+if: ${{ hasPrefixAny(url, "https://", "http://") }}
+```
+
+### hasSuffixAny
+
+Check if a string ends with any of the given suffixes. Accepts individual string arguments or an array variable.
+
+```
+hasSuffixAny(str, values...) → bool
+```
+
+```yaml
+# Example — match multiple domains
+if: ${{ hasSuffixAny(user.login, "@microsoft.com", "@cisco.com") }}
+
+# Example — match against a workflow variable
+vars:
+  ENTERPRISE_DOMAINS:
+    - "@microsoft.com"
+    - "@cisco.com"
+
+steps:
+  - id: check-enterprise
+    if: ${{ hasSuffixAny(user.login, vars.ENTERPRISE_DOMAINS) }}
 ```
 
 ### split
