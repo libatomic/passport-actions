@@ -4,10 +4,19 @@ description: Retrieve a Stripe subscription by ID
 inputs:
   api_key:
     required: true
+    type: string
+    label: API Key
+    description: Stripe secret API key (or use secrets.STRIPE_SECRET_KEY)
   subscription_id:
     required: true
+    type: string
+    label: Subscription ID
+    description: Stripe subscription ID (sub_xxx)
   expand:
     default: ""
+    type: string
+    label: Expand
+    description: Comma-separated list of fields to expand
 
 steps:
   - id: get

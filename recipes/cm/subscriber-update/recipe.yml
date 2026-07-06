@@ -4,20 +4,48 @@ description: Update a subscriber on a Campaign Monitor list
 inputs:
   api_key:
     required: true
+    type: string
+    label: API Key
+    description: Campaign Monitor API key (or use secrets.CM_API_KEY)
   list_id:
     required: true
+    type: string
+    label: List ID
+    description: Campaign Monitor list ID
   email:
     required: true
+    type: string
+    label: Email Address
+    description: Current subscriber email address
   new_email:
     default: ""
+    type: string
+    label: New Email Address
+    description: Updated email address (leave empty to keep current)
   name:
     default: ""
+    type: string
+    label: Name
+    description: Subscriber display name
   custom_fields:
     default: ""
+    type: object
+    label: Custom Fields
+    description: Custom field key-value pairs
   resubscribe:
     default: "false"
+    type: bool
+    label: Resubscribe
+    description: Whether to resubscribe if already unsubscribed
   consent_to_track:
     default: "unchanged"
+    type: string
+    label: Consent to Track
+    description: Tracking consent status
+    enum:
+      - "yes"
+      - "no"
+      - "unchanged"
 
 steps:
   - id: update

@@ -4,16 +4,34 @@ description: Update a Stripe customer
 inputs:
   api_key:
     required: true
+    type: string
+    label: API Key
+    description: Stripe secret API key (or use secrets.STRIPE_SECRET_KEY)
   customer_id:
     required: true
+    type: string
+    label: Customer ID
+    description: Stripe customer ID (cus_xxx)
   email:
     default: ""
+    type: string
+    label: Email Address
+    description: Updated email address for the customer
   name:
     default: ""
+    type: string
+    label: Name
+    description: Updated customer name
   description:
     default: ""
+    type: string
+    label: Description
+    description: Updated description for the customer
   metadata:
     default: ""
+    type: object
+    label: Metadata
+    description: Key-value pairs to store on the customer
 
 steps:
   - id: update
