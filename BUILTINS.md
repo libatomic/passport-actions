@@ -15,8 +15,8 @@ These variables are available in all expressions:
 
 | Variable | Description |
 |---|---|
-| `trigger.*` | Data from the event/webhook that started the workflow |
-| `steps.<id>.outputs.*` | Outputs from a previous step |
+| `trigger.*` | Data from the event/webhook that started the workflow. For event triggers, `trigger.body` follows the matching [event body schema](schemas/) |
+| `steps.<id>.outputs.*` | Outputs from a previous step — see each action's outputs under [Builtin Actions](#builtin-actions) |
 | `user.*` | Current user object (when available) |
 | `vars.*` | Workflow variables — pre-populated from definition `vars:` and settable at runtime with `vars.set` |
 | `inputs.*` | Workflow input parameters |
