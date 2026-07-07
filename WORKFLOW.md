@@ -495,6 +495,7 @@ inputs:
     type: string          # string | integer | number | bool | array | object
     required: true        # the Run form makes you fill it in
     default: "abc123"     # used if you don't provide one (and by event-triggered runs)
+    hint: "Your Campaign Monitor list ID"   # short help shown under the field
     validate: isEmail(value)   # optional: a rule checked before the run starts
 ```
 
@@ -502,6 +503,9 @@ inputs:
   default). Otherwise the run is refused with a clear message.
 - **`type`** — controls the form field (a number box, a switch for `bool`, a dropdown for
   `enum`) and is checked when the run starts.
+- **`hint`** — a short line of help shown **under** the field so it's clear what to enter
+  (e.g. an example format). Use `description` for a longer explanation; the form shows the
+  hint if present, otherwise the description.
 - **`validate`** — a rule that must pass, e.g. `isEmail(value)` (here `value` is what was
   entered). If it fails, the run is refused.
 
