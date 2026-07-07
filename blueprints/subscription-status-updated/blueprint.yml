@@ -1,0 +1,48 @@
+name: Subscription Status Updated
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-sync-outline.svg
+description: |
+  Notifies a user whenever their subscription status changes. Triggers on the wildcard event user.subscription.status.* (active, past_due, canceled, paused, trialing, …), so it keeps working as new statuses are added without editing the workflow.
+category: billing
+replaces:
+  event_type: user.subscription.status.*
+  channel: email
+inputs:
+  template:
+    description: The subscription status change email template
+    default: subscription-status-updated
+definition:
+  name: Subscription Status Updated
+  description: Emails the subscriber whenever their subscription status changes (matches user.subscription.status.*).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-sync-outline.svg
+  version: 1
+
+  on:
+    # Wildcard event name — matches every user.subscription.status.<status> event.
+    # All status events share the same body shape (prev_status, status, subscription),
+    # so the canceled schema is referenced as a representative for autocomplete.
+    - event:
+        name: user.subscription.status.*
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.canceled@v1.0.0
+
+  steps:
+    - id: load-subscription
+      action: subscription.get
+      with:
+        subscription_id: ${{ trigger.body.subscription }}
+
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ steps.load-subscription.outputs.subscription.user_id }}
+
+    - id: send-notification
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          subscription: ${{ steps.load-subscription.outputs.subscription }}
+          status: ${{ trigger.body.status }}
+          prev_status: ${{ trigger.body.prev_status }}

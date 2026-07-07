@@ -54,6 +54,10 @@ workflow via the API.
 | `blueprints/entitlement-deleted` | `user.entitlement.deleted` | email |
 | `blueprints/subscription-created` | `user.subscription.created` | email |
 | `blueprints/subscription-canceled` | `user.subscription.status.canceled` | email |
+| `blueprints/subscription-status-updated` | `user.subscription.status.*` | email |
+
+Event names in `on: event:` accept `*` wildcards (e.g. `user.subscription.status.*`),
+so a blueprint can cover a whole family of events without being updated when new ones are added.
 
 Entitlement events (`user.entitlement.*`) and subscription events (`user.subscription.*`) are
 related but distinct — an entitlement may be granted without a subscription (gift, comp, team seat).
