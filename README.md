@@ -51,7 +51,18 @@ workflow via the API.
 | Blueprint | Replaces Event | Channel |
 |-----------|---------------|---------|
 | `blueprints/entitlement-created` | `user.entitlement.created` | email |
-| `blueprints/subscription-canceled` | `user.entitlement.canceled` | email |
+| `blueprints/entitlement-deleted` | `user.entitlement.deleted` | email |
+| `blueprints/subscription-created` | `user.subscription.created` | email |
+| `blueprints/subscription-canceled` | `user.subscription.status.canceled` | email |
+
+Entitlement events (`user.entitlement.*`) and subscription events (`user.subscription.*`) are
+related but distinct — an entitlement may be granted without a subscription (gift, comp, team seat).
+
+#### Operations
+
+| Blueprint | Replaces Event | Channel |
+|-----------|---------------|---------|
+| `blueprints/job-failed` | `job.failed` | email |
 
 #### Usage
 

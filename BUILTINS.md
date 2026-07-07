@@ -301,6 +301,20 @@ Publish a feed item for a user, audience, or distribution.
 | `feed_item` | The created feed item |
 | `id` | The feed item ID |
 
+### `distribution.get`
+Load a distribution by ID, or the latest published one (optionally filtered by channel).
+
+| Input | Required | Description |
+|---|---|---|
+| `distribution_id` | unless `latest` | Distribution ID |
+| `channel` | no | `podcast` or `rss` |
+| `latest` | no | Return the most recently published distribution |
+| `last_published` | no | Return the last published distribution |
+
+| Output | Description |
+|---|---|
+| `distribution` | The distribution object |
+
 ## Utility & Flow Control
 
 ### `log`

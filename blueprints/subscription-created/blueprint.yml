@@ -1,0 +1,38 @@
+name: Subscription Created
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-plus-outline.svg
+description: |
+  Sends a confirmation/receipt email when a user starts a new subscription. Subscription events are related to but distinct from entitlement events.
+category: billing
+replaces:
+  event_type: user.subscription.created
+  channel: email
+inputs:
+  template:
+    description: The subscription confirmation email template
+    default: subscription-created
+definition:
+  name: Subscription Created
+  description: Sends a confirmation/receipt email when a user starts a new subscription.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-plus-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.created
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.created@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.body.user_id }}
+
+    - id: send-confirmation
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          subscription: ${{ trigger.body }}

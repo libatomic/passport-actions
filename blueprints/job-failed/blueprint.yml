@@ -1,0 +1,42 @@
+name: Job Failed
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/alert-circle-outline.svg
+description: |
+  Alerts an operator when a background job fails. Logs the failure and emails the job details to an admin address. The job.failed event carries the job (not a user), so the recipient is configured directly.
+category: operations
+replaces:
+  event_type: job.failed
+  channel: email
+inputs:
+  admin_email:
+    description: Email address that receives job failure alerts
+    default: ""
+definition:
+  name: Job Failed
+  description: Logs a failed background job and emails the details to an admin.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/alert-circle-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: job.failed
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/job.failed@v1.0.0
+
+  steps:
+    - id: log-failure
+      action: log
+      with:
+        message: "Job failed: type=${{ trigger.body.type }} id=${{ trigger.body.id }}"
+
+    - id: notify-admin
+      action: sendmail
+      with:
+        to: ${{ inputs.admin_email }}
+        subject: "Job failed: ${{ trigger.body.type }}"
+        body: |
+          A background job failed on your instance.
+
+          Job ID:  ${{ trigger.body.id }}
+          Type:    ${{ trigger.body.type }}
+          Created: ${{ trigger.body.created_at }}
+          State:   ${{ trigger.body.state }}

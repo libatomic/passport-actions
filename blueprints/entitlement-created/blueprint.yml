@@ -1,7 +1,7 @@
-name: Subscription Confirmation
-icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
+name: Entitlement Created
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/ticket-confirmation-outline.svg
 description: |
-  Sends a confirmation email when a new subscription or entitlement is created for a user. Includes subscription details and serves as a receipt for the purchase.
+  Sends a confirmation email when a new entitlement is granted to a user — a gift, comp, team seat, or any non-subscription grant. Entitlement events are related to but distinct from subscription events.
 category: billing
 replaces:
   event_type: user.entitlement.created
@@ -11,9 +11,9 @@ inputs:
     description: The entitlement confirmation email template
     default: entitlement-created
 definition:
-  name: Subscription Confirmation
-  description: Sends a confirmation email when a new subscription or entitlement is created for a user. Includes subscription details and serves as a receipt for the purchase.
-  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
+  name: Entitlement Created
+  description: Sends a confirmation email when a new entitlement is granted to a user (gift, comp, team seat, or any non-subscription grant).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/ticket-confirmation-outline.svg
   version: 1
 
   on:
