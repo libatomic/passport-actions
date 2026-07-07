@@ -211,6 +211,96 @@ Flushes the instance cache.
 |---|---|
 | `flushed` | The prefix flushed (or `"all"`) |
 
+## Commerce & Content
+
+### `plan.get`
+Load a plan by ID, addon plan ID, or Stripe product.
+
+| Input | Required | Description |
+|---|---|---|
+| `plan_id` | one required | Plan ID |
+| `addon_plan_id` | one required | Addon plan ID |
+| `stripe_product` | one required | Stripe product ID |
+
+| Output | Description |
+|---|---|
+| `plan` | The plan object |
+
+### `option.get`
+Read an instance option value by name. Protected options are **not** overridden, so protected values are not exposed to a workflow.
+
+| Input | Required | Description |
+|---|---|---|
+| `name` | yes | Option name |
+
+| Output | Description |
+|---|---|
+| `name` | The option name |
+| `value` | The decoded option value |
+
+### `subscription.get`
+Load a subscription by ID, Stripe subscription, or **a user's subscription to a plan** (`user_id` + `plan_id`, most recent match).
+
+| Input | Required | Description |
+|---|---|---|
+| `subscription_id` | one of these | Subscription ID |
+| `stripe_subscription` | one of these | Stripe subscription ID |
+| `user_id` + `plan_id` | one of these | The user's subscription to that plan, if any |
+| `recurring_interval` | with `user_id` | Interval for a user lookup without a plan |
+
+| Output | Description |
+|---|---|
+| `subscription` | The subscription object |
+
+### `credit.get`
+Load a credit by ID, owner, passcode, or Stripe coupon.
+
+| Input | Required | Description |
+|---|---|---|
+| `credit_id` | one required | Credit ID |
+| `owner_id` | one required | Owner user ID |
+| `passcode` | one required | Credit passcode |
+| `stripe_coupon` | one required | Stripe coupon ID |
+
+| Output | Description |
+|---|---|
+| `credit` | The credit object |
+
+### `credit.invite.create`
+Create an invite to redeem a credit (e.g. a gift), optionally emailed to a recipient.
+
+| Input | Required | Description |
+|---|---|---|
+| `credit_id` | yes | Credit to invite against |
+| `user_id` | no | Target user |
+| `owner_id` / `owner_email` | no | Credit owner (id or email) |
+| `to` | no | Recipient email (string, or `{address, name}`) |
+| `message` | no | Personal message |
+| `auto_accept` | no | Auto-accept the invite |
+| `passcode` | no | Passcode to protect the invite |
+
+| Output | Description |
+|---|---|
+| `invite` | The credit invite object |
+| `invite_code` | The invite code |
+
+### `feed.item.create`
+Publish a feed item for a user, audience, or distribution.
+
+| Input | Required | Description |
+|---|---|---|
+| `channel` | no | `podcast` or `rss` |
+| `user_id` | no | Target user |
+| `audience_id` | no | Target audience |
+| `application_id` | no | Owning application |
+| `body` | no | RSS item body object |
+| `expires_at` | no | Expiry (RFC3339) |
+
+| Output | Description |
+|---|---|
+| `feed_item` | The created feed item |
+| `id` | The feed item ID |
+
 ## Utility & Flow Control
 
 ### `log`
