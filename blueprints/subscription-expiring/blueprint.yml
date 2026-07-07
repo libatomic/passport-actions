@@ -1,0 +1,61 @@
+name: Subscription Expiring Soon
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-clock-outline.svg
+description: |
+  Emails a subscriber before their subscription lapses. Fires on user.subscription.expiring,
+  which the instance's recurring subscription-expiring job emits for active, NON-renewing
+  subscriptions (auto_renew = false) as they approach ends_at.
+
+  Emission defaults (all configurable on the instance policy):
+    • Yearly plans  — emitted when ends_at is within 7 days   (SubscriptionExpiringYearlyWindow)
+    • Monthly plans — emitted when ends_at is within 48 hours  (SubscriptionExpiringMonthlyWindow)
+    • Job cadence   — the expiring job runs every 12 hours     (SubscriptionExpiringJobInterval)
+
+  Because the job runs on a cadence, a subscriber may receive this notification on more than
+  one run while inside the window; template/branch accordingly if you need exactly-once delivery.
+category: billing
+replaces:
+  event_type: user.subscription.expiring
+  channel: email
+inputs:
+  template:
+    description: The "expiring soon" email template
+    default: subscription-expiring
+definition:
+  name: Subscription Expiring Soon
+  description: >
+    Emails a subscriber before their non-renewing subscription lapses. Emitted by the
+    recurring subscription-expiring job — yearly plans within 7 days of ends_at, monthly
+    plans within 48 hours (defaults, configurable on the instance policy).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-clock-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.expiring
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.expiring@v1.0.0
+
+  steps:
+    # The event carries user_id (the subscriber) alongside the expiring subscription body.
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    # Pull the full subscription so the template has plan/pricing context beyond the
+    # subscription_id, interval and ends_at that ride on the event body.
+    - id: load-subscription
+      action: subscription.get
+      with:
+        subscription_id: ${{ trigger.body.subscription_id }}
+
+    - id: send-notification
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          subscription: ${{ steps.load-subscription.outputs.subscription }}
+          interval: ${{ trigger.body.interval }}
+          ends_at: ${{ trigger.body.ends_at }}

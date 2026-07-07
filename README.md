@@ -55,6 +55,7 @@ workflow via the API.
 | `blueprints/subscription-created` | `user.subscription.created` | email |
 | `blueprints/subscription-canceled` | `user.subscription.status.canceled` | email |
 | `blueprints/subscription-status-updated` | `user.subscription.status.*` | email |
+| `blueprints/subscription-expiring` | `user.subscription.expiring` | email |
 
 Event names in `on: event:` accept `*` wildcards (e.g. `user.subscription.status.*`),
 so a blueprint can cover a whole family of events without being updated when new ones are added.
