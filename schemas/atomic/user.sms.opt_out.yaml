@@ -1,0 +1,19 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.sms.opt_out
+version: "1.0.0"
+title: user.sms.opt_out
+description: >
+  Emitted when a user opts out of the sms channel (preferences.channels.sms.opt_out set to true).
+type: object
+required:
+  - channel
+  - opt_out
+properties:
+  channel:
+    type: string
+    enum:
+      - sms
+    description: The messaging channel
+  opt_out:
+    type: boolean
+    description: True when the user is opted out of the channel, false when opted in
