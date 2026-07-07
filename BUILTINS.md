@@ -379,20 +379,50 @@ Emits an atomic event, enabling workflow chaining. Suppressed inside a silent ru
 | `suppressed` | `true` if suppressed in a silent run |
 
 ### `workflow.run`
-Triggers another workflow by ID or slug. A workflow cannot invoke itself (circular runs are rejected).
+Runs another workflow by ID or slug, passing `inputs` as its context. A workflow cannot invoke itself (circular runs are rejected).
+
+**By default it waits** for the child to finish and returns the child's results (`outputs`, `steps`) — so the parent can read them. Turn on **`async`** to fire-and-forget instead; async runs may be scheduled for the future with **`run_at`**.
 
 | Input | Required | Description |
 |---|---|---|
 | `workflow` | yes | Target workflow ID or slug |
-| `inputs` | no | Input map passed to the child run |
-| `async` | no | Default `true`; synchronous mode waits for completion |
+| `inputs` | no | Map passed to the child as its inputs — how you hand it context |
+| `async` | no | Off (default) = **wait** for completion and return outputs. On = fire-and-forget |
+| `run_at` | no | Async only: schedule the child for the future — an RFC3339 timestamp *or* a duration like `24h`, `15m`, `90s`. May be an expression |
 
 | Output | Description |
 |---|---|
 | `triggered` | Whether the child run started |
+| `async` | Whether it ran fire-and-forget |
 | `run_id` | Child workflow run ID |
 | `workflow_id` | Child workflow ID |
+| `outputs` | The child's named outputs (synchronous runs only) |
+| `steps` | The child's step results (synchronous runs only) |
 | `reason` | Reason if not triggered (e.g. workflow disabled) |
+
+```yaml
+# Wait for the child and use its result
+- id: enrich
+  action: workflow.run
+  with:
+    workflow: enrich-user
+    inputs:
+      user_id: ${{ trigger.user_id }}
+- id: use-result
+  action: log
+  with:
+    message: "child said: ${{ steps.enrich.outputs.outputs.summary }}"
+
+# Fire-and-forget, scheduled 24h out
+- id: schedule-followup
+  action: workflow.run
+  with:
+    workflow: send-followup
+    async: true
+    run_at: 24h                       # or an RFC3339 date, or ${{ trigger.body.ends_at }}
+    inputs:
+      user_id: ${{ trigger.user_id }}
+```
 
 ### `workflow.exit`
 Terminates the run cleanly — records a success and stops executing further steps.

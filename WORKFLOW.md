@@ -24,6 +24,7 @@ developer to follow it.
 - [Conditions — skipping a step (not stopping the workflow)](#conditions--skipping-a-step-not-stopping-the-workflow)
 - [Branches — choosing a path](#branches--choosing-a-path)
 - [Loops — repeating steps](#loops--repeating-steps)
+- [Running another workflow](#running-another-workflow)
 - [Stopping early on purpose](#stopping-early-on-purpose)
 - [When a step fails](#when-a-step-fails)
 - [Inputs — values you provide](#inputs--values-you-provide)
@@ -366,6 +367,48 @@ steps:
 - Always set a sensible `max:` — loops are bounded, but you want your own limit too.
 
 ---
+
+## Running another workflow
+
+A step can run **another workflow** with the `workflow.run` action — useful for reusing
+a flow or splitting a big automation into pieces. You hand the child its context through
+**`inputs`**.
+
+**By default the parent waits** for the child to finish, and can read its results:
+
+```yaml
+- id: enrich
+  action: workflow.run
+  with:
+    workflow: enrich-user           # the child workflow (id or slug)
+    inputs:
+      user_id: ${{ trigger.user_id }}   # context passed to the child
+
+- id: use-it
+  action: log
+  with:
+    message: "child returned: ${{ steps.enrich.outputs.outputs.summary }}"
+```
+
+Turn on **`async`** (a simple toggle in the editor) to **fire-and-forget** — the parent
+doesn't wait, and the child's outputs aren't returned. When async, you can also set
+**`run_at`** to schedule the child for later — either an exact date/time or a relative
+duration, and it can be a computed expression:
+
+```yaml
+- id: send-later
+  action: workflow.run
+  with:
+    workflow: send-followup
+    async: true
+    run_at: 24h                        # "24h", "15m", "90s" … or an RFC3339 date,
+                                       # or an expression like ${{ trigger.body.ends_at }}
+    inputs:
+      user_id: ${{ trigger.user_id }}
+```
+
+- **Async off (default)** → wait for the child, read its `outputs`/`steps`.
+- **Async on** → don't wait; optionally schedule with `run_at`.
 
 ## Stopping early on purpose
 
