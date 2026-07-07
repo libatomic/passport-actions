@@ -18,12 +18,12 @@ definition:
 
   on:
     # Wildcard event name — matches every user.subscription.status.<status> event.
-    # All status events share the same body shape (prev_status, status, subscription),
-    # so the canceled schema is referenced as a representative for autocomplete.
+    # The shared family schema (user.subscription.status) describes the body every
+    # status event carries, so autocomplete works without pinning to one status.
     - event:
         name: user.subscription.status.*
         schema:
-          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.canceled@v1.0.0
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status@v1.0.0
 
   steps:
     - id: load-subscription

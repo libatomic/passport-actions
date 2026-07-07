@@ -3,6 +3,32 @@ $id: libatomic/passport-actions/schemas/atomic/user.subscription.expiring
 version: "1.0.0"
 title: user.subscription.expiring
 description: >
-  Emitted when a subscription is approaching expiration.
+  Emitted by the recurring subscription-expiring job when an active, non-renewing
+  subscription is approaching its end date (within 7 days for yearly plans and 48
+  hours for monthly plans by default; both windows are configurable on the instance
+  policy).
 
-$ref: libatomic/passport-actions/schemas/atomic/subscription@v1.0.0
+type: object
+required:
+  - subscription_id
+  - interval
+  - ends_at
+properties:
+  subscription_id:
+    type: string
+    format: uuid
+    description: The expiring subscription ID
+  plan_id:
+    type: string
+    format: uuid
+    description: The subscription's plan ID (may be null)
+  interval:
+    type: string
+    enum:
+      - month
+      - year
+    description: The subscription's recurring interval
+  ends_at:
+    type: string
+    format: date-time
+    description: When the subscription expires
