@@ -1,0 +1,34 @@
+name: Job Completed
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cog-play-outline.svg
+description: |
+  React to background jobs finishing. Triggers on job.completed — the event body is
+  the completed Job. As shipped it is scoped to audience builds via a trigger-level
+  `if:` filter (body.type == "audience:build") as a worked example; change or remove
+  that filter to react to any job type. See this blueprint's README for the full list
+  of job types and filtering patterns.
+category: operations
+replaces:
+  event_type: job.completed
+  channel: none
+definition:
+  name: Job Completed
+  description: Reacts to job.completed. Example filters to audience:build via a trigger if-filter on body.type.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cog-play-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: job.completed
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/job.completed@v1.0.0
+      # EXAMPLE trigger filter — scopes this workflow to a single job type. It is
+      # evaluated against the event body (the Job) BEFORE a run is created, so no
+      # run is spawned for other jobs. Change "audience:build" to the job type you
+      # care about, or delete this line to react to every completed job.
+      if: body.type == "audience:build"
+
+  steps:
+    - id: log-completion
+      action: log
+      with:
+        message: "Job completed: type=${{ trigger.body.type }} id=${{ trigger.body.id }}"

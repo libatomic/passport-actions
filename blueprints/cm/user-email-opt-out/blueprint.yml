@@ -12,6 +12,8 @@ replaces:
 inputs:
   list_id:
     description: Campaign Monitor list ID to unsubscribe the user from
+    type: string
+    required: true
     default: ""
 definition:
   name: "CM: User Email Opt-Out"

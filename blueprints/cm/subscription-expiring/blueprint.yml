@@ -16,6 +16,8 @@ replaces:
 inputs:
   list_id:
     description: Campaign Monitor list ID to add expiring subscribers to
+    type: string
+    required: true
     default: ""
 definition:
   name: "CM: Subscription Expiring Soon"

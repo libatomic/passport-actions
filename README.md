@@ -68,6 +68,7 @@ related but distinct — an entitlement may be granted without a subscription (g
 | Blueprint | Replaces Event | Channel |
 |-----------|---------------|---------|
 | `blueprints/job-failed` | `job.failed` | email |
+| `blueprints/job-completed` | `job.completed` (example filters to `audience:build`) | — |
 
 #### Campaign Monitor
 

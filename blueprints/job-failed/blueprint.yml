@@ -9,6 +9,9 @@ replaces:
 inputs:
   admin_email:
     description: Email address that receives job failure alerts
+    type: string
+    required: true
+    validate: isEmail(value)
     default: ""
 definition:
   name: Job Failed

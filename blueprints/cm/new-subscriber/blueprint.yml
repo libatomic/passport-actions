@@ -15,6 +15,8 @@ replaces:
 inputs:
   list_id:
     description: Campaign Monitor list ID to add paid subscribers to
+    type: string
+    required: true
     default: ""
 definition:
   name: "CM: New Subscriber"
