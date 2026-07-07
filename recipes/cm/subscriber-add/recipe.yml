@@ -23,11 +23,14 @@ inputs:
     description: Subscriber display name
   custom_fields:
     default: []
-    type: array
+    type: list
     label: Custom Fields
     description: >
       Campaign Monitor custom fields as an array of {Key, Value} objects,
       e.g. [{Key: "PassportUserID", Value: "..."}]. Empty by default.
+    items:
+      - { name: Key, label: Field }
+      - { name: Value, label: Value }
   resubscribe:
     default: "true"
     type: bool

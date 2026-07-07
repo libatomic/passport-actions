@@ -509,6 +509,26 @@ inputs:
 - **`validate`** — a rule that must pass, e.g. `isEmail(value)` (here `value` is what was
   entered). If it fails, the run is refused.
 
+**Structured inputs (maps and lists).** An input's `type` also controls how it's *edited*, so
+you never have to hand-write JSON:
+
+- `type: json` — an open **key/value map**. Add `suggested_keys` to offer common keys as
+  one-click chips.
+- `type: list` — a **list of objects**, edited as a rows table. Describe each row's columns
+  with `items`:
+
+  ```yaml
+  inputs:
+    custom_fields:
+      type: list
+      items:
+        - { name: Key,   label: Field }
+        - { name: Value, label: Value }   # each cell accepts a ${{ }} expression
+  ```
+
+  This is the same builder you get for any action field of `type: list` (and it kicks in
+  automatically whenever a value is already a list of objects, like a recipe's `custom_fields`).
+
 **Configuring a fixed value that's still testable.** Set the input's `default` to your
 real value — event-triggered runs use it automatically, and you can still override it on
 a manual test run. (Or use `${{ coalesce(inputs.list_id, "abc123") }}` in a step for a
