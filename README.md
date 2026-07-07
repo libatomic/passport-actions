@@ -3,6 +3,11 @@
 Pre-built actions and recipes for the [Passport Atomic](https://github.com/libatomic/atomic)
 workflow engine.
 
+**New to workflows?** Start with the plain-language [Workflows guide](WORKFLOW.md) — how
+triggers, steps, conditions, branches, and loops work (written for admins, not just
+developers). The [builtins reference](BUILTINS.md) lists every action, expression function,
+and context variable.
+
 This repository contains three kinds of reusable components:
 
 - **Blueprints** (`blueprint.yml`) — Complete workflow definitions ready to import into your
