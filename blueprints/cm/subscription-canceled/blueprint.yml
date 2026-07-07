@@ -1,0 +1,59 @@
+name: "CM: Subscription Canceled"
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
+description: |
+  Adds a user to a Campaign Monitor list (e.g. a win-back/re-engagement list) when
+  their subscription is canceled (user.subscription.status.canceled). Tags the
+  subscriber with instance, user, subscription and plan ids and the cancellation
+  reason. Uses the cm/subscriber-add recipe.
+
+  The canceled event carries only the subscription id, so the subscriber is resolved
+  via subscription.get. Requires the CM_API_KEY secret and a list_id input.
+category: campaign-monitor
+replaces:
+  event_type: user.subscription.status.canceled
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to add canceled subscribers to
+    default: ""
+definition:
+  name: "CM: Subscription Canceled"
+  description: Adds canceled subscribers to a Campaign Monitor win-back list.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.status.canceled
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.canceled@v1.0.0
+
+  steps:
+    - id: load-subscription
+      action: subscription.get
+      with:
+        subscription_id: ${{ trigger.body.subscription }}
+
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ steps.load-subscription.outputs.subscription.user_id }}
+
+    - id: add-to-list
+      includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        custom_fields:
+          - Key: InstanceName
+            Value: ${{ instance.name }}
+          - Key: PassportUserID
+            Value: ${{ steps.load-subscription.outputs.subscription.user_id }}
+          - Key: PassportSubscriptionID
+            Value: ${{ steps.load-subscription.outputs.subscription.id }}
+          - Key: PassportPlanID
+            Value: ${{ steps.load-subscription.outputs.subscription.plan_id }}
+          - Key: Reason
+            Value: ${{ trigger.body.status }}

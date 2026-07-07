@@ -1,0 +1,61 @@
+name: "CM: Subscription Expiring Soon"
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-clock-outline.svg
+description: |
+  Adds a user to a Campaign Monitor list when their non-renewing subscription is about
+  to lapse (user.subscription.expiring). Tags the subscriber with instance, user,
+  subscription and plan ids, the interval, the exact end date, and a friendly relative
+  "expires in …" value. Uses the cm/subscriber-add recipe.
+
+  The user.subscription.expiring event is emitted by the recurring expiring job — yearly
+  plans within 7 days of ends_at, monthly plans within 48 hours (defaults, configurable
+  on the instance policy). Requires the CM_API_KEY secret and a list_id input.
+category: campaign-monitor
+replaces:
+  event_type: user.subscription.expiring
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to add expiring subscribers to
+    default: ""
+definition:
+  name: "CM: Subscription Expiring Soon"
+  description: Adds soon-to-expire subscribers to a Campaign Monitor list with end-date custom fields.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-clock-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.expiring
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.expiring@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: add-to-list
+      includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        custom_fields:
+          - Key: InstanceName
+            Value: ${{ instance.name }}
+          - Key: PassportUserID
+            Value: ${{ trigger.user_id }}
+          - Key: PassportSubscriptionID
+            Value: ${{ trigger.body.subscription_id }}
+          - Key: PassportPlanID
+            Value: ${{ trigger.body.plan_id }}
+          - Key: SubscriptionInterval
+            Value: ${{ trigger.body.interval }}
+          - Key: EndsAt
+            Value: ${{ trigger.body.ends_at }}
+          - Key: EndsAtPretty
+            Value: ${{ fromNow(trigger.body.ends_at) }}
+          - Key: Reason
+            Value: expiring

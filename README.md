@@ -69,6 +69,21 @@ related but distinct — an entitlement may be granted without a subscription (g
 |-----------|---------------|---------|
 | `blueprints/job-failed` | `job.failed` | email |
 
+#### Campaign Monitor
+
+Vendor blueprints that sync Passport events to Campaign Monitor lists via the
+`recipes/cm/*` recipes. Each needs the `CM_API_KEY` secret and a `list_id` input;
+list-add blueprints attach custom fields (instance name, Passport user/subscription/plan
+ids, reason, `EndsAt`/`EndsAtPretty`, interval) where relevant.
+
+| Blueprint | Trigger Event | Action |
+|-----------|--------------|--------|
+| `blueprints/cm/user-email-opt-out` | `user.email.opt_out` | Unsubscribe from a list |
+| `blueprints/cm/new-user` | `user.created` | Add to a list |
+| `blueprints/cm/new-subscriber` | `user.subscription.created` (paid, plan-backed only) | Add to a list |
+| `blueprints/cm/subscription-canceled` | `user.subscription.status.canceled` | Add to a win-back list |
+| `blueprints/cm/subscription-expiring` | `user.subscription.expiring` | Add to a list |
+
 #### Usage
 
 Each blueprint contains a `definition` block that is a complete workflow YAML document. The

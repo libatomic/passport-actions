@@ -22,10 +22,12 @@ inputs:
     label: Name
     description: Subscriber display name
   custom_fields:
-    default: ""
-    type: object
+    default: []
+    type: array
     label: Custom Fields
-    description: Custom field key-value pairs
+    description: >
+      Campaign Monitor custom fields as an array of {Key, Value} objects,
+      e.g. [{Key: "PassportUserID", Value: "..."}]. Empty by default.
   resubscribe:
     default: "true"
     type: bool
@@ -51,6 +53,7 @@ steps:
       body:
         EmailAddress: ${{ inputs.email }}
         Name: ${{ inputs.name }}
+        CustomFields: ${{ inputs.custom_fields }}
         Resubscribe: ${{ inputs.resubscribe == "true" }}
         ConsentToTrack: ${{ inputs.consent_to_track }}
       expect_status: [200, 201]

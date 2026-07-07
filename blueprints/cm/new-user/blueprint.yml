@@ -1,0 +1,47 @@
+name: "CM: New User"
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
+description: |
+  Adds every newly created user to a Campaign Monitor list (user.created). Tags the
+  subscriber with the instance name and Passport user id as custom fields. Uses the
+  cm/subscriber-add recipe.
+
+  Requires the CM_API_KEY secret and a list_id input. The named CM custom fields
+  (InstanceName, PassportUserID) must exist on the target list.
+category: campaign-monitor
+replaces:
+  event_type: user.created
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to add new users to
+    default: ""
+definition:
+  name: "CM: New User"
+  description: Adds newly created users to a Campaign Monitor list with instance/user custom fields.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.created
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.created@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: add-to-list
+      includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        custom_fields:
+          - Key: InstanceName
+            Value: ${{ instance.name }}
+          - Key: PassportUserID
+            Value: ${{ trigger.user_id }}

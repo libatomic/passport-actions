@@ -1,0 +1,39 @@
+name: "CM: User Email Opt-Out"
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-off-outline.svg
+description: |
+  Unsubscribes a user from a Campaign Monitor list when they opt out of the email
+  channel (user.email.opt_out). Uses the cm/subscriber-unsubscribe recipe.
+
+  Requires the CM_API_KEY secret and a list_id input.
+category: campaign-monitor
+replaces:
+  event_type: user.email.opt_out
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to unsubscribe the user from
+    default: ""
+definition:
+  name: "CM: User Email Opt-Out"
+  description: Unsubscribes a user from a Campaign Monitor list when they opt out of email.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-off-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.email.opt_out
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.email.opt_out@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: unsubscribe
+      includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}

@@ -16,7 +16,7 @@ libatomic/passport-actions/recipes/cm/subscriber-add@v1
 | `list_id` | yes | — | Target list ID |
 | `email` | yes | — | Subscriber email address |
 | `name` | no | `""` | Subscriber display name |
-| `custom_fields` | no | `""` | Custom fields (JSON object) |
+| `custom_fields` | no | `[]` | Array of Campaign Monitor `{Key, Value}` custom-field objects |
 | `resubscribe` | no | `"true"` | Reactivate if previously unsubscribed |
 | `consent_to_track` | no | `"yes"` | GDPR consent: `yes`, `no`, or `unchanged` |
 
