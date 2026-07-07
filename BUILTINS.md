@@ -19,6 +19,7 @@ These variables are available in all expressions:
 | `steps.<id>.outputs.*` | Outputs from a previous step — see each action's outputs under [Builtin Actions](#builtin-actions) |
 | `user.*` | Current user object (when available) |
 | `vars.*` | Workflow variables — pre-populated from definition `vars:` and settable at runtime with `vars.set` |
+| `outputs.*` | Named computed values declared on a step's `outputs:` block — reuse a complex expression as `${{ outputs.<name> }}` (e.g. in a later step's `if:`) |
 | `inputs.*` | Workflow input parameters |
 | `secrets.*` | Instance secrets |
 | `instance.*` | Current instance data |
@@ -750,6 +751,23 @@ emailLocal(email) → string
 emailLocal("user@example.com")  # → "user"
 ```
 
+### isEmail
+
+Return true if the string looks like an email address. Handy for input `validate:` rules.
+
+```
+isEmail(s) → bool
+```
+
+```yaml
+# Example — as an input validation rule
+inputs:
+  admin_email:
+    type: string
+    required: true
+    validate: isEmail(value)
+```
+
 ### quote
 
 Wrap a string in double quotes with proper escaping.
@@ -1078,6 +1096,20 @@ with:
   display: ${{ coalesce(user.profile.display_name, user.profile.name, user.login) }}
 ```
 
+Common use — an **input fallback** so a step works on a manual test run before the admin
+sets the real value. Also works with pipe syntax:
+
+```yaml
+with:
+  # if inputs.list_id is empty/nil, fall back to the literal
+  list_id: ${{ coalesce(inputs.list_id, "list_id_123") }}
+  # equivalent, piped:
+  list_id: ${{ inputs.list_id | coalesce("list_id_123") }}
+```
+
+> Note: `default(defaultVal, value)` takes the fallback **first**, so it does not pipe
+> correctly. Use `coalesce` for the piped form.
+
 ### ternary
 
 Conditional value selection — like an inline if/else.
@@ -1132,6 +1164,20 @@ Parse a Go-style duration string (e.g. "1h30m", "500ms").
 
 ```
 duration(str) → string
+```
+
+### fromNow
+
+Render an RFC3339 timestamp as a human-friendly, relative time from now. Returns `""` for
+an empty input (safe for optional fields).
+
+```
+fromNow(rfc3339) → string
+```
+
+```yaml
+# Example
+fromNow(trigger.body.ends_at)  # → "in 7 days", "3 days ago", "in 2 hours"
 ```
 
 ---

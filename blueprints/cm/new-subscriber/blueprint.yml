@@ -32,20 +32,23 @@ definition:
 
   steps:
     # Load the full subscription so we have the plan id, interval and end date, and
-    # can confirm this is a paid, plan-backed subscription.
+    # can confirm this is a paid, plan-backed subscription. The `outputs:` block names
+    # that condition once so later steps can reuse it as ${{ outputs.is_subscriber }}.
     - id: load-subscription
       action: subscription.get
       with:
         subscription_id: ${{ trigger.body.subscription_id }}
+      outputs:
+        is_subscriber: ${{ !empty(steps.load-subscription.outputs.subscription.plan_id) && !empty(steps.load-subscription.outputs.subscription.price_id) }}
 
     - id: load-user
-      if: ${{ !empty(steps.load-subscription.outputs.subscription.plan_id) && !empty(steps.load-subscription.outputs.subscription.price_id) }}
+      if: ${{ outputs.is_subscriber }}
       action: user.get
       with:
         user_id: ${{ steps.load-subscription.outputs.subscription.user_id }}
 
     - id: add-to-list
-      if: ${{ !empty(steps.load-subscription.outputs.subscription.plan_id) && !empty(steps.load-subscription.outputs.subscription.price_id) }}
+      if: ${{ outputs.is_subscriber }}
       includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
       with:
         api_key: ${{ secrets.CM_API_KEY }}
