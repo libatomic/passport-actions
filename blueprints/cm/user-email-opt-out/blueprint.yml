@@ -1,4 +1,4 @@
-name: "CM: User Email Opt-Out"
+name: "User Email Opt-Out (Campaign Monitor)"
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-off-outline.svg
 description: |
   Unsubscribes a user from a Campaign Monitor list when they opt out of the email
@@ -16,7 +16,7 @@ inputs:
     required: true
     default: ""
 definition:
-  name: "CM: User Email Opt-Out"
+  name: "User Email Opt-Out (Campaign Monitor)"
   description: Unsubscribes a user from a Campaign Monitor list when they opt out of email.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-off-outline.svg
   version: 1

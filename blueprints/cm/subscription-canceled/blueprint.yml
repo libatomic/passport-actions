@@ -1,4 +1,4 @@
-name: "CM: Subscription Canceled"
+name: "Subscription Canceled (Campaign Monitor)"
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
 description: |
   Adds a user to a Campaign Monitor list (e.g. a win-back/re-engagement list) when
@@ -19,7 +19,7 @@ inputs:
     required: true
     default: ""
 definition:
-  name: "CM: Subscription Canceled"
+  name: "Subscription Canceled (Campaign Monitor)"
   description: Adds canceled subscribers to a Campaign Monitor win-back list.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
   version: 1

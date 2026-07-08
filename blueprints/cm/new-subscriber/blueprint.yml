@@ -1,4 +1,4 @@
-name: "CM: New Subscriber"
+name: "New Subscriber (Campaign Monitor)"
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-star-outline.svg
 description: |
   Adds a user to a Campaign Monitor list when they start a NEW PAID subscription
@@ -19,7 +19,7 @@ inputs:
     required: true
     default: ""
 definition:
-  name: "CM: New Subscriber"
+  name: "New Subscriber (Campaign Monitor)"
   description: Adds paid, plan-backed new subscribers to a Campaign Monitor list.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-star-outline.svg
   version: 1

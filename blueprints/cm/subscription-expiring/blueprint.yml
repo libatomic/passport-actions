@@ -1,4 +1,4 @@
-name: "CM: Subscription Expiring Soon"
+name: "Subscription Expiring Soon (Campaign Monitor)"
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-clock-outline.svg
 description: |
   Adds a user to a Campaign Monitor list when their non-renewing subscription is about
@@ -20,7 +20,7 @@ inputs:
     required: true
     default: ""
 definition:
-  name: "CM: Subscription Expiring Soon"
+  name: "Subscription Expiring Soon (Campaign Monitor)"
   description: Adds soon-to-expire subscribers to a Campaign Monitor list with end-date custom fields.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-clock-outline.svg
   version: 1
