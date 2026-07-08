@@ -1,0 +1,40 @@
+name: Refund Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cash-refund.svg
+description: |
+  Emails a customer when a charge is refunded. Fires on the Stripe charge.refunded
+  webhook event, loads the associated user, and sends the refund confirmation template.
+category: billing
+replaces:
+  event_type: charge.refunded
+  channel: email
+inputs:
+  template:
+    description: The refund confirmation email template
+    default: refund-email
+definition:
+  name: Refund Email
+  description: Emails a customer when a Stripe charge is refunded.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/cash-refund.svg
+  version: 1
+
+  on:
+    - event:
+        name: charge.refunded
+        schema:
+          ref: libatomic/passport-actions/schemas/stripe/charge.refunded@v1.0.0
+      source: stripe
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-refund
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          charge: ${{ trigger.body }}

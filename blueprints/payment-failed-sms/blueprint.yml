@@ -1,0 +1,34 @@
+name: Payment Failed SMS
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-off-outline.svg
+description: |
+  Texts a customer when a charge fails. Fires on the Stripe charge.failed webhook
+  event and sends the payment-failed SMS template to the associated user.
+category: billing
+replaces:
+  event_type: charge.failed
+  channel: sms
+inputs:
+  template:
+    description: The payment-failed SMS template
+    default: payment-failed-sms
+definition:
+  name: Payment Failed SMS
+  description: Texts a customer when a Stripe charge fails.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-off-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: charge.failed
+        schema:
+          ref: libatomic/passport-actions/schemas/stripe/charge.failed@v1.0.0
+      source: stripe
+
+  steps:
+    - id: send-failed
+      action: sendsms
+      with:
+        user_id: ${{ trigger.user_id }}
+        template: ${{ inputs.template }}
+        data:
+          charge: ${{ trigger.body }}

@@ -1,0 +1,39 @@
+name: Gift Accepted Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/gift-open-outline.svg
+description: |
+  Notifies the gift purchaser when their gift invite is redeemed. Fires on
+  gift.invite.redeemed, loads the user, and sends the gift-accepted confirmation template.
+category: engagement
+replaces:
+  event_type: gift.invite.redeemed
+  channel: email
+inputs:
+  template:
+    description: The gift-accepted email template
+    default: gift-accepted-email
+definition:
+  name: Gift Accepted Email
+  description: Notifies the purchaser when a gift invite is redeemed.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/gift-open-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: gift.invite.redeemed
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/gift.invite.redeemed@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-accepted
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          gift: ${{ trigger.body }}

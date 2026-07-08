@@ -1,0 +1,41 @@
+name: Subscription Expired Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-remove-outline.svg
+description: |
+  Emails a subscriber when their subscription is deleted/expired at Stripe. Fires on the
+  Stripe customer.subscription.deleted webhook event, loads the associated user, and
+  sends the expiration template (a natural win-back touchpoint).
+category: billing
+replaces:
+  event_type: customer.subscription.deleted
+  channel: email
+inputs:
+  template:
+    description: The subscription-expired email template
+    default: subscription-expired-email
+definition:
+  name: Subscription Expired Email
+  description: Emails a subscriber when their Stripe subscription is deleted.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-remove-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: customer.subscription.deleted
+        schema:
+          ref: libatomic/passport-actions/schemas/stripe/customer.subscription.deleted@v1.0.0
+      source: stripe
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-expired
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          subscription: ${{ trigger.body }}

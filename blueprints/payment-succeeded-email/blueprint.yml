@@ -1,0 +1,41 @@
+name: Payment Succeeded Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
+description: |
+  Emails a customer a receipt when an invoice payment succeeds. Fires on the Stripe
+  invoice.payment_succeeded webhook event, loads the associated user, and sends the
+  payment receipt template.
+category: billing
+replaces:
+  event_type: invoice.payment_succeeded
+  channel: email
+inputs:
+  template:
+    description: The payment receipt email template
+    default: payment-succeeded-email
+definition:
+  name: Payment Succeeded Email
+  description: Emails a receipt when a Stripe invoice payment succeeds.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/credit-card-check-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: invoice.payment_succeeded
+        schema:
+          ref: libatomic/passport-actions/schemas/stripe/invoice.payment_succeeded@v1.0.0
+      source: stripe
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-receipt
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          invoice: ${{ trigger.body }}

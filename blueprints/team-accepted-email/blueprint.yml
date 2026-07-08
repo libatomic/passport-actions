@@ -1,0 +1,37 @@
+name: Team Accepted Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-multiple-check-outline.svg
+description: |
+  Notifies the team owner when a team invite is redeemed. Fires on team.invite.redeemed,
+  loads the user, and sends the team-accepted confirmation template.
+category: engagement
+replaces:
+  event_type: team.invite.redeemed
+  channel: email
+inputs:
+  template:
+    description: The team-accepted email template
+    default: default-team-accepted-email
+definition:
+  name: Team Accepted Email
+  description: Notifies the team owner when a team invite is redeemed.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-multiple-check-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: team.invite.redeemed
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-accepted
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          team: ${{ trigger.body }}

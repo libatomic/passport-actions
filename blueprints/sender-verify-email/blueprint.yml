@@ -1,0 +1,35 @@
+name: Verify Sender Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-check-outline.svg
+description: |
+  Sends a verification email to a newly added sender address. Fires on
+  email.sender.verify (emitted when an admin adds an approved-sender address) and mails
+  the verification link to that address — so the message goes to the sender being verified,
+  not to a Passport user.
+category: operations
+replaces:
+  event_type: email.sender.verify
+  channel: email
+inputs:
+  template:
+    description: The sender-verification email template
+    default: verify-sender-email
+definition:
+  name: Verify Sender Email
+  description: Emails a verification link to a newly added approved-sender address.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-check-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: email.sender.verify
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/email.sender.verify@v1.0.0
+
+  steps:
+    - id: send-verify
+      action: sendmail
+      with:
+        to: ${{ trigger.body.email }}
+        template: ${{ inputs.template }}
+        data:
+          sender: ${{ trigger.body }}

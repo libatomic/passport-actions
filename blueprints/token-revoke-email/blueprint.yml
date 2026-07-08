@@ -1,0 +1,39 @@
+name: Token Revoked Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/key-remove.svg
+description: |
+  Sends a security notification when an access token is revoked. Fires on
+  user.token.revoked, loads the user, and sends the token-revoked template.
+category: authentication
+replaces:
+  event_type: user.token.revoked
+  channel: email
+inputs:
+  template:
+    description: The token-revoked email template
+    default: token-revoke-email
+definition:
+  name: Token Revoked Email
+  description: Notifies a user when one of their access tokens is revoked.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/key-remove.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.token.revoked
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.token.revoked@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-revoked
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          token: ${{ trigger.body }}

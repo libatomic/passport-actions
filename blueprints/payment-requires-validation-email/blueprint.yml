@@ -1,0 +1,41 @@
+name: Payment Requires Validation Email
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/shield-alert-outline.svg
+description: |
+  Prompts a customer to complete additional authentication (e.g. 3-D Secure) when a
+  payment needs action. Fires on the Stripe payment_intent.requires_action webhook event,
+  loads the associated user, and sends the validation-required template.
+category: billing
+replaces:
+  event_type: payment_intent.requires_action
+  channel: email
+inputs:
+  template:
+    description: The payment-validation email template
+    default: payment-requires-validation-email
+definition:
+  name: Payment Requires Validation Email
+  description: Prompts a customer to complete extra payment authentication.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/shield-alert-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: payment_intent.requires_action
+        schema:
+          ref: libatomic/passport-actions/schemas/stripe/payment_intent.requires_action@v1.0.0
+      source: stripe
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-validation
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          payment_intent: ${{ trigger.body }}
