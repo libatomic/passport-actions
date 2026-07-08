@@ -3,6 +3,7 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
   Sends a signup confirmation or verification email when a new user registers. Welcomes the user and provides a verification code or link to confirm their email address.
 category: onboarding
+essential: true
 replaces:
   event_type: user.signup.email
   channel: email

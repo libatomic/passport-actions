@@ -3,6 +3,7 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/lock-reset.svg
 description: |
   Sends a password reset link or code via email when a user requests to change their password. Loads the user profile and renders the reset email template with the reset code and link.
 category: authentication
+essential: true
 replaces:
   event_type: user.password.reset.email
   channel: email

@@ -3,6 +3,7 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/shield-check-outline.svg
 description: |
   Sends a verification code or magic link to the user's email address when they sign up or request email verification. The workflow loads the user profile and renders the configured email template with the verification code and link.
 category: authentication
+essential: true
 replaces:
   event_type: user.email.verify
   channel: email

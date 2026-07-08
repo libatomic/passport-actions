@@ -3,6 +3,7 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-lock-outline.svg
 description: |
   Sends a one-time password or magic link via email for passwordless authentication. Triggered when a user requests passwordless login, this workflow loads their profile and delivers the login credentials to their email.
 category: authentication
+essential: true
 replaces:
   event_type: user.password.email
   channel: email
