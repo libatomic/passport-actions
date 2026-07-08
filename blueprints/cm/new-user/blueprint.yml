@@ -1,4 +1,4 @@
-name: "New User (Campaign Monitor)"
+name: New User (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
   Adds every newly created user to a Campaign Monitor list (user.created). Tags the
@@ -18,7 +18,7 @@ inputs:
     required: true
     default: ""
 definition:
-  name: "New User (Campaign Monitor)"
+  name: New User (Campaign Monitor)
   description: Adds newly created users to a Campaign Monitor list with instance/user custom fields.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
   version: 1
