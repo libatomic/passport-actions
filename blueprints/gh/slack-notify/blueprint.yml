@@ -1,0 +1,38 @@
+name: Slack Notification (GitHub Action)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/slack.svg
+description: |
+  Posts a message to a Slack channel when a distribution is published, using the published
+  slackapi/slack-github-action (JavaScript). A drop-in, credential-only integration — no
+  recipe required.
+
+  Requires a WorkflowSecret SLACK_BOT_TOKEN (a Slack bot token, xoxb-…) and a channel id.
+category: operations
+inputs:
+  channel:
+    description: Slack channel id to post to (e.g. C0123456789)
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Slack Notification (GitHub Action)
+  description: Posts to Slack on distribution.published via slackapi/slack-github-action.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/slack.svg
+  version: 1
+
+  on:
+    - event:
+        name: distribution.published
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/distribution.published@v1.0.0
+
+  steps:
+    - id: notify
+      uses: slackapi/slack-github-action@v2
+      with:
+        method: chat.postMessage
+        token: ${{ secrets.SLACK_BOT_TOKEN }}
+        payload: |
+          {
+            "channel": "${{ inputs.channel }}",
+            "text": "📣 Distribution ${{ trigger.body.distribution_id }} published on ${{ trigger.body.channel }}"
+          }

@@ -1,0 +1,45 @@
+name: AI Text Generation (GitHub Models)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/robot-outline.svg
+description: |
+  Generates text with a GitHub Models model (default openai/gpt-4o-mini) using the
+  actions/ai-inference GitHub Action (JavaScript). A manually-run building block — give it
+  a prompt and read the model's reply from outputs.reply, or chain it before a sendmail /
+  feed.item.create step to draft content.
+
+  Requires a WorkflowSecret GH_MODELS_TOKEN — a GitHub token with the "models: read"
+  permission. Set model to any GitHub Models catalog id (e.g. openai/gpt-4o-mini or
+  azure-openai/gpt-4o-mini).
+category: content
+inputs:
+  prompt:
+    description: The prompt to send to the model
+    type: string
+    required: true
+    default: ""
+  system_prompt:
+    description: System prompt that steers the model
+    type: string
+    default: You are a helpful assistant for a subscription publishing platform.
+  model:
+    description: GitHub Models catalog id
+    type: string
+    default: openai/gpt-4o-mini
+definition:
+  name: AI Text Generation (GitHub Models)
+  description: Generates text via actions/ai-inference (GitHub Models).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/robot-outline.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  steps:
+    - id: generate
+      uses: actions/ai-inference@v2
+      with:
+        prompt: ${{ inputs.prompt }}
+        system-prompt: ${{ inputs.system_prompt }}
+        model: ${{ inputs.model }}
+        token: ${{ secrets.GH_MODELS_TOKEN }}
+      outputs:
+        reply: ${{ steps.generate.outputs.response }}

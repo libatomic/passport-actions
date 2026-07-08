@@ -1,0 +1,45 @@
+name: SendGrid Email (GitHub Action)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-fast-outline.svg
+description: |
+  Emails a newly created user via the mmichailidis/sendgrid-mail-action GitHub Action
+  (JavaScript) — a credential-only alternative to the native sendmail action / SES. Loads
+  the user, then sends through the SendGrid API.
+
+  Requires a WorkflowSecret SENDGRID_API_KEY and a verified from address.
+category: operations
+inputs:
+  from:
+    description: Verified SendGrid sender address
+    type: string
+    required: true
+    default: ""
+  subject:
+    description: Email subject
+    type: string
+    default: Welcome
+definition:
+  name: SendGrid Email (GitHub Action)
+  description: Sends a welcome email via mmichailidis/sendgrid-mail-action on user.created.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-fast-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.created
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.created@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: send-mail
+      uses: mmichailidis/sendgrid-mail-action@v1.2
+      with:
+        sendgrid-token: ${{ secrets.SENDGRID_API_KEY }}
+        mail: ${{ steps.load-user.outputs.user.profile.email }}
+        from: ${{ inputs.from }}
+        subject: ${{ inputs.subject }}
+        text: "Welcome to ${{ instance.name }}!"

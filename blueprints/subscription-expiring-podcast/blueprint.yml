@@ -1,0 +1,53 @@
+name: Subscription Expiring Podcast Notice
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/podcast.svg
+description: |
+  Drops a temporary "your subscription is ending soon" episode into a subscriber's podcast
+  feed. Demonstrates a temporary feed item — expires_in removes it automatically after the
+  window so stale notices don't linger. Attach a short audio notice as the enclosure, or
+  leave it text-only.
+category: content
+replaces:
+  event_type: user.subscription.expiring
+  channel: podcast
+inputs:
+  template:
+    description: Template rendered for the notice body
+    type: string
+    default: subscription-expired-podcast
+  episode_asset:
+    description: Optional audio asset id (mp3/mp4) for the notice enclosure. Leave blank for a text-only item.
+    type: string
+    default: ''
+  expires_in:
+    description: How long the notice stays in the feed before auto-removal (e.g. "7d", "168h")
+    type: string
+    default: 7d
+definition:
+  name: Subscription Expiring Podcast Notice
+  description: Adds a self-expiring "subscription ending" notice to a subscriber's podcast feed.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/podcast.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.expiring
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.expiring@v1.0.0
+
+  steps:
+    - id: render
+      action: template.render
+      with:
+        template_name: ${{ inputs.template }}
+        data:
+          subscription: ${{ trigger.body }}
+
+    - id: publish
+      action: feed.item.create
+      with:
+        channel: podcast
+        user_id: ${{ trigger.user_id }}
+        title: Your subscription is ending soon
+        content: ${{ steps.render.outputs.body }}
+        enclosure_asset_id: ${{ inputs.episode_asset }}
+        expires_in: ${{ inputs.expires_in }}

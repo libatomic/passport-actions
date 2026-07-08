@@ -1,0 +1,41 @@
+name: Twilio SMS Alert (GitHub Action)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/message-alert-outline.svg
+description: |
+  Sends an SMS through the twilio-labs/actions-sms GitHub Action (JavaScript) when a
+  subscription is canceled — e.g. a churn alert to your ops phone. A credential-only
+  alternative to the native sendsms action.
+
+  Requires WorkflowSecrets TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN, plus from/to numbers.
+category: operations
+inputs:
+  from_number:
+    description: A Twilio phone number in your account to send from (E.164, e.g. +15551230000)
+    type: string
+    required: true
+    default: ""
+  to_number:
+    description: Destination phone number to alert (E.164)
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Twilio SMS Alert (GitHub Action)
+  description: Sends a churn SMS alert via twilio-labs/actions-sms on subscription cancel.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/message-alert-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.status.canceled
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.canceled@v1.0.0
+
+  steps:
+    - id: send-sms
+      uses: twilio-labs/actions-sms@2.0.0
+      with:
+        FROM_PHONE_NUMBER: ${{ inputs.from_number }}
+        TO_PHONE_NUMBER: ${{ inputs.to_number }}
+        message: "Passport: subscription canceled for user ${{ trigger.user_id }}"
+        TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
