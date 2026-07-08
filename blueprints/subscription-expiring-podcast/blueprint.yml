@@ -38,7 +38,7 @@ definition:
     - id: render
       action: template.render
       with:
-        template_name: ${{ inputs.template }}
+        template: ${{ inputs.template }}
         data:
           subscription: ${{ trigger.body }}
 
