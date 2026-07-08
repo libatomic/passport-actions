@@ -25,6 +25,7 @@ developer to follow it.
 - [Branches — choosing a path](#branches--choosing-a-path)
 - [Loops — repeating steps](#loops--repeating-steps)
 - [Running another workflow](#running-another-workflow)
+- [Waiting between steps (multi-day journeys)](#waiting-between-steps-multi-day-journeys)
 - [Stopping early on purpose](#stopping-early-on-purpose)
 - [When a step fails](#when-a-step-fails)
 - [Inputs — values you provide](#inputs--values-you-provide)
@@ -409,6 +410,37 @@ duration, and it can be a computed expression:
 
 - **Async off (default)** → wait for the child, read its `outputs`/`steps`.
 - **Async on** → don't wait; optionally schedule with `run_at`.
+
+## Waiting between steps (multi-day journeys)
+
+To build a **sequence over days** — a welcome series, a dunning flow, a trial-conversion
+nudge — use the **`wait`** action. The workflow pauses and resumes on its own later,
+picking up right where it left off with all earlier results intact:
+
+```yaml
+steps:
+  - id: welcome
+    action: sendmail
+    with: { user_id: ${{ trigger.user_id }}, template: welcome }
+
+  - id: pause
+    action: wait
+    with: { duration: 3d }          # 3d, 72h, 15m, 90s … or `until: <a date>`
+
+  - id: tips
+    action: sendmail                 # runs 3 days later
+    with: { user_id: ${{ trigger.user_id }}, template: tips }
+```
+
+- While waiting, the run shows a **Waiting** status with its resume time.
+- `wait` is different from a quick pause: `sleep` is for seconds (≤90s); `wait` is for
+  hours-to-days and survives restarts.
+- **Where you can use it:** `wait` must be a **top-level step** — not inside an
+  if/then/else, switch, or loop. Put the wait between top-level steps, then branch after.
+- Maximum wait is 90 days.
+
+Ready-made journeys that use this: the **Onboarding Drip**, **Trial Conversion**, and
+**Win-Back** blueprints.
 
 ## Stopping early on purpose
 

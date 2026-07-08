@@ -1,0 +1,73 @@
+name: Trial Conversion
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/star-shooting-outline.svg
+description: |
+  Convert trials to paid. Fires on user.subscription.trial.ending (emitted by the
+  trial-ending job before trial_ends_at): sends a nudge, waits a day, then re-checks — if
+  the user already converted it exits, otherwise it sends a last-chance email. Shows the
+  wait step plus a goal/exit check.
+category: lifecycle
+replaces:
+  event_type: user.subscription.trial.ending
+  channel: email
+inputs:
+  nudge_template:
+    description: Template for the first trial-conversion nudge
+    type: string
+    default: trial-ending
+  last_chance_template:
+    description: Template for the last-chance email
+    type: string
+    default: trial-last-chance
+definition:
+  name: Trial Conversion
+  description: Nudges trialing users to convert, then re-checks and sends a last-chance email if they haven't.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/star-shooting-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.trial.ending
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.trial.ending@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: nudge
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.nudge_template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+          trial_ends_at: ${{ trigger.body.trial_ends_at }}
+
+    - id: wait-1d
+      action: wait
+      with:
+        duration: 1d
+
+    # Re-load the subscription after the wait to see if they converted.
+    - id: recheck
+      action: subscription.get
+      with:
+        subscription_id: ${{ trigger.body.subscription_id }}
+
+    - id: decide
+      if: ${{ steps.recheck.outputs.subscription.status == "trialing" }}
+      then:
+        - id: last-chance
+          action: sendmail
+          with:
+            to: ${{ steps.load-user.outputs.user.profile.email }}
+            template: ${{ inputs.last_chance_template }}
+            data:
+              user: ${{ steps.load-user.outputs.user }}
+      else:
+        - id: converted
+          action: workflow.exit
+          with:
+            reason: "user already converted — no last-chance needed"

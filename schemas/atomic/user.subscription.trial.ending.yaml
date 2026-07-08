@@ -1,0 +1,27 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: libatomic/passport-actions/schemas/atomic/user.subscription.trial.ending
+version: "1.0.0"
+title: user.subscription.trial.ending
+description: >
+  Emitted by the recurring trial-ending job for trialing subscriptions whose trial is
+  about to end (within 3 days by default; configurable on the instance policy via
+  SubscriptionTrialEndingWindow / SubscriptionTrialEndingJobInterval). The trigger for
+  trial-to-paid conversion journeys.
+
+type: object
+required:
+  - subscription_id
+  - trial_ends_at
+properties:
+  subscription_id:
+    type: string
+    format: uuid
+    description: The trialing subscription ID
+  plan_id:
+    type: string
+    format: uuid
+    description: The subscription's plan ID (may be null)
+  trial_ends_at:
+    type: string
+    format: date-time
+    description: When the trial ends

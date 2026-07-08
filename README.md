@@ -75,6 +75,18 @@ related but distinct — an entitlement may be granted without a subscription (g
 | `blueprints/job-failed` | `job.failed` | email |
 | `blueprints/job-completed` | `job.completed` (example filters to `audience:build`) | — |
 
+#### Lifecycle journeys
+
+Multi-step, timed sequences built on the durable `wait` action (see the
+[Workflows guide](WORKFLOW.md#waiting-between-steps-multi-day-journeys)).
+
+| Blueprint | Trigger Event | What it does |
+|-----------|--------------|--------------|
+| `blueprints/journeys/onboarding-drip` | `user.created` | Welcome → (3d) tips → (4d) explore |
+| `blueprints/journeys/trial-conversion` | `user.subscription.trial.ending` | Nudge → (1d) re-check → last-chance or exit |
+| `blueprints/journeys/win-back` | `user.subscription.status.canceled` | Wait a few days → win-back offer |
+| `blueprints/journeys/preference-sync` | `user.preferences.updated` (opted out on email) | Unsubscribe from a Campaign Monitor list |
+
 #### Campaign Monitor
 
 Vendor blueprints that sync Passport events to Campaign Monitor lists via the

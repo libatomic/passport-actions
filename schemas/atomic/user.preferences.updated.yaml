@@ -3,9 +3,32 @@ $id: libatomic/passport-actions/schemas/atomic/user.preferences.updated
 version: "1.0.0"
 title: user.preferences.updated
 description: >
-  Emitted when a user's channel delivery preferences are updated.
+  Emitted when a user's per-category, per-channel delivery preferences change (e.g. they
+  opt out of a category on email). Whole-channel opt-out is covered by the
+  user.email.opt_out / user.sms.opt_out events instead.
 
 type: object
+required:
+  - categories
 properties:
-  preferences:
-    type: object
+  categories:
+    type: array
+    description: IDs of the categories whose delivery preferences changed
+    items:
+      type: string
+      format: uuid
+  delivery:
+    type: array
+    description: The updated per-category delivery preferences
+    items:
+      type: object
+      properties:
+        category:
+          type: string
+          format: uuid
+          description: The category ID
+        channels:
+          type: object
+          description: >
+            Per-channel opt-out state for this category — a map of channel name
+            (email, sms, rss, podcast, web) to a boolean (true = opted out).

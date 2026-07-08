@@ -433,6 +433,33 @@ Terminates the run cleanly — records a success and stops executing further ste
 
 Returns no outputs (the run ends).
 
+### `wait`
+**Pauses the workflow and resumes it later** — the basis for multi-day journeys (onboarding
+drips, dunning, trial conversion, win-back). The run is checkpointed (its status becomes
+`waiting`) and a resume job continues it from the next step at the scheduled time, with all
+earlier step outputs intact. Unlike `sleep` (max 90s, holds the run open), `wait` can span
+days and survives restarts.
+
+| Input | Required | Description |
+|---|---|---|
+| `duration` | one of | How long to wait — `3d`, `72h`, `15m`, `90s` (a `Nd` day suffix is supported). May be an expression. |
+| `until` | one of | Or an absolute RFC3339 time to resume at. May be an expression, e.g. `${{ trigger.body.ends_at }}`. |
+
+```yaml
+- id: send-welcome
+  action: sendmail
+  with: { user_id: ${{ trigger.user_id }}, template: welcome }
+- id: wait-3-days
+  action: wait
+  with: { duration: 3d }
+- id: send-tips           # runs 3 days later; steps.send-welcome.outputs still resolve
+  action: sendmail
+  with: { user_id: ${{ trigger.user_id }}, template: tips }
+```
+
+> `wait` is only valid as a **top-level step** (not inside a branch, loop, or `on_error`).
+> Maximum wait is 90 days.
+
 ---
 
 # Expression Functions

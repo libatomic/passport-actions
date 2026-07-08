@@ -1,0 +1,43 @@
+name: Preference Sync (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/sync-circle.svg
+description: |
+  Keep your ESP in lockstep with Passport preferences. Fires on user.preferences.updated,
+  filtered to changes that opt the user OUT of a category on email, and unsubscribes them
+  from the Campaign Monitor list — the compliance win. Requires the CM_API_KEY secret and
+  a list_id input.
+category: lifecycle
+replaces:
+  event_type: user.preferences.updated
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to unsubscribe from
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Preference Sync (Campaign Monitor)
+  description: Unsubscribes a user from a CM list when they opt out of a category on email.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/sync-circle.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.preferences.updated
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.preferences.updated@v1.0.0
+      # Only when the change opts the user out of some category on the email channel.
+      if: any(body.delivery, {.channels.email == true})
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: unsubscribe
+      includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}

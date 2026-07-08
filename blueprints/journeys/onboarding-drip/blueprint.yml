@@ -1,0 +1,74 @@
+name: Onboarding Drip
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-fast-outline.svg
+description: |
+  A multi-day welcome sequence for new users: a welcome email now, tips after 3 days, and
+  an "explore" nudge after a week. Demonstrates the durable `wait` step — the workflow
+  suspends between emails and resumes on schedule, keeping earlier step outputs.
+category: lifecycle
+replaces:
+  event_type: user.created
+  channel: email
+inputs:
+  welcome_template:
+    description: Template for the day-0 welcome email
+    type: string
+    default: welcome
+  tips_template:
+    description: Template for the day-3 tips email
+    type: string
+    default: onboarding-tips
+  explore_template:
+    description: Template for the day-7 explore email
+    type: string
+    default: onboarding-explore
+definition:
+  name: Onboarding Drip
+  description: Welcome new users over their first week with a timed email sequence.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-fast-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.created
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.created@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: welcome
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.welcome_template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+
+    - id: wait-3d
+      action: wait
+      with:
+        duration: 3d
+
+    - id: tips
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.tips_template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
+
+    - id: wait-4d
+      action: wait
+      with:
+        duration: 4d
+
+    - id: explore
+      action: sendmail
+      with:
+        to: ${{ steps.load-user.outputs.user.profile.email }}
+        template: ${{ inputs.explore_template }}
+        data:
+          user: ${{ steps.load-user.outputs.user }}
