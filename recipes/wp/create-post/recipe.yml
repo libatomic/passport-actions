@@ -1,0 +1,83 @@
+name: wp-create-post
+version: "1.0"
+description: Create a post on a WordPress site via the REST API
+
+inputs:
+  site_url:
+    required: true
+    type: string
+    label: Site URL
+    description: >
+      WordPress site base URL, e.g. https://example.com (no trailing slash).
+      The REST endpoint /wp-json/wp/v2/posts is appended automatically.
+  username:
+    required: true
+    type: string
+    label: Username
+    description: WordPress username the Application Password belongs to.
+  app_password:
+    secret: true
+    required: true
+    type: string
+    label: Application Password
+    description: >
+      A WordPress Application Password (Users → Profile → Application Passwords),
+      NOT the account login password. Sent as HTTP Basic auth. Or use
+      secrets.WP_APP_PASSWORD.
+  title:
+    required: true
+    type: string
+    label: Title
+  content:
+    required: true
+    type: string
+    label: Content
+    description: Post body. HTML is supported.
+  status:
+    default: draft
+    type: string
+    label: Status
+    description: publish makes it live; draft/pending/private keep it unpublished.
+    enum:
+      - draft
+      - publish
+      - pending
+      - private
+  excerpt:
+    default: ""
+    type: string
+    label: Excerpt
+    description: Optional hand-written excerpt.
+  slug:
+    default: ""
+    type: string
+    label: Slug
+    description: Optional URL slug; WordPress auto-generates one from the title if empty.
+  categories:
+    default: []
+    type: list
+    label: Categories
+    description: Optional array of category IDs (integers), e.g. [3, 7].
+  tags:
+    default: []
+    type: list
+    label: Tags
+    description: Optional array of tag IDs (integers).
+
+steps:
+  - id: create
+    action: http.post
+    with:
+      url: "${{ inputs.site_url }}/wp-json/wp/v2/posts"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.username + ':' + inputs.app_password) }}"
+        Content-Type: application/json
+      body:
+        title: ${{ inputs.title }}
+        content: ${{ inputs.content }}
+        status: ${{ inputs.status }}
+        excerpt: ${{ inputs.excerpt }}
+        slug: ${{ inputs.slug }}
+        categories: ${{ inputs.categories }}
+        tags: ${{ inputs.tags }}
+      expect_status: [200, 201]
