@@ -1,5 +1,5 @@
 name: fb-page-post
-version: "1.0"
+version: "1.1"
 description: Post a plain-text message to a Facebook Page feed
 
 inputs:
@@ -19,8 +19,15 @@ inputs:
     secret: true
     required: true
     type: string
-    label: Page Access Token
-    description: Facebook Page access token (or use secrets.FACEBOOK_PAGE_TOKEN)
+    label: Access Token
+    description: >
+      A Facebook access token for a user who administers the page. It is
+      exchanged for the page's own access token at run time (Graph requires a
+      PAGE token to post to a page feed — a user token, even with
+      pages_manage_posts + pages_read_engagement, is rejected with error #200).
+      Use a LONG-LIVED token: short-lived user tokens expire in ~1 hour, and the
+      derived page token inherits that lifetime. A page token also works
+      directly. (Or set secrets.FACEBOOK_PAGE_TOKEN.)
   link:
     default: ""
     type: string
@@ -28,14 +35,26 @@ inputs:
     description: Optional URL to attach to the post
 
 steps:
+  # Exchange the provided token for the page's own access token. With a page
+  # token this returns the same token; with an admin user token it returns the
+  # page token needed to post.
+  - id: page_token
+    action: http.get
+    with:
+      url: "https://graph.facebook.com/v20.0/${{ inputs.page_id }}"
+      query:
+        fields: access_token
+        access_token: ${{ inputs.access_token }}
+      expect_status: [200]
+
   - id: post
     action: http.post
     with:
       url: "https://graph.facebook.com/v20.0/${{ inputs.page_id }}/feed"
       headers:
-        Authorization: "Bearer ${{ inputs.access_token }}"
         Content-Type: application/json
       body:
         message: ${{ inputs.message }}
         link: ${{ inputs.link }}
+        access_token: ${{ steps.page_token.outputs.body.access_token }}
       expect_status: [200]
