@@ -1,0 +1,20 @@
+name: campaign-monitor
+label: Campaign Monitor
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-sync-outline.svg
+category: integrations
+description: |
+  Keeps a Campaign Monitor list in sync with your members: adds new users and
+  paid subscribers, and removes them when they cancel, expire, or opt out of
+  email. Installs five event-triggered workflows built on the cm/* recipes.
+
+  Shared prerequisites: a CM_API_KEY workflow secret and your Campaign Monitor
+  list_id (each workflow takes it as an input); api.createsend.com must be on
+  the instance's http allowlist. Workflows install disabled — configure the
+  inputs, then enable the ones you want.
+
+blueprints:
+  - cm/new-user
+  - cm/new-subscriber
+  - cm/subscription-canceled
+  - cm/subscription-expiring
+  - cm/user-email-opt-out
