@@ -206,6 +206,13 @@ steps:
   call an HTTP endpoint…). See [`BUILTINS.md`](BUILTINS.md) for the full list.
 - **`includes:`** pulls in a **recipe** — a reusable mini-workflow (e.g. the Campaign
   Monitor recipes) so you don't rebuild the same steps every time.
+
+  **Versioning.** The `@ref` follows the GitHub Actions convention: `@v1` is a
+  **moving ref** (a branch — pushing to it updates every consumer within the
+  engine's refresh TTL, ~5 minutes; no tag ceremony per change), while `@v1.2.3`
+  or a full commit SHA is **pinned** and cached forever. Use `@v1` for
+  first-party recipes; pin exact versions when reproducibility matters more
+  than updates.
 - **`with:`** are the values you hand the step. They can be fixed text or
   `${{ expressions }}` that pull in live data.
 
