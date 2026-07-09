@@ -176,12 +176,12 @@ Saving the workflow **registers the channel**: it then appears in an article's
   (fanned out through the same queue that powers email/sms). Unicast requires an
   audience; broadcast does not.
 
-Custom-channel distributions **require a template** — the admin picks one in the
-Add Distribution editor, and the workflow receives its id on the distribution.
-The workflow calls `distribution.get` to load the content (`template_id`,
-`body`, `title`, …) and either renders the template (`template.render`) or uses
-the body directly. See the **fb/page-post** and **x/post** blueprints (built on
-the `fb/page-post` and `x/post` recipes) for complete examples.
+Like the built-in channels, the Add Distribution editor asks for a template; the
+workflow receives its id on the distribution. The workflow calls
+`distribution.get` to load the content (`template_id`, `body`, `title`, …) and
+either renders the template (`template.render`) or uses the body directly. See
+the **fb/page-post** and **x/post** blueprints (built on the `fb/page-post` and
+`x/post` recipes) for complete examples.
 
 ---
 
