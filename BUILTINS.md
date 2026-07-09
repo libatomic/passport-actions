@@ -190,11 +190,12 @@ Renders a template (by id or name) or a raw body against a context, returning th
 
 | Input | Required | Description |
 |---|---|---|
-| `template_id` / `template_name` | template or body | Template selector |
+| `template` / `template_name` / `template_id` | template or body | Template selector (name or id) |
 | `body` | template or body | Raw template body |
-| `context` | no | Render context object |
+| `data` / `context` | no | Render context object |
 | `user_id` | no | User context |
 | `channel` | no | Channel override |
+| `transmute` | no | `true` atomicizes the rendered HTML via headless Chrome (inline styles, capture embeds, tokenize links). Needed by channels that post HTML to a system that can't run scripts (e.g. another ESP, a distribution trigger). Off by default. |
 
 | Output | Description |
 |---|---|

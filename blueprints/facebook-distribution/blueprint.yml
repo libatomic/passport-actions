@@ -1,0 +1,53 @@
+name: Facebook Page Post (Distribution)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/facebook.svg
+description: |
+  Defines a custom "facebook" distribution channel. Once saved, "facebook" appears in an
+  article's Add Distribution menu; publishing to it runs this workflow, which loads the
+  distribution, renders its template, and posts to a Facebook Page feed.
+
+  This is a broadcast channel (published once, no audience). It demonstrates the distribution
+  trigger plus template.render's transmute option (atomicize HTML). Requires a
+  WorkflowSecret FACEBOOK_PAGE_TOKEN (a Page access token) and a page_id input, and
+  graph.facebook.com must be on the instance's http allowlist.
+category: content
+definition:
+  name: Facebook Page Post (Distribution)
+  description: Publishes a distribution to a Facebook Page via the graph API.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/facebook.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: facebook
+        mode: broadcast
+        content_type: html
+
+  inputs:
+    page_id:
+      description: Facebook Page id to post to
+      type: string
+      required: true
+      default: ""
+
+  steps:
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+
+    - id: render
+      action: template.render
+      with:
+        template_id: ${{ steps.load.outputs.distribution.template_id }}
+        data:
+          distribution: ${{ steps.load.outputs.distribution }}
+        transmute: true
+
+    - id: post
+      action: http.post
+      with:
+        url: https://graph.facebook.com/v20.0/${{ inputs.page_id }}/feed
+        headers:
+          Authorization: Bearer ${{ secrets.FACEBOOK_PAGE_TOKEN }}
+        body:
+          message: ${{ steps.render.outputs.body }}

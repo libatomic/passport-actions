@@ -113,6 +113,50 @@ on:
     validate: false              # webhooks require a validator or an explicit opt-out
 ```
 
+### Distribution triggers — define a custom channel
+
+A **distribution trigger** turns a workflow into a custom distribution **channel**
+(e.g. "facebook", "whatsapp") alongside the built-in email/sms/rss/podcast. It is
+**mutually exclusive** with every other trigger — a workflow with a distribution
+trigger can have no other `on:` entries, and only one distribution trigger.
+
+```yaml
+on:
+  - distribution:
+      channel: whatsapp          # your custom channel name (a-z, 0-9, -, _; not a built-in)
+      mode: unicast              # broadcast = published once; unicast = per audience member
+      content_type: text         # html | text (advisory; enforced in the Add Distribution UI)
+      max_body_length: 0         # optional character limit (0 = none)
+      connect_url: https://…     # optional; shows a "Connect" button on the member app
+      address:                   # optional member identity fields for this channel
+        - name: whatsapp_number  # lowercase key (a-z, 0-9, _)
+          label: WhatsApp Number
+          type: phone            # text | phone | email | url
+          required: true
+```
+
+**Member connections.** When a channel declares `address` fields, members fill them in on
+the member app (Account → Delivery → Connected channels), and `connect_url` renders a
+Connect button there. A member is **connected** when every required field is set. Unicast
+publishes fan out **only to connected members** (tracked on the audience like email/sms
+opt-outs, so it's fast at send time), and the admin's "calculate recipients" reports
+connected counts. A channel with no required address fields reaches the whole audience.
+Inside the workflow, read the member's address via `user.get`:
+`${{ steps.load-user.outputs.user.preferences.channels.custom.whatsapp.address.whatsapp_number }}`.
+
+Saving the workflow **registers the channel**: it then appears in an article's
+**Add Distribution** menu. Publishing a distribution to that channel runs this workflow:
+
+- **broadcast** — runs **once** with `trigger.distribution_id` and `trigger.channel`.
+- **unicast** — runs **once per audience member**, additionally with `trigger.user_id`
+  (fanned out through the same queue that powers email/sms). Unicast requires an
+  audience; broadcast does not.
+
+The workflow typically calls `distribution.get` to load the content
+(`template_id`, `body`, `title`, …) and posts it wherever it likes. See the
+**Facebook Page Post** blueprint for a complete example (with `template.render`
+`transmute`).
+
 ---
 
 ## Steps — the building blocks
