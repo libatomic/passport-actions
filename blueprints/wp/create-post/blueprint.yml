@@ -1,0 +1,74 @@
+name: WordPress Post (Distribution)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/wordpress.svg
+description: |
+  Defines a custom "wordpress" distribution channel. Once saved, "wordpress" appears in
+  an article's Add Distribution menu; publishing to it runs this workflow, which loads
+  the distribution and creates a post on your WordPress site via the wp/create-post
+  recipe (REST API, Application Password auth).
+
+  WordPress posts support HTML, so the channel is declared content_type: html with no
+  length cap. This is a broadcast channel (published once, no audience). Requires a
+  WorkflowSecret WP_APP_PASSWORD (a WordPress Application Password — Users → Profile →
+  Application Passwords, not the login password), plus site_url and username inputs.
+  The site host must be on the instance's HTTP allowlist (Workflows → Settings →
+  Allowed HTTP hosts), and the site must be served over HTTPS.
+category: content
+inputs:
+  site_url:
+    description: WordPress site base URL, e.g. https://example.com (no trailing slash)
+    type: string
+    required: true
+    default: ""
+  username:
+    description: WordPress username the Application Password belongs to
+    type: string
+    required: true
+    default: ""
+  status:
+    description: Post status — publish makes it live immediately; draft holds it for review
+    type: string
+    default: publish
+definition:
+  name: WordPress Post (Distribution)
+  description: Publishes a distribution as a WordPress post via the REST API.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/wordpress.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: wordpress
+        label: WordPress
+        mode: broadcast
+        content_type: html
+
+  inputs:
+    site_url:
+      description: WordPress site base URL, e.g. https://example.com (no trailing slash)
+      type: string
+      required: true
+      default: ""
+    username:
+      description: WordPress username the Application Password belongs to
+      type: string
+      required: true
+      default: ""
+    status:
+      description: Post status — publish makes it live immediately; draft holds it for review
+      type: string
+      default: publish
+
+  steps:
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+
+    - id: post
+      includes: libatomic/passport-actions/recipes/wp/create-post
+      with:
+        site_url: ${{ inputs.site_url }}
+        username: ${{ inputs.username }}
+        app_password: ${{ secrets.WP_APP_PASSWORD }}
+        title: ${{ steps.load.outputs.distribution.title }}
+        content: ${{ steps.load.outputs.distribution.body }}
+        status: ${{ inputs.status }}
