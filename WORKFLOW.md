@@ -110,8 +110,24 @@ on:
   - schedule: 24h                # every 24 hours (also "1h", "30m", …)
 
   - webhook: true                # gives you a URL to paste into a third-party
+    name: orders                 # names the webhook so its token URLs survive re-saves
     validate: false              # webhooks require a validator or an explicit opt-out
+    ip_allowlist:                # optional: only these IPs/CIDRs may call the webhook
+      - 203.0.113.4
+      - 198.51.100.0/24
+    response_status: 204         # optional: HTTP status returned to the caller (default 200)
 ```
+
+**Webhook URLs & tokens.** The workflow's detail page lists one copy-paste URL per token;
+generate a separate URL per integration and revoke them independently. Each token only
+authorizes this one webhook — it grants nothing else.
+
+**Caller security & attribution.** `ip_allowlist` rejects callers outside the listed
+IPs/CIDRs (the client IP honors the first `X-Forwarded-For` hop when a proxy sets it —
+only rely on it when a trusted proxy fronts the API). Every webhook run records the
+caller on its trigger context: `trigger.remote_ip`, `trigger.token_id`, and
+`trigger.token_label` are available in expressions and shown on the run detail.
+Some senders require a specific success status (e.g. 204) — set `response_status`.
 
 ### Distribution triggers — define a custom channel
 
@@ -125,8 +141,8 @@ on:
   - distribution:
       channel: whatsapp          # your custom channel name (a-z, 0-9, -, _; not a built-in)
       mode: unicast              # broadcast = published once; unicast = per audience member
-      content_type: text         # html | text (advisory; enforced in the Add Distribution UI)
-      max_body_length: 0         # optional character limit (0 = none)
+      content_type: text         # html | text — text channels accept UTF-8 plain text only
+      max_body_length: 0         # optional character limit in characters (0 = none)
       connect_url: https://…     # optional; shows a "Connect" button on the member app
       address:                   # optional member identity fields for this channel
         - name: whatsapp_number  # lowercase key (a-z, 0-9, _)
@@ -134,6 +150,14 @@ on:
           type: phone            # text | phone | email | url
           required: true
 ```
+
+**Content constraints.** `content_type` and `max_body_length` are **enforced by the API**
+when a distribution is created or edited, not just in the editor: a `text` channel rejects
+bodies containing HTML markup (and requires valid UTF-8), and `max_body_length` rejects
+bodies over the limit (counted in characters, not bytes). Declare what the destination
+actually accepts — e.g. Facebook Page posts are plain text with no practical limit
+(`content_type: text`), X posts are plain text capped at 280 characters for standard
+accounts (`content_type: text`, `max_body_length: 280`; X Premium allows 25,000).
 
 **Member connections.** When a channel declares `address` fields, members fill them in on
 the member app (Account → Delivery → Connected channels), and `connect_url` renders a
@@ -154,8 +178,8 @@ Saving the workflow **registers the channel**: it then appears in an article's
 
 The workflow typically calls `distribution.get` to load the content
 (`template_id`, `body`, `title`, …) and posts it wherever it likes. See the
-**Facebook Page Post** blueprint for a complete example (with `template.render`
-`transmute`).
+**fb/page-post** and **x/post** blueprints (built on the `fb/page-post` and
+`x/post` recipes) for complete examples.
 
 ---
 

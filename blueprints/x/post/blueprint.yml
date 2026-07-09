@@ -1,0 +1,40 @@
+name: X Post (Distribution)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/alpha-x-box.svg
+description: |
+  Defines a custom "x" distribution channel. Once saved, "x" appears in an article's
+  Add Distribution menu; publishing to it runs this workflow, which loads the
+  distribution and posts its body to X via the x/post recipe.
+
+  X posts are UTF-8 plain text capped at 280 characters for standard accounts — the
+  channel is declared content_type: text with max_body_length: 280, so the distribution
+  editor collects (and the API enforces) plain text within the limit. If the connected
+  account has X Premium (25,000-character cap), edit the trigger's max body length
+  accordingly. This is a broadcast channel (published once, no audience). Requires a
+  WorkflowSecret X_ACCESS_TOKEN (an OAuth 2.0 user-context token with tweet.write), and
+  api.x.com must be on the instance's http allowlist.
+category: content
+definition:
+  name: X Post (Distribution)
+  description: Publishes a distribution to X via the v2 API.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/alpha-x-box.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: x
+        label: X
+        mode: broadcast
+        content_type: text
+        max_body_length: 280
+
+  steps:
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+
+    - id: post
+      includes: libatomic/passport-actions/recipes/x/post@v1
+      with:
+        text: ${{ steps.load.outputs.distribution.body }}
+        access_token: ${{ secrets.X_ACCESS_TOKEN }}

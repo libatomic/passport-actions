@@ -3,13 +3,20 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/facebook.svg
 description: |
   Defines a custom "facebook" distribution channel. Once saved, "facebook" appears in an
   article's Add Distribution menu; publishing to it runs this workflow, which loads the
-  distribution, renders its template, and posts to a Facebook Page feed.
+  distribution and posts its body to a Facebook Page feed via the fb/page-post recipe.
 
-  This is a broadcast channel (published once, no audience). It demonstrates the distribution
-  trigger plus template.render's transmute option (atomicize HTML). Requires a
+  Facebook Page posts are UTF-8 plain text — the channel is declared content_type: text,
+  so the distribution editor collects (and the API enforces) plain text with no length
+  cap. This is a broadcast channel (published once, no audience). Requires a
   WorkflowSecret FACEBOOK_PAGE_TOKEN (a Page access token) and a page_id input, and
   graph.facebook.com must be on the instance's http allowlist.
 category: content
+inputs:
+  page_id:
+    description: Facebook Page id to post to
+    type: string
+    required: true
+    default: ""
 definition:
   name: Facebook Page Post (Distribution)
   description: Publishes a distribution to a Facebook Page via the graph API.
@@ -19,8 +26,9 @@ definition:
   on:
     - distribution:
         channel: facebook
+        label: Facebook
         mode: broadcast
-        content_type: html
+        content_type: text
 
   inputs:
     page_id:
@@ -35,19 +43,9 @@ definition:
       with:
         distribution_id: ${{ trigger.distribution_id }}
 
-    - id: render
-      action: template.render
-      with:
-        template_id: ${{ steps.load.outputs.distribution.template_id }}
-        data:
-          distribution: ${{ steps.load.outputs.distribution }}
-        transmute: true
-
     - id: post
-      action: http.post
+      includes: libatomic/passport-actions/recipes/fb/page-post@v1
       with:
-        url: https://graph.facebook.com/v20.0/${{ inputs.page_id }}/feed
-        headers:
-          Authorization: Bearer ${{ secrets.FACEBOOK_PAGE_TOKEN }}
-        body:
-          message: ${{ steps.render.outputs.body }}
+        page_id: ${{ inputs.page_id }}
+        message: ${{ steps.load.outputs.distribution.body }}
+        access_token: ${{ secrets.FACEBOOK_PAGE_TOKEN }}

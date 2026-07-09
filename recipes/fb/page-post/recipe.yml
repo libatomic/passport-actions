@@ -1,0 +1,39 @@
+name: fb-page-post
+description: Post a plain-text message to a Facebook Page feed
+
+inputs:
+  page_id:
+    required: true
+    type: string
+    label: Page ID
+    description: Facebook Page id to post to
+  message:
+    required: true
+    type: string
+    label: Message
+    description: >
+      Plain-text (UTF-8) message body. Facebook Page feed posts do not render
+      HTML — markup is displayed literally.
+  access_token:
+    required: true
+    type: string
+    label: Page Access Token
+    description: Facebook Page access token (or use secrets.FACEBOOK_PAGE_TOKEN)
+  link:
+    default: ""
+    type: string
+    label: Link
+    description: Optional URL to attach to the post
+
+steps:
+  - id: post
+    action: http.post
+    with:
+      url: "https://graph.facebook.com/v20.0/${{ inputs.page_id }}/feed"
+      headers:
+        Authorization: "Bearer ${{ inputs.access_token }}"
+        Content-Type: application/json
+      body:
+        message: ${{ inputs.message }}
+        link: ${{ inputs.link }}
+      expect_status: [200]

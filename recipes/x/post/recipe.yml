@@ -1,0 +1,30 @@
+name: x-post
+description: Post a text update to X (Twitter) via the v2 API
+
+inputs:
+  text:
+    required: true
+    type: string
+    label: Text
+    description: >
+      Plain-text (UTF-8) post body. Standard accounts are limited to 280
+      characters; X Premium raises the cap to 25,000.
+  access_token:
+    required: true
+    type: string
+    label: Access Token
+    description: >
+      OAuth 2.0 user-context access token with the tweet.write scope (or use
+      secrets.X_ACCESS_TOKEN). App-only bearer tokens cannot create posts.
+
+steps:
+  - id: post
+    action: http.post
+    with:
+      url: "https://api.x.com/2/tweets"
+      headers:
+        Authorization: "Bearer ${{ inputs.access_token }}"
+        Content-Type: application/json
+      body:
+        text: ${{ inputs.text }}
+      expect_status: [201]
