@@ -49,7 +49,7 @@ definition:
 
     - id: add-to-list
       if: ${{ outputs.is_subscriber }}
-      includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+      includes: libatomic/passport-actions/recipes/cm/subscriber-add
       with:
         api_key: ${{ secrets.CM_API_KEY }}
         list_id: ${{ inputs.list_id }}

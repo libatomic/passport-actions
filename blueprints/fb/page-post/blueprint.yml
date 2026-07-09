@@ -44,7 +44,7 @@ definition:
         distribution_id: ${{ trigger.distribution_id }}
 
     - id: post
-      includes: libatomic/passport-actions/recipes/fb/page-post@v1
+      includes: libatomic/passport-actions/recipes/fb/page-post
       with:
         page_id: ${{ inputs.page_id }}
         message: ${{ steps.load.outputs.distribution.body }}

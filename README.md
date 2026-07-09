@@ -124,9 +124,9 @@ trigger.
 
 | Action | Description |
 |--------|-------------|
-| `libatomic/passport-actions/actions/twilio/webhook-validator@v1` | Validates Twilio X-Twilio-Signature (HMAC-SHA1) |
-| `libatomic/passport-actions/actions/stripe/webhook-validator@v1` | Validates Stripe-Signature (HMAC-SHA256 with timestamp tolerance) |
-| `libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1` | Creates a CloudFront cache invalidation |
+| `libatomic/passport-actions/actions/twilio/webhook-validator` | Validates Twilio X-Twilio-Signature (HMAC-SHA1) |
+| `libatomic/passport-actions/actions/stripe/webhook-validator` | Validates Stripe-Signature (HMAC-SHA256 with timestamp tolerance) |
+| `libatomic/passport-actions/actions/aws/cloudfront-invalidation` | Creates a CloudFront cache invalidation |
 
 #### Usage
 
@@ -134,7 +134,7 @@ trigger.
 on:
   - webhook: true
     name: twilio-inbound
-    validate: libatomic/passport-actions/actions/twilio/webhook-validator@v1
+    validate: libatomic/passport-actions/actions/twilio/webhook-validator
 ```
 
 The validator reads secrets from the workflow's secrets store:
@@ -148,14 +148,14 @@ Uses AWS Signature Version 4 — no SDK dependency.
 
 | Action | Description |
 |--------|-------------|
-| `libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1` | Create a cache invalidation for a distribution |
+| `libatomic/passport-actions/actions/aws/cloudfront-invalidation` | Create a cache invalidation for a distribution |
 
 #### Usage
 
 ```yaml
 steps:
   - id: invalidate
-    uses: libatomic/passport-actions/actions/aws/cloudfront-invalidation@v1
+    uses: libatomic/passport-actions/actions/aws/cloudfront-invalidation
     with:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -180,17 +180,17 @@ These use the built-in `http.*` actions — no node runtime overhead.
 
 | Recipe | Description |
 |--------|-------------|
-| `libatomic/passport-actions/recipes/cm/subscriber-add@v1` | Add a subscriber to a list |
-| `libatomic/passport-actions/recipes/cm/subscriber-get@v1` | Get subscriber details |
-| `libatomic/passport-actions/recipes/cm/subscriber-update@v1` | Update a subscriber |
-| `libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1` | Unsubscribe from a list |
+| `libatomic/passport-actions/recipes/cm/subscriber-add` | Add a subscriber to a list |
+| `libatomic/passport-actions/recipes/cm/subscriber-get` | Get subscriber details |
+| `libatomic/passport-actions/recipes/cm/subscriber-update` | Update a subscriber |
+| `libatomic/passport-actions/recipes/cm/subscriber-unsubscribe` | Unsubscribe from a list |
 
 #### Usage
 
 ```yaml
 steps:
   - id: add-to-cm
-    includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-add
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}
@@ -213,16 +213,16 @@ Bearer token auth — no node runtime overhead.
 
 | Recipe | Description |
 |--------|-------------|
-| `libatomic/passport-actions/recipes/stripe/customer-get@v1` | Retrieve a customer by ID |
-| `libatomic/passport-actions/recipes/stripe/customer-update@v1` | Update a customer |
-| `libatomic/passport-actions/recipes/stripe/subscription-get@v1` | Retrieve a subscription by ID |
+| `libatomic/passport-actions/recipes/stripe/customer-get` | Retrieve a customer by ID |
+| `libatomic/passport-actions/recipes/stripe/customer-update` | Update a customer |
+| `libatomic/passport-actions/recipes/stripe/subscription-get` | Retrieve a subscription by ID |
 
 #### Usage
 
 ```yaml
 steps:
   - id: customer
-    includes: libatomic/passport-actions/recipes/stripe/customer-get@v1
+    includes: libatomic/passport-actions/recipes/stripe/customer-get
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       customer_id: ${{ trigger.body.data.object.customer }}

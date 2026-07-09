@@ -1,4 +1,5 @@
 name: cm-subscriber-update
+version: "1.0"
 description: Update a subscriber on a Campaign Monitor list
 
 inputs:

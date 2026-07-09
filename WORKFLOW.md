@@ -195,7 +195,7 @@ steps:
       user_id: ${{ trigger.user_id }}
 
   - id: add-to-list              # a RECIPE — a pre-packaged set of steps
-    includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-add
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ inputs.list_id }}
@@ -207,12 +207,33 @@ steps:
 - **`includes:`** pulls in a **recipe** — a reusable mini-workflow (e.g. the Campaign
   Monitor recipes) so you don't rebuild the same steps every time.
 
-  **Versioning.** The `@ref` follows the GitHub Actions convention: `@v1` is a
-  **moving ref** (a branch — pushing to it updates every consumer within the
-  engine's refresh TTL, ~5 minutes; no tag ceremony per change), while `@v1.2.3`
-  or a full commit SHA is **pinned** and cached forever. Use `@v1` for
-  first-party recipes; pin exact versions when reproducibility matters more
-  than updates.
+  **Versioning is folder-based — the path IS the version.** This convention is
+  uniform across every workflow component: **recipes, actions, blueprints, and
+  schemas**.
+
+  - **The component root is v1 by default.** A reference has no `@ref`:
+    `libatomic/passport-actions/recipes/cm/subscriber-add` always fetches the
+    repo's **default branch**, so publishing (new or changed) is just a push to
+    master; consumers pick it up within ~5 minutes. No tags, no release
+    branches.
+  - **The definition carries the granular version.** `version: "1.2.3"` in
+    recipe.yml (semver: minor = additive, patch = fix). Compatible changes:
+    edit in place, bump `version:`, push. Done.
+  - **Breaking changes: add a `/v2/` folder.** The root path keeps working
+    as-is; the new contract is published at
+    `recipes/cm/subscriber-add/v2/recipe.yml` (declaring `version: "2.x.y"`)
+    and referenced as `…/recipes/cm/subscriber-add/v2`. The engine verifies the
+    folder's major matches the declared version. Existing workflows never
+    break; new ones opt into `/v2`. Actions
+    (`actions/stripe/webhook-validator/v2`) and blueprints
+    (`blueprints/fb/page-post/v2`) follow the same pattern.
+  - **Schemas major off the base directory**: `schemas/atomic/<event>.yaml` is
+    v1; a breaking major lives at `schemas/atomic/v2/<event>.yaml`. The
+    `@vX.Y.Z` suffix on a schema ref selects the major folder; minor/patch is
+    the `version:` field inside the schema document.
+  - Third-party repos that tag releases can still pin with `@v1.2.3` or a
+    commit SHA — pinned refs are cached forever. A git-tag/branch `@ref` also
+    still works if a repo has one.
 - **`with:`** are the values you hand the step. They can be fixed text or
   `${{ expressions }}` that pull in live data.
 
@@ -410,7 +431,7 @@ steps:
     steps:
       - id: add
         continue-on-error: true    # one failure won't stop the rest
-        includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+        includes: libatomic/passport-actions/recipes/cm/subscriber-add
         with:
           api_key: ${{ secrets.CM_API_KEY }}
           list_id: ${{ inputs.list_id }}
@@ -659,7 +680,7 @@ block to a step; each entry is computed after that step runs and becomes
 
 - id: add-to-list
   if: ${{ outputs.is_paid }}          # much easier to read than repeating the whole condition
-  includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+  includes: libatomic/passport-actions/recipes/cm/subscriber-add
   with: { ... }
 ```
 
@@ -719,7 +740,7 @@ steps:
   #    and the run still finishes successfully.
   - id: add-to-list
     if: ${{ outputs.is_subscriber }}
-    includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-add
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ inputs.list_id }}

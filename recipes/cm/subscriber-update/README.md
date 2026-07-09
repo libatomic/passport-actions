@@ -5,7 +5,7 @@ Updates an existing subscriber on a Campaign Monitor list. Can change the subscr
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/cm/subscriber-update@v1
+libatomic/passport-actions/recipes/cm/subscriber-update
 ```
 
 ## Inputs
@@ -26,7 +26,7 @@ libatomic/passport-actions/recipes/cm/subscriber-update@v1
 ```yaml
 steps:
   - id: update-cm
-    includes: libatomic/passport-actions/recipes/cm/subscriber-update@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-update
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}
@@ -39,7 +39,7 @@ steps:
 ```yaml
 steps:
   - id: update-email
-    includes: libatomic/passport-actions/recipes/cm/subscriber-update@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-update
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}

@@ -5,7 +5,7 @@ Unsubscribes a subscriber from a Campaign Monitor list by email address. The sub
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
+libatomic/passport-actions/recipes/cm/subscriber-unsubscribe
 ```
 
 ## Inputs
@@ -21,7 +21,7 @@ libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
 ```yaml
 steps:
   - id: unsub
-    includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}

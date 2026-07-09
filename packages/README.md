@@ -39,6 +39,9 @@ blueprints:
 
 - Blueprints referenced by a package live under a vendor directory
   (`blueprints/<vendor>/…`) and remain individually installable.
+- Blueprint paths follow the folder-major convention: the blueprint root is v1;
+  a breaking revision lives in a version folder and is referenced as e.g.
+  `fb/page-post/v2`.
 - List shared prerequisites (secrets like `CM_API_KEY`, http allowlist hosts)
   in the package description — the installer surfaces it before installing.
 - A package install must be non-destructive: it only creates workflows, never

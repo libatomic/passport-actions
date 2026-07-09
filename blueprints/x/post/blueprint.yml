@@ -34,7 +34,7 @@ definition:
         distribution_id: ${{ trigger.distribution_id }}
 
     - id: post
-      includes: libatomic/passport-actions/recipes/x/post@v1
+      includes: libatomic/passport-actions/recipes/x/post
       with:
         text: ${{ steps.load.outputs.distribution.body }}
         access_token: ${{ secrets.X_ACCESS_TOKEN }}

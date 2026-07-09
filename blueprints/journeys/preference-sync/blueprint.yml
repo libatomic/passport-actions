@@ -36,7 +36,7 @@ definition:
         user_id: ${{ trigger.user_id }}
 
     - id: unsubscribe
-      includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe@v1
+      includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe
       with:
         api_key: ${{ secrets.CM_API_KEY }}
         list_id: ${{ inputs.list_id }}

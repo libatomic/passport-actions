@@ -5,7 +5,7 @@ Updates a Stripe customer using the [Update a Customer](https://docs.stripe.com/
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/stripe/customer-update@v1
+libatomic/passport-actions/recipes/stripe/customer-update
 ```
 
 ## Inputs
@@ -26,7 +26,7 @@ Only non-empty fields are sent to Stripe. Pass only the fields you want to chang
 ```yaml
 steps:
   - id: update-stripe
-    includes: libatomic/passport-actions/recipes/stripe/customer-update@v1
+    includes: libatomic/passport-actions/recipes/stripe/customer-update
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       customer_id: ${{ user.metadata.stripe_customer_id }}
@@ -53,7 +53,7 @@ steps:
     if: ${{ user.metadata.stripe_customer_id != "" }}
     then:
       - id: update-customer
-        includes: libatomic/passport-actions/recipes/stripe/customer-update@v1
+        includes: libatomic/passport-actions/recipes/stripe/customer-update
         with:
           api_key: ${{ secrets.STRIPE_SECRET_KEY }}
           customer_id: ${{ user.metadata.stripe_customer_id }}

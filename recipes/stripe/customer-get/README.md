@@ -5,7 +5,7 @@ Retrieves a Stripe customer by ID using the [Retrieve a Customer](https://docs.s
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/stripe/customer-get@v1
+libatomic/passport-actions/recipes/stripe/customer-get
 ```
 
 ## Inputs
@@ -32,7 +32,7 @@ The step outputs are available at `steps.<id>.outputs.get.outputs.*` and contain
 ```yaml
 steps:
   - id: customer
-    includes: libatomic/passport-actions/recipes/stripe/customer-get@v1
+    includes: libatomic/passport-actions/recipes/stripe/customer-get
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       customer_id: ${{ trigger.body.data.object.customer }}
@@ -48,7 +48,7 @@ steps:
 ```yaml
 steps:
   - id: customer
-    includes: libatomic/passport-actions/recipes/stripe/customer-get@v1
+    includes: libatomic/passport-actions/recipes/stripe/customer-get
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       customer_id: ${{ user.metadata.stripe_customer_id }}

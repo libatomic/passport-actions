@@ -5,7 +5,7 @@ Retrieves a subscriber's details from a Campaign Monitor list by email address.
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/cm/subscriber-get@v1
+libatomic/passport-actions/recipes/cm/subscriber-get
 ```
 
 ## Inputs
@@ -32,7 +32,7 @@ The step outputs are available at `steps.<id>.outputs.get.outputs.*` and contain
 ```yaml
 steps:
   - id: lookup
-    includes: libatomic/passport-actions/recipes/cm/subscriber-get@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-get
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}

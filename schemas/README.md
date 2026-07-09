@@ -121,31 +121,30 @@ on:
 **Breaking changes** bump the major version. Additive changes (new optional fields)
 bump the minor version. Documentation-only changes bump the patch.
 
-### File naming
+### File layout — folder-based majors
 
-The default file (`<name>.yaml`) is always v1.0.x. No versioned filename is needed
-until the schema evolves past v1.0:
+Majors are **version folders**, the same convention as recipes, actions, and
+blueprints: the base directory IS v1, and each breaking major gets a `vN/`
+folder alongside it. Minor/patch changes edit the file in place and bump its
+`version:` field — no new files.
 
 ```
-oauth/openid/
-  profile.yaml           # v1.0.0 (default — always v1)
-  profile@v1.1.yaml      # v1.1.0 (added optional fields)
-  profile@v2.yaml        # v2.0.0 (breaking change)
-  profile@v2.1.yaml      # v2.1.0
+atomic/
+  application.audience.refresh.yaml       # v1.x.y (base — always major 1)
+  v2/
+    application.audience.refresh.yaml     # v2.x.y (breaking change)
 ```
 
-The resolver maps a ref to a filename:
+The resolver maps a ref's major to the folder:
 
-| Ref version | File tried first | Fallback |
+| Ref version | File resolved | Fallback |
 |---|---|---|
-| `@v1.0.0` or unversioned | `profile.yaml` | — |
-| `@v1.1.0` | `profile@v1.1.yaml` | `profile.yaml` |
-| `@v2.0.0` | `profile@v2.yaml` | `profile.yaml` |
-| `@v2.1.0` | `profile@v2.1.yaml` | `profile.yaml` |
+| `@v1.x.y` or unversioned | `atomic/<name>.yaml` | — |
+| `@v2.x.y` | `atomic/v2/<name>.yaml` | `atomic/<name>.yaml` |
 
-The fallback ensures refs resolve even before versioned files are created. The
-`version` field inside the file is still validated — a mismatch produces a console
-warning.
+The fallback ensures refs resolve even before a major folder exists. The
+`version` field inside the file is still validated — a mismatch produces a
+console warning.
 
 ## Nested `$ref` References
 

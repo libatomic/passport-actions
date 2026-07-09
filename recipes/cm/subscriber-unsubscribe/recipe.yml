@@ -1,4 +1,5 @@
 name: cm-subscriber-unsubscribe
+version: "1.0"
 description: Unsubscribe a subscriber from a Campaign Monitor list
 
 inputs:

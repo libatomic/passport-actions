@@ -5,7 +5,7 @@ Posts a plain-text message to a Facebook Page feed via the Graph API.
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/fb/page-post@v1
+libatomic/passport-actions/recipes/fb/page-post
 ```
 
 ## Inputs
@@ -33,7 +33,7 @@ contain the Graph API response (`id` of the created post on success).
 ```yaml
 steps:
   - id: post
-    includes: libatomic/passport-actions/recipes/fb/page-post@v1
+    includes: libatomic/passport-actions/recipes/fb/page-post
     with:
       page_id: ${{ inputs.page_id }}
       message: ${{ steps.load.outputs.distribution.body }}

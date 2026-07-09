@@ -1,4 +1,5 @@
 name: fb-page-post
+version: "1.0"
 description: Post a plain-text message to a Facebook Page feed
 
 inputs:

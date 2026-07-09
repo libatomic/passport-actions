@@ -1,4 +1,5 @@
 name: cm-subscriber-get
+version: "1.0"
 description: Get a subscriber's details from a Campaign Monitor list
 
 inputs:

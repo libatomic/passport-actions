@@ -5,7 +5,7 @@ Retrieves a Stripe subscription by ID using the [Retrieve a Subscription](https:
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/stripe/subscription-get@v1
+libatomic/passport-actions/recipes/stripe/subscription-get
 ```
 
 ## Inputs
@@ -32,7 +32,7 @@ The step outputs are available at `steps.<id>.outputs.get.outputs.*` and contain
 ```yaml
 steps:
   - id: sub
-    includes: libatomic/passport-actions/recipes/stripe/subscription-get@v1
+    includes: libatomic/passport-actions/recipes/stripe/subscription-get
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       subscription_id: ${{ trigger.body.data.object.id }}
@@ -52,11 +52,11 @@ version: 1
 on:
   - webhook: true
     name: stripe
-    validate: libatomic/passport-actions/actions/stripe/webhook-validator@v1
+    validate: libatomic/passport-actions/actions/stripe/webhook-validator
 
 steps:
   - id: sub
-    includes: libatomic/passport-actions/recipes/stripe/subscription-get@v1
+    includes: libatomic/passport-actions/recipes/stripe/subscription-get
     with:
       api_key: ${{ secrets.STRIPE_SECRET_KEY }}
       subscription_id: ${{ trigger.body.data.object.id }}

@@ -1,4 +1,5 @@
 name: x-post
+version: "1.0"
 description: Post a text update to X (Twitter) via the v2 API
 
 inputs:

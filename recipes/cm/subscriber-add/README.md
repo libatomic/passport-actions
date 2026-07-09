@@ -5,7 +5,7 @@ Adds a subscriber to a Campaign Monitor list. If the subscriber already exists a
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/cm/subscriber-add@v1
+libatomic/passport-actions/recipes/cm/subscriber-add
 ```
 
 ## Inputs
@@ -29,7 +29,7 @@ The step outputs are available at `steps.<id>.outputs.add.outputs.*` and contain
 ```yaml
 steps:
   - id: subscribe
-    includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+    includes: libatomic/passport-actions/recipes/cm/subscriber-add
     with:
       api_key: ${{ secrets.CM_API_KEY }}
       list_id: ${{ secrets.CM_LIST_ID }}
@@ -52,7 +52,7 @@ steps:
     as: member
     steps:
       - id: add
-        includes: libatomic/passport-actions/recipes/cm/subscriber-add@v1
+        includes: libatomic/passport-actions/recipes/cm/subscriber-add
         continue-on-error: true
         with:
           api_key: ${{ secrets.CM_API_KEY }}

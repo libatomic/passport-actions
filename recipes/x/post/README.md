@@ -5,7 +5,7 @@ Creates a post on X via the v2 API (`POST /2/tweets`).
 ## Reference
 
 ```
-libatomic/passport-actions/recipes/x/post@v1
+libatomic/passport-actions/recipes/x/post
 ```
 
 ## Inputs
@@ -37,7 +37,7 @@ contain the API response (`data.id` and `data.text` on success).
 ```yaml
 steps:
   - id: post
-    includes: libatomic/passport-actions/recipes/x/post@v1
+    includes: libatomic/passport-actions/recipes/x/post
     with:
       text: ${{ steps.load.outputs.distribution.body }}
       access_token: ${{ secrets.X_ACCESS_TOKEN }}
