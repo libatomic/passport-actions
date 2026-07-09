@@ -10,6 +10,7 @@ inputs:
       Plain-text (UTF-8) post body. Standard accounts are limited to 280
       characters; X Premium raises the cap to 25,000.
   access_token:
+    secret: true
     required: true
     type: string
     label: Access Token

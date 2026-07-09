@@ -3,6 +3,7 @@ description: Update a subscriber on a Campaign Monitor list
 
 inputs:
   api_key:
+    secret: true
     required: true
     type: string
     label: API Key
@@ -58,7 +59,7 @@ steps:
         Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
         Content-Type: application/json
       body:
-        EmailAddress: ${{ inputs.new_email != "" ? inputs.new_email : inputs.email }}
+        EmailAddress: '${{ inputs.new_email != "" ? inputs.new_email : inputs.email }}'
         Name: ${{ inputs.name }}
         Resubscribe: ${{ inputs.resubscribe == "true" }}
         ConsentToTrack: ${{ inputs.consent_to_track }}

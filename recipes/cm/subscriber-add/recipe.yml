@@ -3,6 +3,7 @@ description: Add a subscriber to a Campaign Monitor list
 
 inputs:
   api_key:
+    secret: true
     required: true
     type: string
     label: API Key

@@ -3,6 +3,7 @@ description: Update a Stripe customer
 
 inputs:
   api_key:
+    secret: true
     required: true
     type: string
     label: API Key

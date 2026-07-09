@@ -15,6 +15,7 @@ inputs:
       Plain-text (UTF-8) message body. Facebook Page feed posts do not render
       HTML — markup is displayed literally.
   access_token:
+    secret: true
     required: true
     type: string
     label: Page Access Token

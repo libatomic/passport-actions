@@ -3,6 +3,7 @@ description: Retrieve a Stripe subscription by ID
 
 inputs:
   api_key:
+    secret: true
     required: true
     type: string
     label: API Key
@@ -23,7 +24,7 @@ steps:
     action: http.get
     with:
       url: "https://api.stripe.com/v1/subscriptions/${{ inputs.subscription_id }}"
-      query: ${{ inputs.expand != "" ? { "expand[]": inputs.expand } : {} }}
+      query: '${{ inputs.expand != "" ? { "expand[]": inputs.expand } : {} }}'
       headers:
         Authorization: "Bearer ${{ inputs.api_key }}"
         Accept: application/json
