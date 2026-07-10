@@ -317,6 +317,92 @@ Load a distribution by ID, or the latest published one (optionally filtered by c
 |---|---|
 | `distribution` | The distribution object |
 
+### `distribution.create`
+Create a distribution — publish an article to a channel, or seed a custom-channel distribution from workflow data.
+
+| Input | Required | Description |
+|---|---|---|
+| `channel` | yes | Distribution channel (`email`, `rss`, `podcast`, or a custom channel name) |
+| `audience_id` | for built-in channels | Target audience |
+| `title` | no | Distribution title |
+| `body` | unless `article_id` | Content body |
+| `article_id` | no | Publish an existing article instead of an inline body |
+| `template_id` | no | Template to render with |
+| `asset_id` | no | Asset (e.g. podcast enclosure) |
+| `summary` | no | Summary |
+| `description` | no | Description |
+| `language` | no | Language |
+| `status` | no | `pending` or `scheduled` |
+| `scheduled_at` | no | Publish time (RFC3339); required by the queue when `status: scheduled` |
+| `settings` | no | Channel-specific settings object, e.g. `{ "channel": "email", "subject": "…" }` |
+| `context` | no | Arbitrary context metadata |
+
+| Output | Description |
+|---|---|
+| `distribution` | The created distribution |
+| `id` | The distribution ID |
+
+### `distribution.update`
+Update an existing distribution — retitle, reschedule, change status, or soft-delete.
+
+| Input | Required | Description |
+|---|---|---|
+| `distribution_id` | yes | Distribution to update |
+| `title` / `body` / `summary` / `description` / `language` | no | Fields to change |
+| `audience_id` / `template_id` / `asset_id` / `article_id` | no | Re-target the distribution |
+| `status` | no | `pending` or `scheduled` |
+| `scheduled_at` | no | New publish time (RFC3339) |
+| `settings` | no | Channel-specific settings object |
+| `context` | no | Context metadata |
+| `deleted` | no | `true` to soft-delete the distribution |
+
+| Output | Description |
+|---|---|
+| `distribution` | The updated distribution |
+| `id` | The distribution ID |
+
+### `asset.create`
+Create an asset — import from a URL (fetched server-side) or store an inline payload string (e.g. generated text/JSON).
+
+| Input | Required | Description |
+|---|---|---|
+| `filename` | no | Asset filename |
+| `mime_type` | no | e.g. `image/png`, `audio/mpeg`, `application/json` |
+| `url` | one of `url`/`payload` | Import the asset from this URL |
+| `payload` | one of `url`/`payload` | Store this string as the asset body |
+| `public` | no | Make the asset publicly accessible |
+| `description` | no | Description |
+| `type` | no | Asset type |
+| `size` | no | Size in bytes (auto-computed for inline `payload`) |
+| `content_duration` | no | For audio/video assets |
+| `categories` | no | List of category IDs |
+| `expires_at` | no | Expiry (RFC3339) |
+| `local` | no | Store in the database instead of object storage |
+| `metadata` | no | Arbitrary metadata |
+
+| Output | Description |
+|---|---|
+| `asset` | The created asset |
+| `id` | The asset ID |
+
+### `asset.update`
+Update an asset's metadata (description, filename, visibility, expiry, categories).
+
+| Input | Required | Description |
+|---|---|---|
+| `asset_id` | yes | Asset to update |
+| `description` / `filename` / `mime_type` / `type` / `url` | no | Fields to change |
+| `public` | no | Toggle public access |
+| `size` | no | Size in bytes |
+| `categories` | no | List of category IDs |
+| `expires_at` | no | Expiry (RFC3339) |
+| `metadata` | no | Arbitrary metadata |
+
+| Output | Description |
+|---|---|
+| `asset` | The updated asset |
+| `id` | The asset ID |
+
 ## Utility & Flow Control
 
 ### `log`
