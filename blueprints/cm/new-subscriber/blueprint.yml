@@ -36,13 +36,13 @@ definition:
 
   steps:
     # Load the full subscription so we have the plan id, interval and end date, and
-    # can confirm this is a paid, plan-backed subscription. The status.active event body
-    # carries the subscription id as `subscription`. The `outputs:` block names that
-    # condition once so later steps can reuse it as ${{ outputs.is_subscriber }}.
+    # can confirm this is a paid, plan-backed subscription. Subscription events carry
+    # the id as trigger.body.subscription_id. The `outputs:` block names that condition
+    # once so later steps can reuse it as ${{ outputs.is_subscriber }}.
     - id: load-subscription
       action: subscription.get
       with:
-        subscription_id: ${{ trigger.body.subscription }}
+        subscription_id: ${{ trigger.body.subscription_id }}
       outputs:
         is_subscriber: ${{ !empty(steps.load-subscription.outputs.subscription.plan_id) && !empty(steps.load-subscription.outputs.subscription.price_id) }}
 

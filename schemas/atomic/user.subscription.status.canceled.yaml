@@ -8,7 +8,7 @@ description: >
 type: object
 required:
   - status
-  - subscription
+  - subscription_id
 properties:
   prev_status:
     type: string
@@ -16,7 +16,7 @@ properties:
   status:
     type: string
     description: New subscription status
-  subscription:
+  subscription_id:
     type: string
     format: uuid
     description: Subscription ID

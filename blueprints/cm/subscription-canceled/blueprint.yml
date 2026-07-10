@@ -37,7 +37,7 @@ definition:
     - id: load-subscription
       action: subscription.get
       with:
-        subscription_id: ${{ trigger.body.subscription }}
+        subscription_id: ${{ trigger.body.subscription_id }}
 
     - id: load-user
       action: user.get
