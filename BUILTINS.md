@@ -8,8 +8,8 @@ Built-in **actions** and **expression functions** available to workflows.
 - **[Builtin Actions](#builtin-actions)** — steps you invoke with `action:`, with their inputs and outputs
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
-  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush)
-  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate)
+  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
   - [Strings](#strings) · [Math](#math) · [Collections](#collections) · [Encoding](#encoding) · [Type Conversion](#type-conversion) · [Logic](#logic) · [Date/Time](#datetime) · [URL](#url) · [Instance](#instance)
@@ -223,6 +223,50 @@ Flushes the instance cache.
 |---|---|
 | `flushed` | The prefix flushed (or `"all"`) |
 
+### `transmute`
+Atomicize HTML — inline CSS, resolve images, etc. — via headless Chrome. The same engine `template.render` uses with `transmute: true`, exposed as a standalone step for HTML you assemble in a workflow.
+
+| Input | Required | Description |
+|---|---|---|
+| `body` | yes | The HTML to transmute |
+| `body_only` | no | Transmute only the body fragment (no full document) |
+| `no_inline` | no | Skip inlining CSS |
+| `timeout` | no | Go duration, e.g. `30s` |
+
+| Output | Description |
+|---|---|
+| `html` | The transmuted HTML |
+
+### `job.get`
+Load a background job by ID (or dedupe hash) to inspect its status/state.
+
+| Input | Required | Description |
+|---|---|---|
+| `job_id` | one of `job_id`/`hash` | Job ID |
+| `hash` | one of `job_id`/`hash` | Dedupe hash |
+
+| Output | Description |
+|---|---|
+| `job` | The job object |
+| `id` | The job ID |
+
+### `job.create`
+Enqueue a background job of the given type.
+
+| Input | Required | Description |
+|---|---|---|
+| `type` | yes | Job type |
+| `params` | no | Job-type-specific parameters (object) |
+| `group_id` | no | Group the job under an id |
+| `scheduled_at` | no | Run time (RFC3339) |
+| `dedupe_window` | no | Suppress duplicates within this window (Go duration, e.g. `10m`) |
+| `interval` | no | Recurring interval (Go duration) |
+
+| Output | Description |
+|---|---|
+| `job` | The created job |
+| `id` | The job ID |
+
 ## Commerce & Content
 
 ### `plan.get`
@@ -412,6 +456,94 @@ Update an asset's metadata (description, filename, visibility, expiry, categorie
 |---|---|
 | `asset` | The updated asset |
 | `id` | The asset ID |
+
+### `asset.get`
+Load an asset by ID (or filename), optionally resolving a public URL.
+
+| Input | Required | Description |
+|---|---|---|
+| `asset_id` | one of `asset_id`/`filename` | Asset ID |
+| `filename` | one of `asset_id`/`filename` | Look up by filename |
+| `link` | no | Populate a resolvable public URL on the asset |
+
+| Output | Description |
+|---|---|
+| `asset` | The asset object |
+| `id` | The asset ID |
+
+### `article.get`
+Load an article by ID.
+
+| Input | Required | Description |
+|---|---|---|
+| `article_id` | yes | Article ID |
+
+| Output | Description |
+|---|---|
+| `article` | The article object |
+| `id` | The article ID |
+
+### `entitlement.get`
+Load an entitlement by ID, by `subscription_id`, or by `user_id` + `plan_id` (most recent).
+
+| Input | Required | Description |
+|---|---|---|
+| `entitlement_id` | one selector | Entitlement ID |
+| `subscription_id` | one selector | The subscription's entitlement |
+| `user_id` + `plan_id` | one selector | The user's entitlement to a plan |
+
+| Output | Description |
+|---|---|
+| `entitlement` | The entitlement object |
+| `id` | The entitlement ID |
+
+### `entitlement.create`
+Grant an entitlement, typically tied to a user + plan, or a subscription.
+
+| Input | Required | Description |
+|---|---|---|
+| `user_id` | no | Entitled user |
+| `plan_id` / `price_id` | no | Plan/price the entitlement grants |
+| `subscription_id` | no | Backing subscription |
+| `application_id` | no | Owning application |
+| `stripe_invoice` | no | Associated Stripe invoice |
+| `expires_at` | no | Expiry (RFC3339) |
+| `categories` | no | Entitlement categories |
+| `metadata` | no | Arbitrary metadata |
+
+| Output | Description |
+|---|---|
+| `entitlement` | The created entitlement |
+| `id` | The entitlement ID |
+
+### `entitlement.update`
+Update an entitlement — activate/deactivate, change expiry, categories, or metadata.
+
+| Input | Required | Description |
+|---|---|---|
+| `entitlement_id` | yes | Entitlement to update |
+| `active` | no | Activate/deactivate |
+| `expires_at` | no | Expiry (RFC3339) |
+| `categories` | no | Entitlement categories |
+| `metadata` | no | Arbitrary metadata |
+
+| Output | Description |
+|---|---|
+| `entitlement` | The updated entitlement |
+| `id` | The entitlement ID |
+
+### `entitlement.delete`
+Revoke an entitlement.
+
+| Input | Required | Description |
+|---|---|---|
+| `entitlement_id` | yes | Entitlement to delete |
+| `force` | no | Remove even a paid entitlement (normally protected) |
+
+| Output | Description |
+|---|---|
+| `deleted` | `true` on success |
+| `id` | The entitlement ID |
 
 ## Utility & Flow Control
 
