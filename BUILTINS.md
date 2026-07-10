@@ -2,8 +2,18 @@
 
 Built-in **actions** and **expression functions** available to workflows.
 
-- [Builtin Actions](#builtin-actions) — steps you invoke with `action:` (e.g. `sendmail`, `user.get`), with their inputs and outputs.
-- [Expression Functions](#expression-functions) — helpers for `${{ }}` expression blocks (strings, math, etc.).
+## Contents
+
+- [Context Variables](#context-variables) · [Schema Definitions](#schema-definitions)
+- **[Builtin Actions](#builtin-actions)** — steps you invoke with `action:`, with their inputs and outputs
+  - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
+  - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
+  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate)
+  - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`wait`](#wait)
+- **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
+  - [Strings](#strings) · [Math](#math) · [Collections](#collections) · [Encoding](#encoding) · [Type Conversion](#type-conversion) · [Logic](#logic) · [Date/Time](#datetime) · [URL](#url) · [Instance](#instance)
+  - [Common Patterns](#common-patterns)
 
 Built-in functions available in workflow expressions. Use these in any `${{ }}` expression block — conditions, switch expressions, and input values.
 
