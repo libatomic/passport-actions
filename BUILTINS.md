@@ -8,8 +8,8 @@ Built-in **actions** and **expression functions** available to workflows.
 - **[Builtin Actions](#builtin-actions)** — steps you invoke with `action:`, with their inputs and outputs
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
-  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
   - [Strings](#strings) · [Math](#math) · [Collections](#collections) · [Encoding](#encoding) · [Type Conversion](#type-conversion) · [Logic](#logic) · [Date/Time](#datetime) · [URL](#url) · [Instance](#instance)
@@ -195,6 +195,24 @@ Returns an audience's members, suitable for a `foreach` loop. Streams every page
 | `count` | Number of members returned |
 | `truncated` | `true` if capped by `max` |
 
+### `audience.get`
+Load an audience and the content categories it gates on. Use this when you need the audience's *definition* rather than its members — most often to tell a third-party platform who may access content (e.g. Spotify Open Access entitlements).
+
+| Input | Required | Description |
+|---|---|---|
+| `audience_id` | one required | Audience by ID |
+| `audience` | one required | Audience by name |
+
+| Output | Description |
+|---|---|
+| `audience` | The audience object |
+| `id` | The audience ID |
+| `categories` | Resolved categories — array of `{id, name, slug}` |
+| `category_slugs` | Category slugs — the array platforms use for entitlements |
+| `category_ids` | Category IDs |
+
+An audience that doesn't filter on categories returns empty arrays (i.e. ungated).
+
 ### `template.render`
 Renders a template (by id or name) or a raw body against a context, returning the result as a string.
 
@@ -370,6 +388,19 @@ Load a distribution by ID, or the latest published one (optionally filtered by c
 | Output | Description |
 |---|---|
 | `distribution` | The distribution object |
+
+### `distribution.render`
+Render a distribution's template into its final title and body — the same rendering the built-in channels do at publish time. Use this in a distribution-channel workflow so you hand finished content to the destination instead of re-implementing templating.
+
+| Input | Required | Description |
+|---|---|---|
+| `distribution_id` | yes | Usually `${{ trigger.distribution_id }}` |
+| `user_id` | no | Personalize the render for a recipient (unicast runs — `${{ trigger.user_id }}`) |
+
+| Output | Description |
+|---|---|
+| `title` | The rendered title |
+| `body` | The rendered body |
 
 ### `distribution.create`
 Create a distribution — publish an article to a channel, or seed a custom-channel distribution from workflow data.

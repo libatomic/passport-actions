@@ -173,15 +173,25 @@ Saving the workflow **registers the channel**: it then appears in an article's
 
 - **broadcast** — runs **once** with `trigger.distribution_id` and `trigger.channel`.
 - **unicast** — runs **once per audience member**, additionally with `trigger.user_id`
-  (fanned out through the same queue that powers email/sms). Unicast requires an
-  audience; broadcast does not.
+  (fanned out through the same queue that powers email/sms). Unicast always requires an
+  audience; broadcast only when the channel sets `requires_audience: true` — useful when
+  the destination gates access by the audience's categories rather than delivering per
+  member (see **spotify/create-episode**).
+
+**Base type.** A channel may declare `base_type: podcast | rss | email | sms` to say it
+is *shaped like* a built-in channel. It's a hint, not a behavior switch — your workflow
+still does the publishing — but the Add Distribution editor then reuses that channel's
+form instead of the generic body box. A podcast-shaped channel, for example, collects a
+title, summary and a media (audio/video) file, and the enclosure arrives on the
+distribution as `asset_id`; resolve it to a public URL with `asset.get` (`link: true`).
 
 Like the built-in channels, the Add Distribution editor asks for a template; the
 workflow receives its id on the distribution. The workflow calls
 `distribution.get` to load the content (`template_id`, `body`, `title`, …) and
-either renders the template (`template.render`) or uses the body directly. See
-the **fb/page-post** and **x/post** blueprints (built on the `fb/page-post` and
-`x/post` recipes) for complete examples.
+then either `distribution.render` (renders the distribution's template exactly as the
+built-in channels do, returning `title` + `body`), `template.render`, or the raw body.
+See the **fb/page-post** and **x/post** blueprints for simple text channels, and
+**spotify/create-episode** for a podcast-shaped, audience-gated one.
 
 ---
 

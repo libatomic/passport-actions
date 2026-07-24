@@ -1,0 +1,125 @@
+name: spotify-update-episode
+version: "1.0"
+description: Update an existing Spotify episode via the SOA Video Distribution API
+
+inputs:
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  episode_id:
+    required: true
+    type: string
+    label: Episode ID
+    description: >
+      Spotify episode id — the base-62 id at the end of the episode URI
+      (spotify:episode:<id>).
+  media_file_url:
+    default: ""
+    type: string
+    label: Media File URL
+    description: >
+      New media URL. This is the field to set when backfilling an existing
+      audio episode with its video version (MP4/MOV).
+  title:
+    default: ""
+    type: string
+    label: Title
+  pubdate:
+    default: ""
+    type: string
+    label: Publish Date
+    description: ISO8601 (e.g. 2026-06-01T14:54:02.690Z).
+  summary:
+    default: ""
+    type: string
+    label: Summary
+  link:
+    default: ""
+    type: string
+    label: Link
+  image_file_url:
+    default: ""
+    type: string
+    label: Episode Art URL
+  explicit:
+    default: ""
+    type: string
+    label: Explicit
+    enum:
+      - ""
+      - "no"
+      - "yes"
+      - clean
+  content_rating:
+    default: ""
+    type: string
+    label: Content Rating
+    enum:
+      - ""
+      - unspecified
+      - eighteen_plus
+  episode_type:
+    default: ""
+    type: string
+    label: Episode Type
+    enum:
+      - ""
+      - full
+      - bonus
+      - trailer
+  episode_number:
+    default: ""
+    type: string
+    label: Episode Number
+  season_number:
+    default: ""
+    type: string
+    label: Season Number
+  entitlements:
+    default: []
+    type: list
+    label: Entitlements
+    description: Spotify Open Access entitlement identifiers (category slugs).
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # Send only the attributes you want to change — Spotify treats the update as
+  # a partial write, so empty inputs are simply omitted by the engine.
+  - id: episode
+    action: http.put
+    with:
+      url: "https://distribution.spotify.com/episodes/${{ inputs.episode_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+      body:
+        title: ${{ inputs.title }}
+        pubdate: ${{ inputs.pubdate }}
+        media_file_url: ${{ inputs.media_file_url }}
+        summary: ${{ inputs.summary }}
+        link: ${{ inputs.link }}
+        image_file_url: ${{ inputs.image_file_url }}
+        explicit: ${{ inputs.explicit }}
+        content_rating: ${{ inputs.content_rating }}
+        episode_type: ${{ inputs.episode_type }}
+        episode_number: ${{ inputs.episode_number }}
+        season_number: ${{ inputs.season_number }}
+        entitlements: ${{ inputs.entitlements }}
+      expect_status: [200]

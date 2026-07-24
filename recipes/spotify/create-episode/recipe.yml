@@ -1,0 +1,145 @@
+name: spotify-create-episode
+version: "1.0"
+description: Publish an episode to a Spotify show via the SOA Video Distribution API
+
+inputs:
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: >
+      Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+      Used with the client id for the client-credentials token exchange.
+  show_id:
+    required: true
+    type: string
+    label: Show ID
+    description: >
+      Spotify show id — the base-62 id at the end of the show URI
+      (spotify:show:<id>), not the full URI.
+  title:
+    required: true
+    type: string
+    label: Title
+    description: Episode name.
+  pubdate:
+    required: true
+    type: string
+    label: Publish Date
+    description: Publication date/time in ISO8601 (e.g. 2026-06-01T14:54:02.690Z).
+  media_file_url:
+    required: true
+    type: string
+    label: Media File URL
+    description: >
+      Public URL to the episode media. MP3, M4A, MP4 or MOV; MP4/MOV are
+      published as video. Must be reachable by Spotify.
+  content_rating:
+    required: true
+    default: unspecified
+    type: string
+    label: Content Rating
+    description: >
+      Whether the video is intended for 18+ audiences. Only meaningful for
+      video episodes.
+    enum:
+      - unspecified
+      - eighteen_plus
+  explicit:
+    default: "no"
+    type: string
+    label: Explicit
+    description: Whether the episode contains explicit content.
+    enum:
+      - "no"
+      - "yes"
+      - clean
+  summary:
+    default: ""
+    type: string
+    label: Summary
+    description: Episode summary — plain text or HTML.
+  guid:
+    default: ""
+    type: string
+    label: GUID
+    description: >
+      Unique identifier for the episode. Spotify requires one; pass a stable
+      value (e.g. the distribution id) so re-publishes map to the same episode.
+  link:
+    default: ""
+    type: string
+    label: Link
+    description: Link to the episode's webpage.
+  image_file_url:
+    default: ""
+    type: string
+    label: Episode Art URL
+    description: Episode artwork. Recommended 3000x3000 JPEG/PNG, 72dpi, RGB.
+  episode_type:
+    default: full
+    type: string
+    label: Episode Type
+    enum:
+      - full
+      - bonus
+      - trailer
+  episode_number:
+    default: ""
+    type: string
+    label: Episode Number
+    description: Optional. Leave empty to let Spotify order by publish date.
+  season_number:
+    default: ""
+    type: string
+    label: Season Number
+    description: Optional.
+  entitlements:
+    default: []
+    type: list
+    label: Entitlements
+    description: >
+      Spotify Open Access entitlement identifiers gating this episode — the
+      audience's category slugs. Empty publishes an ungated episode.
+
+steps:
+  # Client-credentials token exchange. Spotify's token endpoint takes Basic auth
+  # (client id + secret) and a form-encoded grant_type.
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  - id: episode
+    action: http.post
+    with:
+      url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}/episodes"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+      body:
+        title: ${{ inputs.title }}
+        pubdate: ${{ inputs.pubdate }}
+        media_file_url: ${{ inputs.media_file_url }}
+        summary: ${{ inputs.summary }}
+        guid: ${{ inputs.guid }}
+        link: ${{ inputs.link }}
+        image_file_url: ${{ inputs.image_file_url }}
+        explicit: ${{ inputs.explicit }}
+        content_rating: ${{ inputs.content_rating }}
+        episode_type: ${{ inputs.episode_type }}
+        episode_number: ${{ inputs.episode_number }}
+        season_number: ${{ inputs.season_number }}
+        entitlements: ${{ inputs.entitlements }}
+      expect_status: [200, 201]

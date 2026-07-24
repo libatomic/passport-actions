@@ -1,0 +1,129 @@
+name: Spotify Episode (Distribution)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+description: |
+  Defines a custom "spotify" distribution channel that publishes episodes to a
+  Spotify show via the SOA Video Distribution API. Once saved, "spotify" appears
+  in an article's Add Distribution menu.
+
+  The channel declares base_type: podcast, so the Add Distribution editor is the
+  familiar podcast form — title, summary and a media (audio/video) file picker —
+  rather than a plain body box. The workflow renders the distribution's template
+  for the episode summary, resolves the enclosure asset to a public URL, and
+  posts the episode.
+
+  AUDIENCE: this is a broadcast channel (published once), but it still requires
+  an audience. Spotify Open Access gates playback by "entitlements", and this
+  workflow passes the audience's category slugs as those entitlements — the
+  audience decides who can play the episode, not who receives it. An audience
+  with no category filter publishes an ungated episode.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret, plus client id and show id inputs.
+  accounts.spotify.com and distribution.spotify.com must be on the instance's
+  HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+  spotify_show_id:
+    description: Spotify show id — the base-62 id from spotify:show:<id>
+    type: string
+    required: true
+    default: ""
+  content_rating:
+    description: Video content rating — unspecified, or eighteen_plus for 18+ video
+    type: string
+    default: unspecified
+  explicit:
+    description: Whether episodes contain explicit content (no, yes, clean)
+    type: string
+    default: "no"
+  episode_type:
+    description: Episode type — full, bonus, or trailer
+    type: string
+    default: full
+definition:
+  name: Spotify Episode (Distribution)
+  description: Publishes a distribution as an episode on a Spotify show.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: spotify
+        label: Spotify
+        mode: broadcast
+        base_type: podcast
+        content_type: html
+        requires_audience: true
+
+  inputs:
+    spotify_client_id:
+      description: Spotify application client id
+      type: string
+      required: true
+      default: ""
+    spotify_show_id:
+      description: Spotify show id — the base-62 id from spotify:show:<id>
+      type: string
+      required: true
+      default: ""
+    content_rating:
+      description: Video content rating — unspecified, or eighteen_plus for 18+ video
+      type: string
+      default: unspecified
+    explicit:
+      description: Whether episodes contain explicit content (no, yes, clean)
+      type: string
+      default: "no"
+    episode_type:
+      description: Episode type — full, bonus, or trailer
+      type: string
+      default: full
+
+  steps:
+    # The distribution carries the episode metadata the podcast editor collected:
+    # title, summary, the enclosure asset_id, and the audience.
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+
+    # Render the selected template into the episode summary/show notes. Spotify
+    # accepts plain text or HTML here.
+    - id: render
+      action: distribution.render
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+
+    # Resolve the enclosure asset to a public URL Spotify can fetch.
+    - id: media
+      action: asset.get
+      with:
+        asset_id: ${{ steps.load.outputs.distribution.asset_id }}
+        link: true
+
+    # The audience's categories become Spotify Open Access entitlements.
+    - id: audience
+      action: audience.get
+      with:
+        audience_id: ${{ steps.load.outputs.distribution.audience_id }}
+
+    - id: publish
+      includes: libatomic/passport-actions/recipes/spotify/create-episode
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        show_id: ${{ inputs.spotify_show_id }}
+        title: ${{ steps.load.outputs.distribution.title }}
+        pubdate: ${{ steps.load.outputs.distribution.published_at }}
+        media_file_url: ${{ steps.media.outputs.asset.link }}
+        summary: ${{ steps.render.outputs.body }}
+        # A stable guid so a re-publish maps to the same Spotify episode.
+        guid: ${{ trigger.distribution_id }}
+        entitlements: ${{ steps.audience.outputs.category_slugs }}
+        content_rating: ${{ inputs.content_rating }}
+        explicit: ${{ inputs.explicit }}
+        episode_type: ${{ inputs.episode_type }}

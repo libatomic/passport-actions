@@ -1,0 +1,43 @@
+name: spotify-get-show
+version: "1.0"
+description: Look up a Spotify show via the SOA Video Distribution API
+
+inputs:
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  show_id:
+    required: true
+    type: string
+    label: Show ID
+    description: >
+      Spotify show id — the base-62 id at the end of the show URI
+      (spotify:show:<id>), not the full URI.
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  - id: show
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Accept: application/json
+      expect_status: [200]

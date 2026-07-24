@@ -1,0 +1,116 @@
+name: spotify-create-show
+version: "1.0"
+description: Create a show on Spotify via the SOA Video Distribution API
+
+inputs:
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  title:
+    required: true
+    type: string
+    label: Title
+    description: Show name.
+  summary:
+    required: true
+    type: string
+    label: Summary
+    description: Full show summary.
+  itunes_categories:
+    required: true
+    default: []
+    type: list
+    label: iTunes Categories
+    description: iTunes-compatible category names, e.g. ["News", "Technology"].
+  language:
+    required: true
+    default: en
+    type: string
+    label: Language
+    description: Two-character ISO 639-1 language code (e.g. en).
+  explicit:
+    required: true
+    default: "no"
+    type: string
+    label: Explicit
+    enum:
+      - "no"
+      - "yes"
+      - clean
+  image_file_url:
+    required: true
+    type: string
+    label: Show Art URL
+    description: Show artwork. Recommended 3000x3000 JPEG/PNG, 72dpi, RGB.
+  owner_name:
+    required: true
+    type: string
+    label: Owner Name
+  owner_email:
+    required: true
+    type: string
+    label: Owner Email
+  show_type:
+    required: true
+    default: episodic
+    type: string
+    label: Show Type
+    enum:
+      - episodic
+      - serial
+  link:
+    default: ""
+    type: string
+    label: Link
+    description: Website or landing page.
+  soa_partner_id:
+    default: ""
+    type: string
+    label: SOA Partner ID
+    description: Partner id for Spotify Open Access gating.
+  is_sandbox:
+    default: "false"
+    type: bool
+    label: Sandbox
+    description: Create the show in Open Access sandbox mode.
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  - id: show
+    action: http.post
+    with:
+      url: "https://distribution.spotify.com/shows"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+      body:
+        title: ${{ inputs.title }}
+        summary: ${{ inputs.summary }}
+        itunes_categories: ${{ inputs.itunes_categories }}
+        language: ${{ inputs.language }}
+        link: ${{ inputs.link }}
+        explicit: ${{ inputs.explicit }}
+        image_file_url: ${{ inputs.image_file_url }}
+        owner_name: ${{ inputs.owner_name }}
+        owner_email: ${{ inputs.owner_email }}
+        show_type: ${{ inputs.show_type }}
+        soa_partner_id: ${{ inputs.soa_partner_id }}
+        is_sandbox: ${{ inputs.is_sandbox == "true" }}
+      expect_status: [200, 201]
