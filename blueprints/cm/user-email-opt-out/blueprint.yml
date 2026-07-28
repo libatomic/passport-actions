@@ -4,6 +4,10 @@ description: |
   Unsubscribes a user from a Campaign Monitor list when they opt out of the email
   channel (user.email.opt_out). Uses the cm/subscriber-unsubscribe recipe.
 
+  NOTE: the unsubscribe step is continue-on-error because Campaign Monitor returns a
+  400 ("Subscriber not in list or has already been removed") when the user isn't on
+  the list — a harmless no-op that shouldn't fail the run.
+
   Requires the CM_API_KEY secret and a list_id input.
 category: campaign-monitor
 replaces:
@@ -35,6 +39,7 @@ definition:
 
     - id: unsubscribe
       includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe
+      continue-on-error: true
       with:
         api_key: ${{ secrets.CM_API_KEY }}
         list_id: ${{ inputs.list_id }}

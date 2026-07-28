@@ -1,0 +1,52 @@
+name: User Email Opt-In (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-check-outline.svg
+description: |
+  Re-subscribes a user on a Campaign Monitor list when they opt back in to the
+  email channel (user.email.opt_in). The counterpart to user-email-opt-out:
+  opting out unsubscribes them in CM; opting back in removes them from CM's
+  unsubscribed pool and makes them Active again.
+
+  This is the one place resubscribe: true is deliberately used — an explicit
+  opt-in is a fresh consent signal, so overriding a previous CM unsubscribe is
+  exactly what's wanted. (If the user was never on the list, the add simply
+  creates them.)
+
+  Requires the CM_API_KEY secret and a list_id input.
+category: campaign-monitor
+replaces:
+  event_type: user.email.opt_in
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to re-subscribe the user on
+    type: string
+    required: true
+    default: ""
+definition:
+  name: User Email Opt-In (Campaign Monitor)
+  description: Re-subscribes a user on a Campaign Monitor list when they opt back in to email.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-check-outline.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.email.opt_in
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.email.opt_in@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: resubscribe
+      includes: libatomic/passport-actions/recipes/cm/subscriber-add
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        # An explicit opt-in is fresh consent — reactivate even if they were
+        # previously unsubscribed in CM.
+        resubscribe: "true"

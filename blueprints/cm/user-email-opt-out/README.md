@@ -45,5 +45,8 @@ If the user was never on the list, CM returns **`400` / code `203`**
 - Running several CM lists? Install this blueprint once **per list** (each
   instance targets one `list_id`), or add extra unsubscribe steps to one
   workflow.
-- To sync preferences in both directions, see
+- Pair with [`user-email-opt-in`](../user-email-opt-in/) so users who turn
+  email back on are re-subscribed in CM.
+- For the **inbound** direction — CM unsubscribes flowing back into Passport —
+  pair with [`optout-webhook`](../optout-webhook/). See also
   [`journeys/preference-sync`](../../journeys/preference-sync/).

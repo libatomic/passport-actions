@@ -1,0 +1,57 @@
+name: Opt-Out Webhook (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/webhook.svg
+description: |
+  Inbound webhook from Campaign Monitor: when a subscriber unsubscribes (or is
+  deactivated) in CM, the matching Passport user is opted out of the email channel
+  so both systems agree. This is the inbound half of the consent loop — the
+  user-email-opt-out blueprint pushes Passport opt-outs to CM; this one pulls CM
+  unsubscribes back into Passport.
+
+  Campaign Monitor batches events into a single POST; foreach: Events runs each
+  element as its own run, so one bad element doesn't block the rest. Users who
+  unsubscribe in CM but don't exist in Passport are skipped (the lookup is
+  continue-on-error).
+
+  Workflow runs are silent, so the user.update here does NOT re-fire
+  user.preferences.updated workflows — no sync loop back to CM.
+
+  Campaign Monitor does not sign webhook payloads, so validate: false. The token
+  in the webhook URL is the sole authorization — treat the URL as a secret, and
+  optionally add an ip_allowlist to the trigger for defense in depth.
+
+  Setup: after importing, copy the webhook URL from the workflow detail page, then
+  create a webhook on the CM list (Deactivate events) pointing at it — via the CM
+  API: POST /api/v3.3/lists/{listid}/webhooks.json with Events: ["Deactivate"],
+  Url: <the webhook URL>, PayloadFormat: "json".
+category: campaign-monitor
+definition:
+  name: Opt-Out Webhook (Campaign Monitor)
+  description: Opts Passport users out of email when they unsubscribe in Campaign Monitor.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/webhook.svg
+  version: 1
+
+  on:
+    - webhook: true
+      name: campaign-monitor
+      validate: false
+      foreach: Events
+      if: body.Type == "Deactivate" || body.Type == "Unsubscribe"
+
+  steps:
+    # The unsubscriber may not exist in Passport (e.g. added to the list from
+    # another source) — that's fine, skip them.
+    - id: lookup
+      action: user.get
+      continue-on-error: true
+      with:
+        login: ${{ trigger.body.EmailAddress }}
+
+    - id: optout
+      if: ${{ steps.lookup.status == "ok" }}
+      action: user.update
+      with:
+        user_id: ${{ steps.lookup.outputs.user.id }}
+        preferences:
+          channels:
+            email:
+              opt_out: true
