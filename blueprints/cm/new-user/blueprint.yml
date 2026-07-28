@@ -1,15 +1,25 @@
 name: New User (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
-  Adds every newly created user to a Campaign Monitor list (user.created). Tags the
-  subscriber with the instance name and Passport user id as custom fields. Uses the
+  Adds a new user to a Campaign Monitor list once they verify their email address
+  (user.email.verified). Tags the subscriber with the instance name, Passport user
+  id, and account creation date (CreatedAt, YYYY-MM-DD) as custom fields. Uses the
   cm/subscriber-add recipe.
 
+  Triggering on verification (rather than user.created) keeps typos, bots, and
+  abandoned signups off the list — only confirmed addresses are synced. To add
+  every account regardless of verification, change the trigger to user.created.
+
   Requires the CM_API_KEY secret and a list_id input. The named CM custom fields
-  (InstanceName, PassportUserID) must exist on the target list.
+  (InstanceName, PassportUserID, CreatedAt — the latter as a Date field) must exist
+  on the target list.
+
+  Tracking consent defaults to "yes" via the recipe; if your users haven't
+  explicitly consented to open/click tracking (e.g. GDPR), pass
+  consent_to_track: "unchanged" on the add step.
 category: campaign-monitor
 replaces:
-  event_type: user.created
+  event_type: user.email.verified
   channel: email
 inputs:
   list_id:
@@ -19,15 +29,15 @@ inputs:
     default: ""
 definition:
   name: New User (Campaign Monitor)
-  description: Adds newly created users to a Campaign Monitor list with instance/user custom fields.
+  description: Adds users to a Campaign Monitor list on email verification, with instance/user custom fields.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
   version: 1
 
   on:
     - event:
-        name: user.created
+        name: user.email.verified
         schema:
-          ref: libatomic/passport-actions/schemas/atomic/user.created@v1.0.0
+          ref: libatomic/passport-actions/schemas/atomic/user.email.verified@v1.0.0
 
   steps:
     - id: load-user
@@ -47,3 +57,7 @@ definition:
             Value: ${{ instance.name }}
           - Key: PassportUserID
             Value: ${{ trigger.user_id }}
+          - Key: CreatedAt
+            # CM Date custom fields require YYYY-MM-DD; a raw RFC3339 timestamp is
+            # silently dropped.
+            Value: ${{ date("2006-01-02", steps.load-user.outputs.user.created_at) }}
