@@ -1,29 +1,34 @@
 name: Subscription Canceled (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
 description: |
-  Removes a user from a Campaign Monitor list (e.g. your paid subscribers list) when
-  their subscription is canceled (user.subscription.status.canceled). Uses the
-  cm/subscriber-unsubscribe recipe.
+  Marks a subscriber as no longer paid when their subscription is canceled
+  (user.subscription.status.canceled). List membership and subscription state are
+  NOT touched — a cancellation is not an unsubscribe. Instead the subscription
+  custom fields are cleared (PassportSubscriptionID, PassportPlanID,
+  SubscriptionInterval, EndsAt, EndsAtPretty, AutoRenew) and SubscriptionExpiredAt
+  (a Date field, YYYY-MM-DD) is stamped, so CM segments built on those fields
+  update automatically. Uses the cm/subscriber-update recipe.
 
   The canceled event carries only the subscription id, so the subscriber is resolved
-  via subscription.get. Requires the CM_API_KEY secret and a list_id input.
+  via subscription.get. Requires the CM_API_KEY secret and a list_id input. The
+  SubscriptionExpiredAt custom field must exist on the list as a Date field.
 
-  NOTE: the unsubscribe step is continue-on-error because Campaign Monitor returns a
-  400 ("Subscriber not in list or has already been removed") when the user isn't on
-  the list — a harmless no-op that shouldn't fail the run.
+  NOTE: the update step is continue-on-error because Campaign Monitor returns a
+  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  fail the run.
 category: campaign-monitor
 replaces:
   event_type: user.subscription.status.canceled
   channel: email
 inputs:
   list_id:
-    description: Campaign Monitor list ID to remove canceled subscribers from
+    description: Campaign Monitor list ID holding the subscription custom fields
     type: string
     required: true
     default: ""
 definition:
   name: Subscription Canceled (Campaign Monitor)
-  description: Unsubscribes canceled subscribers from a Campaign Monitor list.
+  description: Clears subscription custom fields and stamps SubscriptionExpiredAt on cancellation.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
   version: 1
 
@@ -44,10 +49,28 @@ definition:
       with:
         user_id: ${{ steps.load-subscription.outputs.subscription.user_id }}
 
-    - id: remove-from-list
-      includes: libatomic/passport-actions/recipes/cm/subscriber-unsubscribe
+    - id: update-fields
+      includes: libatomic/passport-actions/recipes/cm/subscriber-update
       continue-on-error: true
       with:
         api_key: ${{ secrets.CM_API_KEY }}
         list_id: ${{ inputs.list_id }}
         email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        custom_fields:
+          - Key: PassportSubscriptionID
+            Clear: true
+          - Key: PassportPlanID
+            Clear: true
+          - Key: SubscriptionInterval
+            Clear: true
+          - Key: EndsAt
+            Clear: true
+          - Key: EndsAtPretty
+            Clear: true
+          - Key: AutoRenew
+            Clear: true
+          - Key: SubscriptionExpiredAt
+            # CM Date custom fields require YYYY-MM-DD. The subscription's ends_at
+            # is when access actually lapsed; fall back to now() if unset.
+            Value: ${{ date("2006-01-02", coalesce(steps.load-subscription.outputs.subscription.ends_at, now())) }}
