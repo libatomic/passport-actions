@@ -1,0 +1,66 @@
+name: Subscription Updated (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/autorenew.svg
+description: |
+  Keeps a subscriber's renewal custom fields current on a Campaign Monitor list.
+  Fires on user.subscription.updated (the event body is the full updated
+  subscription) and sets:
+
+  - AutoRenew — "true"/"false" from the subscription's auto_renew flag.
+  - SubscriptionCancelsAt — the subscription's scheduled cancellation date
+    (cancel_at, formatted YYYY-MM-DD for a CM Date field). When the subscription
+    has no scheduled cancellation (e.g. auto-renew was turned back on), the field
+    is CLEARED so a stale date doesn't linger.
+
+  List membership is not touched. Uses the cm/subscriber-update recipe.
+
+  Requires the CM_API_KEY secret and a list_id input. The custom fields must
+  exist on the list: AutoRenew as Text, SubscriptionCancelsAt as a Date field
+  (CM silently drops undefined fields).
+
+  NOTE: the update step is continue-on-error because Campaign Monitor returns a
+  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  fail the run.
+category: campaign-monitor
+inputs:
+  list_id:
+    description: Campaign Monitor list ID holding the subscription custom fields
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Subscription Updated (Campaign Monitor)
+  description: Syncs AutoRenew and SubscriptionCancelsAt custom fields on subscription updates.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/autorenew.svg
+  version: 1
+
+  on:
+    - event:
+        name: user.subscription.updated
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.updated@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    - id: update-fields
+      includes: libatomic/passport-actions/recipes/cm/subscriber-update
+      continue-on-error: true
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        # The rows are computed so SubscriptionCancelsAt is either SET (when the
+        # event carries cancel_at, formatted YYYY-MM-DD for a CM Date field) or
+        # sent as {Clear: true} — never an empty Value. auto_renew is always on
+        # the body; the == true guard turns any missing value into "false".
+        custom_fields: >-
+          ${{ list(
+            ({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}),
+            empty(trigger.body.cancel_at)
+              ? ({Key: "SubscriptionCancelsAt", Clear: true})
+              : ({Key: "SubscriptionCancelsAt", Value: date("2006-01-02", trigger.body.cancel_at)})
+          ) }}
