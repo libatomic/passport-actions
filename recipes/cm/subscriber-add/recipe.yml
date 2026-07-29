@@ -1,5 +1,5 @@
 name: cm-subscriber-add
-version: "1.0"
+version: "1.0.1"
 description: Add a subscriber to a Campaign Monitor list
 
 inputs:
@@ -59,6 +59,6 @@ steps:
         EmailAddress: ${{ inputs.email }}
         Name: ${{ inputs.name }}
         CustomFields: ${{ inputs.custom_fields }}
-        Resubscribe: ${{ inputs.resubscribe == "true" }}
+        Resubscribe: ${{ toBool(inputs.resubscribe) }}
         ConsentToTrack: ${{ inputs.consent_to_track }}
       expect_status: [200, 201]

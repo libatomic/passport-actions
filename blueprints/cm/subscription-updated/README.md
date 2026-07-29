@@ -25,7 +25,7 @@ is the full updated subscription, so the sync is stateless and idempotent.
 | Field | Value |
 |---|---|
 | `AutoRenew` | `"true"` / `"false"` from the subscription's `auto_renew` flag |
-| `SubscriptionCancelsAt` | The scheduled cancellation date (`cancel_at`), `YYYY-MM-DD` — **cleared** when there's no scheduled cancellation, so turning auto-renew back on removes the stale date |
+| `SubscriptionCancelsAt` | The scheduled cancellation date (`cancel_at`), `YYYY/MM/DD` — **cleared** when there's no scheduled cancellation, so turning auto-renew back on removes the stale date |
 
 ## Expect a harmless 400
 

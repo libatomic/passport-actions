@@ -21,7 +21,7 @@ signups off the list — only confirmed addresses are synced.
 | `add-to-list` | recipe `cm/subscriber-add` | Add them to the list |
 
 Custom fields sent: `InstanceName`, `PassportUserID`, `CreatedAt` (the user's
-account creation date, formatted `YYYY-MM-DD` for a CM **Date** field).
+account creation date, formatted `YYYY/MM/DD` for a CM **Date** field).
 
 ## Requirements
 

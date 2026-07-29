@@ -17,7 +17,7 @@ libatomic/passport-actions/recipes/cm/subscriber-update
 | `email` | yes | — | Current subscriber email address (used to identify the subscriber) |
 | `new_email` | no | `""` | New email address (if changing; defaults to current email) |
 | `name` | no | `""` | Updated display name |
-| `custom_fields` | no | `""` | Custom fields (JSON object) |
+| `custom_fields` | no | `[]` | Custom fields as an array of `{Key, Value}` objects |
 | `resubscribe` | no | `"false"` | Reactivate if previously unsubscribed |
 | `consent_to_track` | no | `"unchanged"` | GDPR consent: `yes`, `no`, or `unchanged` |
 

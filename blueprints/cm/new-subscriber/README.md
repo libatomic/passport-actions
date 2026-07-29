@@ -43,8 +43,9 @@ Custom fields sent: `InstanceName`, `PassportUserID`, `PassportSubscriptionID`,
 | Input | `list_id` — the CM list for paid subscribers |
 | Host | `api.createsend.com` |
 
-Define all seven custom fields on the list first (`EndsAt` as a Date), or CM
-will accept the subscriber and silently drop the values.
+Define all seven custom fields on the list first (`EndsAt` as a **Date** — it's
+sent as `YYYY/MM/DD` to match), or CM will accept the subscriber and silently
+drop the values.
 
 ## Customizing
 

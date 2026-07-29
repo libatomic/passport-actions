@@ -26,7 +26,7 @@ Fields **cleared** (via CM's `Clear: true` flag): `PassportSubscriptionID`,
 `PassportPlanID`, `SubscriptionInterval`, `EndsAt`, `EndsAtPretty`, `AutoRenew`.
 
 Field **set**: `SubscriptionExpiredAt` — the subscription's `ends_at` (falling
-back to the run time), formatted `YYYY-MM-DD` for a CM **Date** field.
+back to the run time), formatted `YYYY/MM/DD` for a CM **Date** field.
 
 A segment like `[PassportPlanID] is provided` (paid) stops matching the user
 the moment the fields clear; a win-back segment can match on

@@ -97,10 +97,14 @@ ids, reason, `EndsAt`/`EndsAtPretty`, interval) where relevant.
 | Blueprint | Trigger Event | Action |
 |-----------|--------------|--------|
 | `blueprints/cm/user-email-opt-out` | `user.email.opt_out` | Unsubscribe from a list |
-| `blueprints/cm/new-user` | `user.created` | Add to a list |
-| `blueprints/cm/new-subscriber` | `user.subscription.created` (paid, plan-backed only) | Add to a list |
-| `blueprints/cm/subscription-canceled` | `user.subscription.status.canceled` | Add to a win-back list |
-| `blueprints/cm/subscription-expiring` | `user.subscription.expiring` | Add to a list |
+| `blueprints/cm/user-email-opt-in` | `user.email.opt_in` | Re-subscribe on a list |
+| `blueprints/cm/preferences-updated` | `user.preferences.updated` | Sync per-category `opt_out_*` fields |
+| `blueprints/cm/optout-webhook` | inbound CM webhook (`Deactivate`) | Opt the Passport user out of email |
+| `blueprints/cm/new-user` | `user.email.verified` | Add to a list |
+| `blueprints/cm/new-subscriber` | `user.subscription.status.active` (paid, plan-backed only) | Add to a list |
+| `blueprints/cm/subscription-updated` | `user.subscription.updated` | Sync `AutoRenew` / `SubscriptionCancelsAt` fields |
+| `blueprints/cm/subscription-canceled` | `user.subscription.status.canceled` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
+| `blueprints/cm/user-deleted` | `user.deleted` | Delete from a list (erasure) |
 
 #### Usage
 
@@ -183,7 +187,8 @@ These use the built-in `http.*` actions — no node runtime overhead.
 | `libatomic/passport-actions/recipes/cm/subscriber-add` | Add a subscriber to a list |
 | `libatomic/passport-actions/recipes/cm/subscriber-get` | Get subscriber details |
 | `libatomic/passport-actions/recipes/cm/subscriber-update` | Update a subscriber |
-| `libatomic/passport-actions/recipes/cm/subscriber-unsubscribe` | Unsubscribe from a list |
+| `libatomic/passport-actions/recipes/cm/subscriber-unsubscribe` | Unsubscribe from a list (consent — sticky) |
+| `libatomic/passport-actions/recipes/cm/subscriber-delete` | Delete from a list (membership — re-addable) |
 
 #### Usage
 

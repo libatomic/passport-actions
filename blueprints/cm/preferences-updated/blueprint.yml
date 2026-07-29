@@ -1,0 +1,94 @@
+name: Preferences Updated (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/tune-variant.svg
+description: |
+  Mirrors a user's per-category email opt-outs onto Campaign Monitor custom
+  fields. Fires on user.preferences.updated (the event body carries the user's
+  FULL updated delivery preferences) and, for every category in the
+  category_fields mapping, sets that category's opt-out field to "true" when
+  the user has opted out of the category on the email channel
+  (channel_opt_out.email), and "false" otherwise — so opting back in un-flags
+  the field and CM segments like "[opt_out_newsletter1] equals true" stay
+  accurate.
+
+  Configure category_fields with one row per category: the Passport delivery
+  category ID and the CM custom-field key it maps to (the personalization tag
+  without brackets, e.g. opt_out_newsletter1). Categories not in the mapping
+  are ignored; mapped categories the user has no preference for are "false".
+
+  List membership is not touched — whole-channel opt-out is a different event,
+  handled by the user-email-opt-out blueprint. Uses the cm/subscriber-update
+  recipe.
+
+  Requires the CM_API_KEY secret and a list_id input. Each mapped field must
+  exist on the list as a Text custom field (CM silently drops undefined
+  fields).
+
+  NOTE: the update step is continue-on-error because Campaign Monitor returns a
+  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  fail the run.
+category: campaign-monitor
+replaces:
+  event_type: user.preferences.updated
+  channel: email
+inputs:
+  list_id:
+    description: Campaign Monitor list ID holding the opt-out custom fields
+    type: string
+    required: true
+    default: ""
+  category_fields:
+    label: Category Opt-Out Fields
+    description: >
+      Mapping from Passport delivery category IDs to CM custom-field keys, one
+      row per category, e.g. category Ca4HCbj1B8JQLvw8uuZYj -> field
+      opt_out_newsletter1. Field keys are the CM personalization tag without
+      brackets and must exist on the list as Text custom fields.
+    type: list
+    required: true
+    default: []
+    items:
+      - { name: category, label: Passport Category ID }
+      - { name: field, label: CM Opt-Out Field Key }
+definition:
+  name: Preferences Updated (Campaign Monitor)
+  description: Flags per-category email opt-outs as CM custom fields ("true" when opted out).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/tune-variant.svg
+  version: 1
+
+  on:
+    # body.delivery is the FULL updated state — one entry per category the user
+    # has preferences for: { category, channels: { email: <bool>, ... } }
+    # (true = opted out). The sync is stateless: every mapped field is written
+    # on every run.
+    - event:
+        name: user.preferences.updated
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.preferences.updated@v1.0.0
+
+  steps:
+    - id: load-user
+      action: user.get
+      with:
+        user_id: ${{ trigger.user_id }}
+
+    # Which mapped categories has this user opted out of on email?
+    - id: opted
+      action: set-output
+      with:
+        categories: '${{ map(filter(coalesce(trigger.body.delivery, list()), #.channels.email == true), #.category) }}'
+
+    # One {Key, Value} row per mapping entry: "true" when opted out, else "false".
+    - id: fields
+      action: set-output
+      with:
+        custom_fields: '${{ map(inputs.category_fields, ({Key: #.field, Value: toString(#.category in steps.opted.outputs.categories)})) }}'
+
+    - id: update-fields
+      includes: libatomic/passport-actions/recipes/cm/subscriber-update
+      continue-on-error: true
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        email: ${{ steps.load-user.outputs.user.profile.email }}
+        name: ${{ steps.load-user.outputs.user.profile.name }}
+        custom_fields: ${{ steps.fields.outputs.custom_fields }}

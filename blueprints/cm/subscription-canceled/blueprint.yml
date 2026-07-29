@@ -6,7 +6,7 @@ description: |
   NOT touched — a cancellation is not an unsubscribe. Instead the subscription
   custom fields are cleared (PassportSubscriptionID, PassportPlanID,
   SubscriptionInterval, EndsAt, EndsAtPretty, AutoRenew) and SubscriptionExpiredAt
-  (a Date field, YYYY-MM-DD) is stamped, so CM segments built on those fields
+  (a Date field, YYYY/MM/DD) is stamped, so CM segments built on those fields
   update automatically. Uses the cm/subscriber-update recipe.
 
   The canceled event carries only the subscription id, so the subscriber is resolved
@@ -71,6 +71,6 @@ definition:
           - Key: AutoRenew
             Clear: true
           - Key: SubscriptionExpiredAt
-            # CM Date custom fields require YYYY-MM-DD. The subscription's ends_at
+            # CM Date custom fields require YYYY/MM/DD. The subscription's ends_at
             # is when access actually lapsed; fall back to now() if unset.
-            Value: ${{ date("2006-01-02", coalesce(steps.load-subscription.outputs.subscription.ends_at, now())) }}
+            Value: ${{ date("2006/01/02", coalesce(steps.load-subscription.outputs.subscription.ends_at, now())) }}

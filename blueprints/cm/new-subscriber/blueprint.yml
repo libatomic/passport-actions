@@ -72,6 +72,8 @@ definition:
           - Key: SubscriptionInterval
             Value: ${{ steps.load-subscription.outputs.subscription.recurring_interval }}
           - Key: EndsAt
-            Value: ${{ steps.load-subscription.outputs.subscription.ends_at }}
+            # CM Date custom fields require YYYY/MM/DD; a raw RFC3339 timestamp is
+            # silently ignored.
+            Value: ${{ date("2006/01/02", steps.load-subscription.outputs.subscription.ends_at) }}
           - Key: EndsAtPretty
             Value: ${{ fromNow(steps.load-subscription.outputs.subscription.ends_at) }}

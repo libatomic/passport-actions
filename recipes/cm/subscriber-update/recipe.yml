@@ -1,5 +1,5 @@
 name: cm-subscriber-update
-version: "1.0"
+version: "1.1.0"
 description: Update a subscriber on a Campaign Monitor list
 
 inputs:
@@ -30,10 +30,15 @@ inputs:
     label: Name
     description: Subscriber display name
   custom_fields:
-    default: ""
-    type: object
+    default: []
+    type: list
     label: Custom Fields
-    description: Custom field key-value pairs
+    description: >
+      Campaign Monitor custom fields as an array of {Key, Value} objects,
+      e.g. [{Key: "PassportUserID", Value: "..."}]. Empty by default.
+    items:
+      - { name: Key, label: Field }
+      - { name: Value, label: Value }
   resubscribe:
     default: "false"
     type: bool
@@ -62,6 +67,7 @@ steps:
       body:
         EmailAddress: '${{ inputs.new_email != "" ? inputs.new_email : inputs.email }}'
         Name: ${{ inputs.name }}
-        Resubscribe: ${{ inputs.resubscribe == "true" }}
+        CustomFields: ${{ inputs.custom_fields }}
+        Resubscribe: ${{ toBool(inputs.resubscribe) }}
         ConsentToTrack: ${{ inputs.consent_to_track }}
       expect_status: [200]

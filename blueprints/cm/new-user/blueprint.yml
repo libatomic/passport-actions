@@ -3,7 +3,7 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
 description: |
   Adds a new user to a Campaign Monitor list once they verify their email address
   (user.email.verified). Tags the subscriber with the instance name, Passport user
-  id, and account creation date (CreatedAt, YYYY-MM-DD) as custom fields. Uses the
+  id, and account creation date (CreatedAt, YYYY/MM/DD) as custom fields. Uses the
   cm/subscriber-add recipe.
 
   Triggering on verification (rather than user.created) keeps typos, bots, and
@@ -58,6 +58,6 @@ definition:
           - Key: PassportUserID
             Value: ${{ trigger.user_id }}
           - Key: CreatedAt
-            # CM Date custom fields require YYYY-MM-DD; a raw RFC3339 timestamp is
+            # CM Date custom fields require YYYY/MM/DD; a raw RFC3339 timestamp is
             # silently dropped.
-            Value: ${{ date("2006-01-02", steps.load-user.outputs.user.created_at) }}
+            Value: ${{ date("2006/01/02", steps.load-user.outputs.user.created_at) }}

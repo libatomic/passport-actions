@@ -7,7 +7,7 @@ description: |
 
   - AutoRenew — "true"/"false" from the subscription's auto_renew flag.
   - SubscriptionCancelsAt — the subscription's scheduled cancellation date
-    (cancel_at, formatted YYYY-MM-DD for a CM Date field). When the subscription
+    (cancel_at, formatted YYYY/MM/DD for a CM Date field). When the subscription
     has no scheduled cancellation (e.g. auto-renew was turned back on), the field
     is CLEARED so a stale date doesn't linger.
 
@@ -54,7 +54,7 @@ definition:
         email: ${{ steps.load-user.outputs.user.profile.email }}
         name: ${{ steps.load-user.outputs.user.profile.name }}
         # The rows are computed so SubscriptionCancelsAt is either SET (when the
-        # event carries cancel_at, formatted YYYY-MM-DD for a CM Date field) or
+        # event carries cancel_at, formatted YYYY/MM/DD for a CM Date field) or
         # sent as {Clear: true} — never an empty Value. auto_renew is always on
         # the body; the == true guard turns any missing value into "false".
         custom_fields: >-
@@ -62,5 +62,5 @@ definition:
             ({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}),
             empty(trigger.body.cancel_at)
               ? ({Key: "SubscriptionCancelsAt", Clear: true})
-              : ({Key: "SubscriptionCancelsAt", Value: date("2006-01-02", trigger.body.cancel_at)})
+              : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)})
           ) }}
