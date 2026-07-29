@@ -12,21 +12,32 @@ recipe. See the [Campaign Monitor overview](../README.md) for shared setup.
 
 ## When it fires
 
-`user.subscription.status.canceled`.
+`user.subscription.deleted` — the **Stripe path**: the
+`customer.subscription.deleted` webhook deletes the subscription outright.
+Stripe-billed subscriptions never pass through a `canceled` status, so
+`user.subscription.status.canceled` does not fire for them; this is the event
+that actually happens. Its body is the full serialized subscription.
 
 ## What it does
 
 | Step | Action | Purpose |
 |---|---|---|
-| `load-subscription` | `subscription.get` | Resolve the subscription's user and end date |
-| `load-user` | `user.get` | Load the email address and name |
+| `load-user` | `user.get` | Load the email address and name (via `trigger.user_id`) |
 | `update-fields` | recipe `cm/subscriber-update` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
 
-Fields **cleared** (via CM's `Clear: true` flag): `PassportSubscriptionID`,
-`PassportPlanID`, `SubscriptionInterval`, `AutoRenew`.
+There's deliberately **no** `subscription.get`: the row is already gone when
+the event fires and the lookup would fail. `SubscriptionExpiredAt` is stamped
+with the time the deletion event fired — not the body's `ends_at`/`cancel_at`,
+which reflect scheduled period dates rather than when the subscription
+actually ended.
 
-Field **set**: `SubscriptionExpiredAt` — the subscription's `ends_at` (falling
-back to the run time), formatted `YYYY/MM/DD` for a CM **Date** field.
+Fields **cleared** (via CM's `Clear: true` flag): `PassportSubscriptionID`,
+`PassportPlanID`, `SubscriptionInterval`, `AutoRenew`,
+`SubscriptionCancelsAt` (the scheduled date is moot once the subscription is
+gone — `SubscriptionExpiredAt` takes over as the terminal date).
+
+Field **set**: `SubscriptionExpiredAt` — the time the deletion event fired,
+formatted `YYYY/MM/DD` for a CM **Date** field.
 
 A segment like `[PassportPlanID] is provided` (paid) stops matching the user
 the moment the fields clear; a win-back segment can match on
@@ -52,10 +63,15 @@ something (e.g. [`new-subscriber`](../new-subscriber/)) sets them.
 
 ## Customizing
 
-- **`canceled` vs `deleted`**: this fires when a subscription is *marked*
-  canceled. `user.subscription.deleted` fires when it's fully removed — and its
-  body is the whole subscription object (use `trigger.body.user_id`; don't call
-  `subscription.get`, the row is already gone).
+- **Non-Stripe cancellations**: if your instance also ends subscriptions
+  through flows that explicitly transition the status to `canceled`, add a
+  second trigger on `user.subscription.status.canceled` (its body carries only
+  the subscription id — the steps here work unchanged since they only use
+  `trigger.user_id` and fall back to the run time for the date).
 - To also remove the user from the list on cancellation (a separate-lists
   model instead of segments), add a
   [`cm/subscriber-delete`](../../../recipes/cm/subscriber-delete/) step.
+- **Multiple subscriptions per user**: this clears the fields when *any*
+  subscription ends. If your users can hold several concurrent subscriptions,
+  the next `status.active` event (via [`new-subscriber`](../new-subscriber/))
+  re-fills the fields; a brief window of "not paid" state is possible.

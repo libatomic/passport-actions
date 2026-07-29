@@ -9,7 +9,7 @@ subscriber on a CM list.
 | [`new-user`](new-user/) | `user.email.verified` | **Add** users to a list once verified |
 | [`new-subscriber`](new-subscriber/) | `user.subscription.status.active` | **Add** paid, plan-backed subscribers |
 | [`subscription-updated`](subscription-updated/) | `user.subscription.updated` | **Sync** `AutoRenew` / `SubscriptionCancelsAt` fields |
-| [`subscription-canceled`](subscription-canceled/) | `user.subscription.status.canceled` | **Clear** subscription fields, stamp `SubscriptionExpiredAt` |
+| [`subscription-canceled`](subscription-canceled/) | `user.subscription.deleted` | **Clear** subscription fields, stamp `SubscriptionExpiredAt` |
 | [`user-email-opt-out`](user-email-opt-out/) | `user.email.opt_out` | **Unsubscribe** users who opted out |
 | [`user-email-opt-in`](user-email-opt-in/) | `user.email.opt_in` | **Re-subscribe** users who opted back in |
 | [`preferences-updated`](preferences-updated/) | `user.preferences.updated` | **Sync** per-category opt-out fields (`opt_out_*`) |
@@ -66,8 +66,8 @@ send dates as `YYYY/MM/DD` to match; anything else CM drops silently.
 | `PassportPlanID` | Text | `new-subscriber` | `subscription-canceled` | The plan's Passport ID |
 | `SubscriptionInterval` | Text | `new-subscriber`, `subscription-updated` | `subscription-canceled` | Billing interval (`month` / `year`) |
 | `AutoRenew` | Text | `subscription-updated` | `subscription-canceled` | `"true"` / `"false"` |
-| `SubscriptionCancelsAt` | **Date** | `subscription-updated` (when a cancellation is scheduled) | `subscription-updated` (when it isn't) | Scheduled cancellation date |
-| `SubscriptionExpiredAt` | **Date** | `subscription-canceled` | — | When the subscription ended |
+| `SubscriptionCancelsAt` | **Date** | `subscription-updated` (when a cancellation is scheduled) | `subscription-updated` (when it isn't), `subscription-canceled` | Scheduled cancellation date |
+| `SubscriptionExpiredAt` | **Date** | `subscription-canceled` | `new-subscriber` (a new subscription supersedes the old expiry) | When the subscription ended |
 | *(operator-defined)* `opt_out_*` | Text | `preferences-updated` | — (set to `"false"` on opt back in) | `"true"` when opted out of that category on email |
 
 "Cleared by" uses CM's `Clear: true` flag — the field is emptied, not the

@@ -103,7 +103,7 @@ user/subscription/plan ids, interval, renewal state) where relevant.
 | `blueprints/cm/new-user` | `user.email.verified` | Add to a list |
 | `blueprints/cm/new-subscriber` | `user.subscription.status.active` (paid, plan-backed only) | Add to a list |
 | `blueprints/cm/subscription-updated` | `user.subscription.updated` | Sync `AutoRenew` / `SubscriptionCancelsAt` fields |
-| `blueprints/cm/subscription-canceled` | `user.subscription.status.canceled` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
+| `blueprints/cm/subscription-canceled` | `user.subscription.deleted` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
 | `blueprints/cm/user-deleted` | `user.deleted` | Delete from a list (erasure) |
 
 #### Usage

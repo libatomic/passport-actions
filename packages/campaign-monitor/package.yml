@@ -70,12 +70,13 @@ custom_fields:
   - key: SubscriptionCancelsAt
     type: Date
     set_by: [cm/subscription-updated]
-    cleared_by: [cm/subscription-updated]
-    description: Scheduled cancellation date; cleared when none is scheduled
+    cleared_by: [cm/subscription-updated, cm/subscription-canceled]
+    description: Scheduled cancellation date; cleared when none is scheduled or the subscription ends
   - key: SubscriptionExpiredAt
     type: Date
     set_by: [cm/subscription-canceled]
-    description: When the subscription ended
+    cleared_by: [cm/new-subscriber]
+    description: When the subscription ended; cleared when a new subscription activates
   - key: opt_out_*
     type: Text
     set_by: [cm/preferences-updated]

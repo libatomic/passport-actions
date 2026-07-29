@@ -31,7 +31,9 @@ an `is_subscriber` output (`plan_id` **and** `price_id` present) that gates the
 later steps via `if:`.
 
 Custom fields sent: `InstanceName`, `PassportUserID`, `PassportSubscriptionID`,
-`PassportPlanID`, `SubscriptionInterval`.
+`PassportPlanID`, `SubscriptionInterval` — plus `SubscriptionExpiredAt` is
+**cleared**: a new active subscription supersedes any previous expiry, so
+win-back segments stop matching a returning customer.
 
 ## Requirements
 

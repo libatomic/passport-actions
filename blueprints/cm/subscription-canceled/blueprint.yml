@@ -1,24 +1,35 @@
 name: Subscription Canceled (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
 description: |
-  Marks a subscriber as no longer paid when their subscription is canceled
-  (user.subscription.status.canceled). List membership and subscription state are
-  NOT touched — a cancellation is not an unsubscribe. Instead the subscription
-  custom fields are cleared (PassportSubscriptionID, PassportPlanID,
-  SubscriptionInterval, AutoRenew) and SubscriptionExpiredAt (a Date field,
-  YYYY/MM/DD) is stamped, so CM segments built on those fields update
-  automatically. Uses the cm/subscriber-update recipe.
+  Marks a subscriber as no longer paid when their subscription ends. List
+  membership and subscription state are NOT touched — a cancellation is not an
+  unsubscribe. Instead the subscription custom fields are cleared
+  (PassportSubscriptionID, PassportPlanID, SubscriptionInterval, AutoRenew,
+  SubscriptionCancelsAt) and SubscriptionExpiredAt (a Date field, YYYY/MM/DD)
+  is stamped, so CM segments built on those fields update automatically. Uses
+  the cm/subscriber-update recipe.
 
-  The canceled event carries only the subscription id, so the subscriber is resolved
-  via subscription.get. Requires the CM_API_KEY secret and a list_id input. The
-  SubscriptionExpiredAt custom field must exist on the list as a Date field.
+  Fires on user.subscription.deleted — the Stripe path: the
+  customer.subscription.deleted webhook deletes the subscription outright
+  (Stripe-billed subscriptions never pass through a canceled status, so
+  user.subscription.status.canceled does not fire for them). If your instance
+  also cancels subscriptions through non-Stripe/admin flows that transition the
+  status to canceled, add a second trigger on user.subscription.status.canceled.
+
+  The event sets trigger.user_id, so the user is loaded directly — no
+  subscription.get (the row is already gone and the lookup would fail).
+  SubscriptionExpiredAt is stamped with the time the deletion event fired
+  (not the body's ends_at/cancel_at, which reflect scheduled period dates).
+
+  Requires the CM_API_KEY secret and a list_id input. The SubscriptionExpiredAt
+  custom field must exist on the list as a Date field.
 
   NOTE: the update step is continue-on-error because Campaign Monitor returns a
-  400/404 when the email address isn't on the list — a harmless no-op that shouldn't
-  fail the run.
+  400/404 when the email address isn't on the list — a harmless no-op that
+  shouldn't fail the run.
 category: campaign-monitor
 replaces:
-  event_type: user.subscription.status.canceled
+  event_type: user.subscription.deleted
   channel: email
 inputs:
   list_id:
@@ -28,26 +39,25 @@ inputs:
     default: ""
 definition:
   name: Subscription Canceled (Campaign Monitor)
-  description: Clears subscription custom fields and stamps SubscriptionExpiredAt on cancellation.
+  description: Clears subscription custom fields and stamps SubscriptionExpiredAt when a subscription ends.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
   version: 1
 
   on:
+    # Stripe path: the customer.subscription.deleted webhook deletes the
+    # subscription without a canceled-status transition — this is the event
+    # that actually fires for Stripe-billed instances. Body = the full
+    # serialized subscription (the row itself is already gone).
     - event:
-        name: user.subscription.status.canceled
+        name: user.subscription.deleted
         schema:
-          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.canceled@v1.0.0
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.deleted@v1.0.0
 
   steps:
-    - id: load-subscription
-      action: subscription.get
-      with:
-        subscription_id: ${{ trigger.body.subscription_id }}
-
     - id: load-user
       action: user.get
       with:
-        user_id: ${{ steps.load-subscription.outputs.subscription.user_id }}
+        user_id: ${{ trigger.user_id }}
 
     - id: update-fields
       includes: libatomic/passport-actions/recipes/cm/subscriber-update
@@ -66,7 +76,12 @@ definition:
             Clear: true
           - Key: AutoRenew
             Clear: true
+          # The scheduled-cancellation date is moot once the subscription is
+          # gone — SubscriptionExpiredAt takes over as the terminal date.
+          - Key: SubscriptionCancelsAt
+            Clear: true
           - Key: SubscriptionExpiredAt
-            # CM Date custom fields require YYYY/MM/DD. The subscription's ends_at
-            # is when access actually lapsed; fall back to now() if unset.
-            Value: ${{ date("2006/01/02", coalesce(steps.load-subscription.outputs.subscription.ends_at, now())) }}
+            # CM Date custom fields require YYYY/MM/DD. Stamp the moment the
+            # deletion event fired — not the body's ends_at/cancel_at, which
+            # reflect the (possibly future or scheduled) period dates.
+            Value: ${{ date("2006/01/02", now()) }}

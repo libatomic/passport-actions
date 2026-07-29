@@ -4,8 +4,10 @@ description: |
   Adds a user to a Campaign Monitor list when their subscription becomes ACTIVE
   (user.subscription.status.active — i.e. payment succeeded). Only fires for
   subscriptions that have a plan and a price — free/planless subscriptions are skipped.
-  Tags the subscriber with instance, user, subscription and plan ids plus the interval
-  and end date. Uses the cm/subscriber-add recipe.
+  Tags the subscriber with instance, user, subscription and plan ids plus the
+  interval, and CLEARS SubscriptionExpiredAt — a new active subscription
+  supersedes any previous expiry, so win-back segments stop matching a
+  returning customer. Uses the cm/subscriber-add recipe.
 
   NOTE: this triggers on status.active rather than user.subscription.created on purpose.
   At subscription.created the subscription is still incomplete — payment hasn't been
@@ -70,3 +72,7 @@ definition:
             Value: ${{ steps.load-subscription.outputs.subscription.plan_id }}
           - Key: SubscriptionInterval
             Value: ${{ steps.load-subscription.outputs.subscription.recurring_interval }}
+          # A new active subscription supersedes any previous expiry — clear the
+          # terminal date so win-back segments stop matching a returning customer.
+          - Key: SubscriptionExpiredAt
+            Clear: true
