@@ -3,18 +3,29 @@ label: Campaign Monitor
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-sync-outline.svg
 category: integrations
 description: |
-  Keeps a Campaign Monitor list in sync with your members: adds new users and
-  paid subscribers, and removes them when they cancel, expire, or opt out of
-  email. Installs five event-triggered workflows built on the cm/* recipes.
+  Keeps a Campaign Monitor list in sync with your members on the one-list model:
+  verified users are added, subscription custom fields track paid state
+  (segments derive paid / auto-renew off / expired / win-back from them),
+  per-category newsletter opt-outs sync as opt_out_* flags, and consent flows
+  both ways — Passport opt-outs/opt-ins update CM, and CM unsubscribes flow
+  back via an inbound webhook. Deleted accounts are erased from the list.
+  Installs nine event-triggered workflows built on the cm/* recipes.
 
   Shared prerequisites: a CM_API_KEY workflow secret and your Campaign Monitor
-  list_id (each workflow takes it as an input); api.createsend.com must be on
-  the instance's http allowlist. Workflows install disabled — configure the
-  inputs, then enable the ones you want.
+  list_id (each outbound workflow takes it as an input; optout-webhook needs
+  neither); api.createsend.com must be on the instance's http allowlist. The
+  custom fields each workflow writes must be created on the CM list first
+  (exact keys and types are in the blueprints/cm README — CM silently drops
+  undefined fields; Date fields expect YYYY/MM/DD). Workflows install
+  disabled — configure the inputs, then enable the ones you want.
 
 blueprints:
   - cm/new-user
   - cm/new-subscriber
+  - cm/subscription-updated
   - cm/subscription-canceled
-  - cm/subscription-expiring
+  - cm/preferences-updated
   - cm/user-email-opt-out
+  - cm/user-email-opt-in
+  - cm/user-deleted
+  - cm/optout-webhook
