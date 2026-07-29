@@ -43,7 +43,7 @@ with [`user-email-opt-out`](../user-email-opt-out/) /
 
 - Categories not in the mapping are ignored.
 - Mapped categories the user has no preference entry for are `"false"`.
-- Users not on the CM list get a harmless 400 (`continue-on-error`).
+- Users not on the CM list get a harmless 404 (`continue-on-error`).
 
 ## Setup
 

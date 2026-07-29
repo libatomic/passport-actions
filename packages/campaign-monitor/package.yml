@@ -62,16 +62,6 @@ custom_fields:
     set_by: [cm/new-subscriber]
     cleared_by: [cm/subscription-canceled]
     description: Billing interval (month / year)
-  - key: EndsAt
-    type: Date
-    set_by: [cm/new-subscriber]
-    cleared_by: [cm/subscription-canceled]
-    description: Current period end
-  - key: EndsAtPretty
-    type: Text
-    set_by: [cm/new-subscriber]
-    cleared_by: [cm/subscription-canceled]
-    description: Friendly period end, e.g. "in 48 weeks"
   - key: AutoRenew
     type: Text
     set_by: [cm/subscription-updated]

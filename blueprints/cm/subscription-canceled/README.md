@@ -23,7 +23,7 @@ recipe. See the [Campaign Monitor overview](../README.md) for shared setup.
 | `update-fields` | recipe `cm/subscriber-update` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
 
 Fields **cleared** (via CM's `Clear: true` flag): `PassportSubscriptionID`,
-`PassportPlanID`, `SubscriptionInterval`, `EndsAt`, `EndsAtPretty`, `AutoRenew`.
+`PassportPlanID`, `SubscriptionInterval`, `AutoRenew`.
 
 Field **set**: `SubscriptionExpiredAt` — the subscription's `ends_at` (falling
 back to the run time), formatted `YYYY/MM/DD` for a CM **Date** field.
@@ -34,7 +34,7 @@ the moment the fields clear; a win-back segment can match on
 
 ## Expect a harmless 400
 
-If the user was never added to the list, CM returns a **400** for the update.
+If the user was never added to the list, CM returns a **404** for the update.
 The step is marked `continue-on-error: true`, so the run still **succeeds**;
 you'll just see the 400 in the run detail. That's expected, not a failure.
 

@@ -8,11 +8,10 @@ description: |
   and end date. Uses the cm/subscriber-add recipe.
 
   NOTE: this triggers on status.active rather than user.subscription.created on purpose.
-  At subscription.created the subscription is still incomplete and its period dates
-  (begins_at/ends_at) haven't been set yet — Stripe backfills them a moment later when
-  it confirms the subscription, which surfaces as status.active. Triggering here
-  guarantees EndsAt/EndsAtPretty are populated. If you also want trial signups, add a
-  second trigger on user.subscription.status.trialing (which likewise carries the dates).
+  At subscription.created the subscription is still incomplete — payment hasn't been
+  confirmed yet. status.active fires when it is, so only genuinely paying subscribers
+  land on the list. If you also want trial signups, add a second trigger on
+  user.subscription.status.trialing.
 
   Requires the CM_API_KEY secret and a list_id input.
 category: campaign-monitor
@@ -71,9 +70,3 @@ definition:
             Value: ${{ steps.load-subscription.outputs.subscription.plan_id }}
           - Key: SubscriptionInterval
             Value: ${{ steps.load-subscription.outputs.subscription.recurring_interval }}
-          - Key: EndsAt
-            # CM Date custom fields require YYYY/MM/DD; a raw RFC3339 timestamp is
-            # silently ignored.
-            Value: ${{ date("2006/01/02", steps.load-subscription.outputs.subscription.ends_at) }}
-          - Key: EndsAtPretty
-            Value: ${{ fromNow(steps.load-subscription.outputs.subscription.ends_at) }}

@@ -24,7 +24,7 @@ description: |
   fields).
 
   NOTE: the update step is continue-on-error because Campaign Monitor returns a
-  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  400/404 when the email address isn't on the list — a harmless no-op that shouldn't
   fail the run.
 category: campaign-monitor
 replaces:

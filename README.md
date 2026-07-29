@@ -91,8 +91,8 @@ Multi-step, timed sequences built on the durable `wait` action (see the
 
 Vendor blueprints that sync Passport events to Campaign Monitor lists via the
 `recipes/cm/*` recipes. Each needs the `CM_API_KEY` secret and a `list_id` input;
-list-add blueprints attach custom fields (instance name, Passport user/subscription/plan
-ids, reason, `EndsAt`/`EndsAtPretty`, interval) where relevant.
+list-add blueprints attach custom fields (instance name, Passport
+user/subscription/plan ids, interval, renewal state) where relevant.
 
 | Blueprint | Trigger Event | Action |
 |-----------|--------------|--------|

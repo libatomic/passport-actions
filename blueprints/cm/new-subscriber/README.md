@@ -12,10 +12,8 @@ allowed hosts, and the **custom-fields gotcha**).
 `user.subscription.status.active`.
 
 **Why not `user.subscription.created`?** At creation the subscription is still
-`incomplete` and its period dates (`begins_at` / `ends_at`) aren't set yet —
-Stripe backfills them when it confirms the payment, which surfaces as
-`status.active`. Triggering here guarantees `EndsAt` / `EndsAtPretty` are
-populated, and it means only *paying* subscribers land on the list.
+`incomplete` — payment hasn't been confirmed yet. `status.active` fires when it
+is, so only *paying* subscribers land on the list.
 
 Want trial signups too? Add a second trigger on
 `user.subscription.status.trialing` — same body shape, same steps.
@@ -33,7 +31,7 @@ an `is_subscriber` output (`plan_id` **and** `price_id` present) that gates the
 later steps via `if:`.
 
 Custom fields sent: `InstanceName`, `PassportUserID`, `PassportSubscriptionID`,
-`PassportPlanID`, `SubscriptionInterval`, `EndsAt`, `EndsAtPretty`.
+`PassportPlanID`, `SubscriptionInterval`.
 
 ## Requirements
 
@@ -43,13 +41,12 @@ Custom fields sent: `InstanceName`, `PassportUserID`, `PassportSubscriptionID`,
 | Input | `list_id` — the CM list for paid subscribers |
 | Host | `api.createsend.com` |
 
-Define all seven custom fields on the list first (`EndsAt` as a **Date** — it's
-sent as `YYYY/MM/DD` to match), or CM will accept the subscriber and silently
-drop the values.
+Define all five custom fields on the list first, or CM will accept the
+subscriber and silently drop the values.
 
 ## Customizing
 
 - Pair with [`subscription-canceled`](../subscription-canceled/) on the same
-  list so it stays accurate on both sides.
-- `EndsAtPretty` uses the `fromNow(...)` expression function for a friendly
-  "in 48 weeks" string — handy for merge tags in CM campaigns.
+  list so it stays accurate on both sides, and
+  [`subscription-updated`](../subscription-updated/) for renewal state
+  (`AutoRenew` / `SubscriptionCancelsAt`).

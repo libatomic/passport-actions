@@ -5,16 +5,16 @@ description: |
   (user.subscription.status.canceled). List membership and subscription state are
   NOT touched — a cancellation is not an unsubscribe. Instead the subscription
   custom fields are cleared (PassportSubscriptionID, PassportPlanID,
-  SubscriptionInterval, EndsAt, EndsAtPretty, AutoRenew) and SubscriptionExpiredAt
-  (a Date field, YYYY/MM/DD) is stamped, so CM segments built on those fields
-  update automatically. Uses the cm/subscriber-update recipe.
+  SubscriptionInterval, AutoRenew) and SubscriptionExpiredAt (a Date field,
+  YYYY/MM/DD) is stamped, so CM segments built on those fields update
+  automatically. Uses the cm/subscriber-update recipe.
 
   The canceled event carries only the subscription id, so the subscriber is resolved
   via subscription.get. Requires the CM_API_KEY secret and a list_id input. The
   SubscriptionExpiredAt custom field must exist on the list as a Date field.
 
   NOTE: the update step is continue-on-error because Campaign Monitor returns a
-  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  400/404 when the email address isn't on the list — a harmless no-op that shouldn't
   fail the run.
 category: campaign-monitor
 replaces:
@@ -63,10 +63,6 @@ definition:
           - Key: PassportPlanID
             Clear: true
           - Key: SubscriptionInterval
-            Clear: true
-          - Key: EndsAt
-            Clear: true
-          - Key: EndsAtPretty
             Clear: true
           - Key: AutoRenew
             Clear: true

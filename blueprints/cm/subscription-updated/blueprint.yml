@@ -18,7 +18,7 @@ description: |
   (CM silently drops undefined fields).
 
   NOTE: the update step is continue-on-error because Campaign Monitor returns a
-  400 when the email address isn't on the list — a harmless no-op that shouldn't
+  400/404 when the email address isn't on the list — a harmless no-op that shouldn't
   fail the run.
 category: campaign-monitor
 inputs:
@@ -57,10 +57,6 @@ definition:
         # event carries cancel_at, formatted YYYY/MM/DD for a CM Date field) or
         # sent as {Clear: true} — never an empty Value. auto_renew is always on
         # the body; the == true guard turns any missing value into "false".
-        custom_fields: >-
-          ${{ list(
-            ({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}),
-            empty(trigger.body.cancel_at)
-              ? ({Key: "SubscriptionCancelsAt", Clear: true})
-              : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)})
-          ) }}
+        # NOTE: must stay on ONE line — the engine's ${{ }} matcher doesn't span
+        # newlines, and a multi-line value silently degrades to a raw string.
+        custom_fields: '${{ list(({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}), empty(trigger.body.cancel_at) ? ({Key: "SubscriptionCancelsAt", Clear: true}) : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)})) }}'

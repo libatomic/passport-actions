@@ -29,7 +29,7 @@ is the full updated subscription, so the sync is stateless and idempotent.
 
 ## Expect a harmless 400
 
-If the user was never added to the list, CM returns a **400** for the update.
+If the user was never added to the list, CM returns a **404** for the update.
 The step is `continue-on-error: true`, so the run still succeeds.
 
 ## Requirements

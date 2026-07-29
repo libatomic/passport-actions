@@ -65,8 +65,6 @@ send dates as `YYYY/MM/DD` to match; anything else CM drops silently.
 | `PassportSubscriptionID` | Text | `new-subscriber` | `subscription-canceled` | The subscription's Passport ID |
 | `PassportPlanID` | Text | `new-subscriber` | `subscription-canceled` | The plan's Passport ID |
 | `SubscriptionInterval` | Text | `new-subscriber` | `subscription-canceled` | Billing interval (`month` / `year`) |
-| `EndsAt` | **Date** | `new-subscriber` | `subscription-canceled` | Current period end |
-| `EndsAtPretty` | Text | `new-subscriber` | `subscription-canceled` | Friendly form, e.g. `"in 48 weeks"` |
 | `AutoRenew` | Text | `subscription-updated` | `subscription-canceled` | `"true"` / `"false"` |
 | `SubscriptionCancelsAt` | **Date** | `subscription-updated` (when a cancellation is scheduled) | `subscription-updated` (when it isn't) | Scheduled cancellation date |
 | `SubscriptionExpiredAt` | **Date** | `subscription-canceled` | — | When the subscription ended |
