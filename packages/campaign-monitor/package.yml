@@ -59,7 +59,7 @@ custom_fields:
     description: The plan's Passport ID
   - key: SubscriptionInterval
     type: Text
-    set_by: [cm/new-subscriber]
+    set_by: [cm/new-subscriber, cm/subscription-updated]
     cleared_by: [cm/subscription-canceled]
     description: Billing interval (month / year)
   - key: AutoRenew

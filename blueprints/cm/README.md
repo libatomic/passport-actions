@@ -64,7 +64,7 @@ send dates as `YYYY/MM/DD` to match; anything else CM drops silently.
 | `CreatedAt` | **Date** | `new-user` | — | Account creation date |
 | `PassportSubscriptionID` | Text | `new-subscriber` | `subscription-canceled` | The subscription's Passport ID |
 | `PassportPlanID` | Text | `new-subscriber` | `subscription-canceled` | The plan's Passport ID |
-| `SubscriptionInterval` | Text | `new-subscriber` | `subscription-canceled` | Billing interval (`month` / `year`) |
+| `SubscriptionInterval` | Text | `new-subscriber`, `subscription-updated` | `subscription-canceled` | Billing interval (`month` / `year`) |
 | `AutoRenew` | Text | `subscription-updated` | `subscription-canceled` | `"true"` / `"false"` |
 | `SubscriptionCancelsAt` | **Date** | `subscription-updated` (when a cancellation is scheduled) | `subscription-updated` (when it isn't) | Scheduled cancellation date |
 | `SubscriptionExpiredAt` | **Date** | `subscription-canceled` | — | When the subscription ended |

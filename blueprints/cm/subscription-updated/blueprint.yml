@@ -10,6 +10,9 @@ description: |
     (cancel_at, formatted YYYY/MM/DD for a CM Date field). When the subscription
     has no scheduled cancellation (e.g. auto-renew was turned back on), the field
     is CLEARED so a stale date doesn't linger.
+  - SubscriptionInterval — the billing interval (recurring_interval), so a
+    monthly/yearly plan switch is reflected. Only written when the event carries
+    a non-empty interval — clearing it is subscription-canceled's job.
 
   List membership is not touched. Uses the cm/subscriber-update recipe.
 
@@ -53,10 +56,13 @@ definition:
         list_id: ${{ inputs.list_id }}
         email: ${{ steps.load-user.outputs.user.profile.email }}
         name: ${{ steps.load-user.outputs.user.profile.name }}
-        # The rows are computed so SubscriptionCancelsAt is either SET (when the
+        # The rows are computed: SubscriptionCancelsAt is either SET (when the
         # event carries cancel_at, formatted YYYY/MM/DD for a CM Date field) or
-        # sent as {Clear: true} — never an empty Value. auto_renew is always on
-        # the body; the == true guard turns any missing value into "false".
+        # sent as {Clear: true} — never an empty Value. SubscriptionInterval is
+        # only included when the event carries a non-empty recurring_interval
+        # (the {Key: ""} sentinel is filtered out) — clearing it is
+        # subscription-canceled's job. auto_renew is always on the body; the
+        # == true guard turns any missing value into "false".
         # NOTE: must stay on ONE line — the engine's ${{ }} matcher doesn't span
         # newlines, and a multi-line value silently degrades to a raw string.
-        custom_fields: '${{ list(({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}), empty(trigger.body.cancel_at) ? ({Key: "SubscriptionCancelsAt", Clear: true}) : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)})) }}'
+        custom_fields: '${{ filter(list(({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}), empty(trigger.body.cancel_at) ? ({Key: "SubscriptionCancelsAt", Clear: true}) : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)}), empty(trigger.body.recurring_interval) ? ({Key: ""}) : ({Key: "SubscriptionInterval", Value: toString(trigger.body.recurring_interval)})), #.Key != "") }}'
