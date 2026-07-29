@@ -33,6 +33,16 @@ description: |
 blueprints:
   - cm/new-subscriber
   - cm/subscription-canceled
+
+# Optional: external fields the workflows expect to exist before enabling —
+# e.g. custom fields that must be created on the vendor's side (for Campaign
+# Monitor, on the list). `set_by` / `cleared_by` reference the blueprints
+# above; a trailing `*` in a key denotes an operator-defined family of fields.
+custom_fields:
+  - key: PassportUserID
+    type: Text
+    set_by: [cm/new-subscriber]
+    description: The user's Passport ID
 ```
 
 ## Conventions

@@ -29,3 +29,67 @@ blueprints:
   - cm/user-email-opt-in
   - cm/user-deleted
   - cm/optout-webhook
+
+# Custom fields the workflows write. Create each one on the target CM list
+# BEFORE enabling (Lists & Subscribers → (list) → Custom Fields) — CM silently
+# drops values for fields that don't exist. Keys are the personalization tag
+# without brackets; Date fields are sent as YYYY/MM/DD.
+custom_fields:
+  - key: InstanceName
+    type: Text
+    set_by: [cm/new-user, cm/new-subscriber]
+    description: The Passport instance name
+  - key: PassportUserID
+    type: Text
+    set_by: [cm/new-user, cm/new-subscriber]
+    description: The user's Passport ID
+  - key: CreatedAt
+    type: Date
+    set_by: [cm/new-user]
+    description: Account creation date
+  - key: PassportSubscriptionID
+    type: Text
+    set_by: [cm/new-subscriber]
+    cleared_by: [cm/subscription-canceled]
+    description: The subscription's Passport ID
+  - key: PassportPlanID
+    type: Text
+    set_by: [cm/new-subscriber]
+    cleared_by: [cm/subscription-canceled]
+    description: The plan's Passport ID
+  - key: SubscriptionInterval
+    type: Text
+    set_by: [cm/new-subscriber]
+    cleared_by: [cm/subscription-canceled]
+    description: Billing interval (month / year)
+  - key: EndsAt
+    type: Date
+    set_by: [cm/new-subscriber]
+    cleared_by: [cm/subscription-canceled]
+    description: Current period end
+  - key: EndsAtPretty
+    type: Text
+    set_by: [cm/new-subscriber]
+    cleared_by: [cm/subscription-canceled]
+    description: Friendly period end, e.g. "in 48 weeks"
+  - key: AutoRenew
+    type: Text
+    set_by: [cm/subscription-updated]
+    cleared_by: [cm/subscription-canceled]
+    description: '"true" / "false"'
+  - key: SubscriptionCancelsAt
+    type: Date
+    set_by: [cm/subscription-updated]
+    cleared_by: [cm/subscription-updated]
+    description: Scheduled cancellation date; cleared when none is scheduled
+  - key: SubscriptionExpiredAt
+    type: Date
+    set_by: [cm/subscription-canceled]
+    description: When the subscription ended
+  - key: opt_out_*
+    type: Text
+    set_by: [cm/preferences-updated]
+    description: >
+      One field per mapped delivery category (operator-defined keys, e.g.
+      opt_out_newsletter1) — "true" when the user opted out of that category
+      on email, "false" otherwise. Build reverse segments on these.
