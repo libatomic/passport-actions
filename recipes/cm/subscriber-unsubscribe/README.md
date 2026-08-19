@@ -51,7 +51,8 @@ steps:
     with:
       login: ${{ trigger.body.EmailAddress }}
     outputs:
-      channels: ${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences.channels)) }}
+      # nil-guarded: a user who never set preferences has preferences: nil
+      channels: '${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences?.channels ?? {})) }}'
 
   # user.update replaces the whole preferences object, so round-trip the
   # user's current channels with only email.opt_out overridden.
@@ -61,7 +62,7 @@ steps:
     with:
       user_id: ${{ steps.lookup.outputs.user.id }}
       preferences:
-        channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email)}, outputs.channels) }}'
+        channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email ?? {})}, outputs.channels) }}'
 ```
 
 This pattern ships ready-made as the

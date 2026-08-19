@@ -45,13 +45,15 @@ definition:
     # another source) — that's fine, skip them. user.get loads the user's full
     # channel preferences; the JSON round-trip normalizes them to plain maps
     # (never-configured channels surface as typed values merge() can't take).
+    # A user who has never set any preferences has preferences: nil, so the
+    # chain is nil-guarded (?. / ??) down to an empty map.
     - id: lookup
       action: user.get
       continue-on-error: true
       with:
         login: ${{ trigger.body.EmailAddress }}
       outputs:
-        channels: ${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences.channels)) }}
+        channels: '${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences?.channels ?? {})) }}'
 
     # user.update REPLACES the whole preferences object (no server-side merge),
     # so send the user's current channels back with only email.opt_out changed.
@@ -63,4 +65,4 @@ definition:
       with:
         user_id: ${{ steps.lookup.outputs.user.id }}
         preferences:
-          channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email)}, outputs.channels) }}'
+          channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email ?? {})}, outputs.channels) }}'
