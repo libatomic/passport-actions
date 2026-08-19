@@ -10,10 +10,12 @@ description: |
   the field and CM segments like "[opt_out_newsletter1] equals true" stay
   accurate.
 
-  Configure category_fields with one row per category: the Passport delivery
-  category ID and the CM custom-field key it maps to (the personalization tag
-  without brackets, e.g. opt_out_newsletter1). Categories not in the mapping
-  are ignored; mapped categories the user has no preference for are "false".
+  Configure category_fields with one row per category: pick the category by
+  name (the installer lists the instance's categories) and the CM custom-field
+  key auto-fills as opt_out_<category name> — the personalization tag without
+  brackets, editable if your CM field is keyed differently. Categories not in
+  the mapping are ignored; mapped categories the user has no preference for
+  are "false".
 
   List membership is not touched — whole-channel opt-out is a different event,
   handled by the user-email-opt-out blueprint. Uses the cm/subscriber-update
@@ -39,16 +41,16 @@ inputs:
   category_fields:
     label: Category Opt-Out Fields
     description: >
-      Mapping from Passport delivery category IDs to CM custom-field keys, one
-      row per category, e.g. category Ca4HCbj1B8JQLvw8uuZYj -> field
-      opt_out_newsletter1. Field keys are the CM personalization tag without
-      brackets and must exist on the list as Text custom fields.
+      One row per delivery category to sync: pick the category and the CM
+      field key auto-fills as opt_out_<category name> (edit it if your CM
+      field is keyed differently). Field keys are the CM personalization tag
+      without brackets and must exist on the list as Text custom fields.
     type: list
     required: true
     default: []
     items:
-      - { name: category, label: Passport Category ID }
-      - { name: field, label: CM Opt-Out Field Key }
+      - { name: category, label: Category, lookup: categories }
+      - { name: field, label: CM Opt-Out Field Key, autofill: "opt_out_{name}" }
 definition:
   name: Preferences Updated (Campaign Monitor)
   description: Flags per-category email opt-outs as CM custom fields ("true" when opted out).

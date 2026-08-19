@@ -51,14 +51,18 @@ with [`user-email-opt-out`](../user-email-opt-out/) /
    category, keys matching your mapping exactly (CM silently drops undefined
    fields; see the [custom-fields gotcha](../README.md#custom-fields--read-this-first)).
 2. **Fill in the `category_fields` mapping** — one row per category (rendered
-   as a table in the editor, no JSON needed):
+   as a table in the editor, no JSON needed). In the installer, the Category
+   column is a picker over the instance's delivery categories (by name), and
+   picking one auto-fills the field key as `opt_out_<category name>`
+   (snake-cased) — edit it if your CM field is keyed differently:
 
-   | Passport Category ID | CM Opt-Out Field Key |
+   | Category | CM Opt-Out Field Key |
    |---|---|
-   | `Ca4HCbj1B8JQLvw8uuZYj` | `opt_out_newsletter1` |
+   | Weekly Newsletter | `opt_out_weekly_newsletter` |
    | … | … |
 
-   Category IDs are in the admin under the instance's delivery categories.
+   The stored mapping holds the category's **ID** (what the
+   `user.preferences.updated` event carries), not its name.
 3. **Build CM segments** on the fields, e.g. exclude
    `[opt_out_newsletter1] equals true` from that newsletter's campaigns.
 
