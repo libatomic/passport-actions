@@ -68,6 +68,13 @@ event triggers. The `user.update` here does **not** trigger
 
 ## Setup
 
+**Via the Campaign Monitor package (recommended):** fully automatic. The
+package installer generates this workflow's webhook URL, feeds it to the
+[optout-webhook-register](../optout-webhook-register/) companion, and runs the
+registration against the CM list — no copying, no curl.
+
+**Standalone install:**
+
 1. Import this blueprint and save the workflow.
 2. On the workflow detail page, generate a webhook URL (Webhook URLs section)
    and copy it.

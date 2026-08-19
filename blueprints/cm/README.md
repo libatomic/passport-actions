@@ -104,8 +104,10 @@ then accepts the call but leaves the member unsubscribed.
 Consent syncs both ways: `user-email-opt-out` pushes Passport opt-outs to CM,
 [`user-email-opt-in`](user-email-opt-in/) reactivates the CM member when the
 user opts back in, and [`optout-webhook`](optout-webhook/) pulls CM-side
-unsubscribes back into Passport (register it on the list with
-[`optout-webhook-register`](optout-webhook-register/)).
+unsubscribes back into Passport. Installing via the Campaign Monitor package
+registers the webhook on the list automatically (the installer generates the
+URL and runs [`optout-webhook-register`](optout-webhook-register/) for you);
+standalone installs run the register workflow manually.
 
 ## Deleting vs unsubscribing
 

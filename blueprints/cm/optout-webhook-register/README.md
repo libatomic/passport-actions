@@ -7,6 +7,14 @@ instead of a `curl` command.
 
 ## Setup
 
+**Via the Campaign Monitor package (recommended):** nothing to do. The package
+installer generates a webhook URL for the Opt-Out Webhook workflow it just
+created, bakes it into this workflow's `webhook_url` input, and starts the
+registration run automatically. Check this workflow's run history for the
+result. For additional CM lists, run it again with a different List ID.
+
+**Standalone install:**
+
 1. Import the [Opt-Out Webhook](../optout-webhook/) blueprint and save it.
 2. On that workflow's detail page, generate a webhook URL (Webhook URLs
    section) and copy it.

@@ -5,10 +5,13 @@ description: |
   has no UI for list webhooks, so this workflow registers the opt-out webhook
   URL on a CM list via the CM API — no curl required.
 
-  Run it manually once per list: paste the webhook URL from the Opt-Out Webhook
-  workflow's detail page (Webhook URLs section) and the CM list ID. The
-  registration is idempotent — if the URL is already registered on the list the
-  create call is skipped, so re-running is safe.
+  Installed via the Campaign Monitor package, the installer generates the
+  Opt-Out Webhook workflow's URL, fills it in here, and runs the registration
+  automatically — nothing to do. Installed standalone, run it manually once per
+  list: paste the webhook URL from the Opt-Out Webhook workflow's detail page
+  (Webhook URLs section) and the CM list ID. The registration is idempotent —
+  if the URL is already registered on the list the create call is skipped, so
+  re-running is safe.
 
   Requires the CM_API_KEY secret and api.createsend.com on the allowed HTTP
   hosts list. Registers Deactivate events only (the type CM fires for
@@ -21,7 +24,7 @@ inputs:
     required: true
     default: ""
   webhook_url:
-    description: The Opt-Out Webhook workflow's webhook URL (copy it from that workflow's detail page after saving)
+    description: The Opt-Out Webhook workflow's webhook URL (filled in automatically by the package installer; for standalone installs, copy it from that workflow's detail page)
     type: string
     required: true
     default: ""
@@ -46,7 +49,7 @@ definition:
       required: true
       default: ""
       label: Webhook URL
-      hint: Copy from the Opt-Out Webhook workflow's detail page (Webhook URLs section)
+      hint: Filled in by the package installer; for standalone installs, copy from the Opt-Out Webhook workflow's detail page (Webhook URLs section)
       validate: hasPrefix(value, "https://") && contains(value, "/webhook/")
 
   steps:
