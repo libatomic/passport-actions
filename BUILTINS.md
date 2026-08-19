@@ -819,15 +819,17 @@ replace("hello world", "world", "there")  # → "hello there"
 
 ### contains
 
-Check if a string contains a substring.
+Check if a string contains a substring. **Operator, not a function**: `contains`
+is a reserved binary operator in the expression language, so the function-call
+form `contains(a, b)` does not compile — use the infix form.
 
 ```
-contains(str, substr) → bool
+str contains substr → bool
 ```
 
 ```yaml
 # Example — use in an if condition
-if: ${{ contains(user.profile.bio, "developer") }}
+if: ${{ user.profile.bio contains "developer" }}
 ```
 
 ### hasPrefix

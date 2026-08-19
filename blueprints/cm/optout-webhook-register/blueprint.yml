@@ -68,7 +68,8 @@ definition:
       default: ""
       label: Webhook URL
       hint: Filled in by the package installer; for standalone installs, copy from the Opt-Out Webhook workflow's detail page (not needed for list)
-      validate: inputs.action == "list" || (hasPrefix(value, "https://") && contains(value, "/webhook/"))
+      # NB: `contains` is an expr operator (a contains b), not a callable function.
+      validate: inputs.action == "list" || (hasPrefix(value, "https://") && value contains "/webhook/")
 
   steps:
     - id: webhook
