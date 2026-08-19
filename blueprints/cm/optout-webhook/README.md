@@ -71,7 +71,9 @@ event triggers. The `user.update` here does **not** trigger
 **Via the Campaign Monitor package (recommended):** fully automatic. The
 package installer generates this workflow's webhook URL, feeds it to the
 [optout-webhook-register](../optout-webhook-register/) companion, and runs the
-registration against the CM list — no copying, no curl.
+registration against the CM list — no copying, no curl. Deleting this workflow
+from the admin UI is symmetric: the companion is run with `action: unregister`
+first, so CM stops posting to the dead URL.
 
 **Standalone install:**
 

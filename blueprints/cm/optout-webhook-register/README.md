@@ -27,12 +27,24 @@ The registration is idempotent: if the URL is already registered on the list,
 the create call is skipped and the run logs "nothing to do" — re-running is
 always safe.
 
+## Actions
+
+The `action` input selects what a run does:
+
+- **`register`** (default) — register the webhook URL on the list (idempotent).
+- **`unregister`** — remove it from the list (idempotent). The admin UI runs
+  this automatically when the Opt-Out Webhook workflow is deleted, so CM stops
+  posting to a dead URL — the pair cleans up after itself.
+- **`list`** — log every webhook registered on the list (`WebhookID`, `Events`,
+  `Url`, `Status`), for auditing what CM will actually send you. The webhook
+  URL input isn't needed for this action.
+
 ## What it does
 
 | Step | Purpose |
 |---|---|
-| `webhook` | Includes the [cm/webhook-register](../../../recipes/cm/webhook-register/) recipe: lists the CM list's existing webhooks, and registers the URL for `Deactivate` events if not already present. |
-| `report` | Logs whether the webhook was registered or already present. |
+| `webhook` | Includes the [cm/webhook-register](../../../recipes/cm/webhook-register/) recipe: lists the CM list's existing webhooks, then registers or unregisters the URL per the `action` input. |
+| `report-*` | Logs the outcome for the selected action (registered / already present, unregistered / wasn't registered, or the full webhook inventory). |
 
 `Deactivate` is the only event type registered — it's what CM fires for
 unsubscribes, spam complaints, and hard bounces, and it's the only type the

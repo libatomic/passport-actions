@@ -1,6 +1,6 @@
 name: cm-webhook-register
-version: "1.0"
-description: Register a webhook on a Campaign Monitor list (idempotent — skips creation when the URL is already registered)
+version: "1.1"
+description: Manage a webhook on a Campaign Monitor list — register (idempotent), unregister, or list what's registered
 
 inputs:
   api_key:
@@ -13,12 +13,19 @@ inputs:
     required: true
     type: string
     label: List ID
-    description: Campaign Monitor list ID to register the webhook on
-  url:
-    required: true
+    description: Campaign Monitor list ID to act on
+  action:
+    required: false
     type: string
+    default: "register"
+    label: Action
+    description: register (default), unregister, or list
+  url:
+    required: false
+    type: string
+    default: ""
     label: Webhook URL
-    description: Destination URL Campaign Monitor should POST events to
+    description: Destination URL to register or unregister (not needed for list)
   events:
     required: false
     type: array
@@ -33,6 +40,8 @@ inputs:
     description: json or xml
 
 steps:
+  # Always fetch what's registered: it's the register idempotency check, the
+  # unregister URL→WebhookID lookup, and the entire payload of the list action.
   - id: existing
     action: http.get
     with:
@@ -42,7 +51,7 @@ steps:
       expect_status: [200]
 
   - id: register
-    if: ${{ !any(steps.existing.outputs.body, {.Url == inputs.url}) }}
+    if: ${{ inputs.action == "register" && inputs.url != "" && !any(steps.existing.outputs.body, {.Url == inputs.url}) }}
     action: http.post
     with:
       url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks.json"
@@ -54,3 +63,12 @@ steps:
         Url: ${{ inputs.url }}
         PayloadFormat: ${{ inputs.payload_format }}
       expect_status: [201]
+
+  - id: unregister
+    if: ${{ inputs.action == "unregister" && inputs.url != "" && any(steps.existing.outputs.body, {.Url == inputs.url}) }}
+    action: http.delete
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks/${{ first(filter(steps.existing.outputs.body, {.Url == inputs.url})).WebhookID }}.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+      expect_status: [200]
