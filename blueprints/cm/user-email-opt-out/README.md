@@ -46,7 +46,7 @@ If the user was never on the list, CM returns **`400` / code `203`**
   instance targets one `list_id`), or add extra unsubscribe steps to one
   workflow.
 - Pair with [`user-email-opt-in`](../user-email-opt-in/) so users who turn
-  email back on are re-subscribed in CM.
-- For the **inbound** direction — CM unsubscribes flowing back into Passport —
-  pair with [`optout-webhook`](../optout-webhook/). See also
-  [`journeys/preference-sync`](../../journeys/preference-sync/).
+  email back on are re-subscribed in CM, and with
+  [`optout-webhook`](../optout-webhook/) so CM-side unsubscribes flow back into
+  Passport (full two-way consent sync).
+- See also [`journeys/preference-sync`](../../journeys/preference-sync/).

@@ -1,72 +1,95 @@
 # Opt-Out Webhook (Campaign Monitor)
 
-The **inbound** half of the consent loop: when someone unsubscribes in Campaign
-Monitor (e.g. clicks the unsubscribe link in a CM campaign), the matching
-Passport user is **opted out of the email channel** too.
+Inbound webhook from Campaign Monitor: when a subscriber unsubscribes (or is
+otherwise deactivated) in CM, the matching Passport user is opted out of the
+email channel so both systems agree.
 
-Pair it with [`user-email-opt-out`](../user-email-opt-out/) (the outbound half)
-and an opt-out on either side is honored on both.
+This is the **inbound half** of the consent loop:
 
-See the [Campaign Monitor overview](../README.md) for shared setup.
+- [user-email-opt-out](../user-email-opt-out/) / [user-email-opt-in](../user-email-opt-in/)
+  push Passport preference changes **to** CM.
+- This blueprint pulls CM unsubscribes **back into** Passport.
 
 ## When it fires
 
-An inbound **webhook** from Campaign Monitor. CM batches events into one POST
-(`{ ListID, Events: [...] }`); the trigger's `foreach: Events` runs each element
-as its own run, filtered to `Type == "Deactivate" || Type == "Unsubscribe"`.
+Campaign Monitor sends one `Deactivate` event whenever a subscriber becomes
+inactive on the list — that single event type covers:
+
+- **unsubscribes** (`State: "Unsubscribed"`)
+- **spam complaints** (`State: "Unconfirmed"` / complaint states)
+- **hard bounces / deletions** (`State: "Deleted"`)
+
+All of them mean "stop emailing this address", so the workflow opts the user
+out for any `Deactivate` regardless of `State`.
+
+CM batches events into a single POST:
+
+```json
+{
+  "ListID": "...",
+  "Events": [
+    { "Type": "Deactivate", "EmailAddress": "a@example.com", "State": "Unsubscribed", ... },
+    { "Type": "Deactivate", "EmailAddress": "b@example.com", "State": "Deleted", ... }
+  ]
+}
+```
+
+`foreach: Events` fans each element out as its own run, so one bad element
+doesn't block the rest, and the trigger `if` filters to `Deactivate` events.
 
 ## What it does
 
 | Step | Action | Purpose |
 |---|---|---|
-| `lookup` | `user.get` (`continue-on-error`) | Find the Passport user by email |
-| `optout` | `user.update` | Set `preferences.channels.email.opt_out: true` |
+| `lookup` | `user.get` | Find the Passport user by the event's `EmailAddress`. `continue-on-error` — addresses that only exist in CM are skipped. Publishes the user's current channel preferences as `outputs.channels`. |
+| `optout` | `user.update` | Sends the user's **entire** channel-preferences structure back with only `email.opt_out` flipped to `true`. |
 
-Emails with no matching Passport user are skipped silently — people can be on
-your CM list without being Passport users.
+### Why the preferences round-trip
 
-**No sync loop**: workflow runs are silent (events aren't re-queued), so the
-`user.update` here does **not** fire `user.email.opt_out` /
-`user.preferences.updated` workflows — the outbound opt-out blueprint won't
-bounce this change back at CM.
+`user.update` **replaces** the whole `preferences` object — there is no
+server-side merge. Sending just `{channels: {email: {opt_out: true}}}` would
+wipe the user's SMS opt-out, alternate email address, custom channels, and
+everything else. So the workflow does the read-modify-write itself:
+
+1. `user.get` already loads the user's full preferences; the `lookup` step
+   publishes them via `outputs.channels`. The `fromJSON(toJSON(...))` round-trip
+   normalizes the structure to plain maps — never-configured channels come back
+   as typed values that `merge()` can't consume directly.
+2. `optout` rebuilds the channels map with `merge()` (first-wins): the
+   `{opt_out: true}` literal overrides that one flag, and every other email
+   setting and every other channel is carried over from the lookup unchanged.
+
+### No sync loop
+
+Workflow runs are silent: actions executed inside a workflow do not re-fire
+event triggers. The `user.update` here does **not** trigger
+`user.preferences.updated` workflows, so the opt-out is not pushed back to CM
+(where the subscriber is already inactive anyway).
 
 ## Setup
 
-1. Import this blueprint and save — the workflow detail page shows the webhook
-   URL (`/workflows/{id}/webhook/{token}`).
-2. Create a webhook on the CM **list** pointing at that URL. CM has no UI for
-   this; use the API:
+1. Import this blueprint and save the workflow.
+2. On the workflow detail page, generate a webhook URL (Webhook URLs section)
+   and copy it.
+3. Register it on the CM list with the
+   [optout-webhook-register](../optout-webhook-register/) companion blueprint —
+   CM has no UI for list webhooks. Alternatively, call the CM API yourself:
 
-   ```
-   POST https://api.createsend.com/api/v3.3/lists/{listid}/webhooks.json
-   Authorization: Basic <api key>
-   Content-Type: application/json
-
-   {
-     "Events": ["Deactivate"],
-     "Url": "<the webhook URL>",
-     "PayloadFormat": "json"
-   }
-   ```
-
-3. Repeat for each list you campaign against (all can share this one workflow —
-   the opt-out is channel-wide, not per-list).
+```bash
+curl -u "<api key>:x" \
+  -H "Content-Type: application/json" \
+  -d '{"Events":["Deactivate"],"Url":"<webhook url>","PayloadFormat":"json"}' \
+  https://api.createsend.com/api/v3.3/lists/<list id>/webhooks.json
+```
 
 ## Security
 
-Campaign Monitor does **not** sign webhook payloads, so the trigger is
-`validate: false` — a deliberate opt-out of signature verification. The token
-in the URL is the sole authorization:
-
-- Treat the webhook URL as a secret; revoke and re-mint the token if it leaks.
-- Optionally add an `ip_allowlist` to the trigger for defense in depth.
-- Worst case for a forged payload is an email opt-out (no data exposure), which
-  the user can reverse in their preferences.
+Campaign Monitor does not sign webhook payloads, so the trigger sets
+`validate: false`. The random token in the webhook URL is the sole
+authorization — **treat the URL as a secret**. For defense in depth you can add
+an `ip_allowlist` to the trigger with CM's sending IPs.
 
 ## Requirements
 
-| What | Value |
-|---|---|
-| Secret | none (inbound only — no CM API calls) |
-| Input | none (`opt_out` is channel-wide, not per-list) |
-| Host | none (no outbound HTTP) |
+None — no secrets, no inputs, no outbound HTTP. The registration companion is
+the piece that needs the `CM_API_KEY` secret.

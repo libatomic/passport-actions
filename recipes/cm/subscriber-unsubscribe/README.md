@@ -30,7 +30,8 @@ steps:
 
 ### Webhook-triggered unsubscribe
 
-Process Campaign Monitor deactivation webhooks to sync opt-outs back to your user records:
+Process Campaign Monitor deactivation webhooks to sync opt-outs back to your
+user records:
 
 ```yaml
 name: cm-optout-sync
@@ -44,14 +45,27 @@ on:
     if: body.Type == "Deactivate"
 
 steps:
-  - id: update-user
-    action: user.update
+  - id: lookup
+    action: user.get
     continue-on-error: true
     with:
       login: ${{ trigger.body.EmailAddress }}
+    outputs:
+      channels: ${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences.channels)) }}
+
+  # user.update replaces the whole preferences object, so round-trip the
+  # user's current channels with only email.opt_out overridden.
+  - id: optout
+    if: ${{ steps.lookup.status == "ok" }}
+    action: user.update
+    with:
+      user_id: ${{ steps.lookup.outputs.user.id }}
       preferences:
-        email_opt_out: true
+        channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email)}, outputs.channels) }}'
 ```
+
+This pattern ships ready-made as the
+[`cm/optout-webhook`](../../../blueprints/cm/optout-webhook/) blueprint.
 
 ## API details
 

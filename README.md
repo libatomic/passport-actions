@@ -99,7 +99,8 @@ user/subscription/plan ids, interval, renewal state) where relevant.
 | `blueprints/cm/user-email-opt-out` | `user.email.opt_out` | Unsubscribe from a list |
 | `blueprints/cm/user-email-opt-in` | `user.email.opt_in` | Re-subscribe on a list |
 | `blueprints/cm/preferences-updated` | `user.preferences.updated` | Sync per-category `opt_out_*` fields |
-| `blueprints/cm/optout-webhook` | inbound CM webhook (`Deactivate`) | Opt the Passport user out of email |
+| `blueprints/cm/optout-webhook` | CM `Deactivate` webhook | Opt out users who unsubscribe in CM |
+| `blueprints/cm/optout-webhook-register` | manual | Register the opt-out webhook on a CM list |
 | `blueprints/cm/new-user` | `user.email.verified` | Add to a list |
 | `blueprints/cm/new-subscriber` | `user.subscription.status.active` (paid, plan-backed only) | Add to a list |
 | `blueprints/cm/subscription-updated` | `user.subscription.updated` | Sync `AutoRenew` / `SubscriptionCancelsAt` fields |

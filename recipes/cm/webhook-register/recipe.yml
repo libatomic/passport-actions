@@ -1,0 +1,56 @@
+name: cm-webhook-register
+version: "1.0"
+description: Register a webhook on a Campaign Monitor list (idempotent — skips creation when the URL is already registered)
+
+inputs:
+  api_key:
+    secret: true
+    required: true
+    type: string
+    label: API Key
+    description: Campaign Monitor API key (or use secrets.CM_API_KEY)
+  list_id:
+    required: true
+    type: string
+    label: List ID
+    description: Campaign Monitor list ID to register the webhook on
+  url:
+    required: true
+    type: string
+    label: Webhook URL
+    description: Destination URL Campaign Monitor should POST events to
+  events:
+    required: false
+    type: array
+    default: ["Deactivate"]
+    label: Events
+    description: CM events to subscribe to (Subscribe, Update, Deactivate)
+  payload_format:
+    required: false
+    type: string
+    default: "json"
+    label: Payload Format
+    description: json or xml
+
+steps:
+  - id: existing
+    action: http.get
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+      expect_status: [200]
+
+  - id: register
+    if: ${{ !any(steps.existing.outputs.body, {.Url == inputs.url}) }}
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        Events: ${{ inputs.events }}
+        Url: ${{ inputs.url }}
+        PayloadFormat: ${{ inputs.payload_format }}
+      expect_status: [201]

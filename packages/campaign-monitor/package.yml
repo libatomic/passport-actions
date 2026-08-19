@@ -6,14 +6,15 @@ description: |
   Keeps a Campaign Monitor list in sync with your members on the one-list model:
   verified users are added, subscription custom fields track paid state
   (segments derive paid / auto-renew off / expired / win-back from them),
-  per-category newsletter opt-outs sync as opt_out_* flags, and consent flows
-  both ways — Passport opt-outs/opt-ins update CM, and CM unsubscribes flow
-  back via an inbound webhook. Deleted accounts are erased from the list.
-  Installs nine event-triggered workflows built on the cm/* recipes.
+  per-category newsletter opt-outs sync as opt_out_* flags, and consent syncs
+  both ways: Passport opt-outs/opt-ins update CM, and CM unsubscribes flow back
+  via an inbound webhook. Deleted accounts are erased from the list.
+  Installs ten workflows built on the cm/* recipes: eight event-triggered, an
+  inbound CM webhook, and a manual helper that registers the webhook on a list.
 
   Shared prerequisites: a CM_API_KEY workflow secret and your Campaign Monitor
-  list_id (each outbound workflow takes it as an input; optout-webhook needs
-  neither); api.createsend.com must be on the instance's http allowlist. The
+  list_id (each workflow takes it as an input);
+  api.createsend.com must be on the instance's http allowlist. The
   custom fields each workflow writes must be created on the CM list first
   (exact keys and types are in the blueprints/cm README — CM silently drops
   undefined fields; Date fields expect YYYY/MM/DD). Workflows install
@@ -29,6 +30,7 @@ blueprints:
   - cm/user-email-opt-in
   - cm/user-deleted
   - cm/optout-webhook
+  - cm/optout-webhook-register
 
 # Custom fields the workflows write. Create each one on the target CM list
 # BEFORE enabling (Lists & Subscribers → (list) → Custom Fields) — CM silently

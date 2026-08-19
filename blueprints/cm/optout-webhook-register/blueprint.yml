@@ -1,0 +1,64 @@
+name: Register Opt-Out Webhook (Campaign Monitor)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/link-plus.svg
+description: |
+  One-time setup companion for the Opt-Out Webhook blueprint. Campaign Monitor
+  has no UI for list webhooks, so this workflow registers the opt-out webhook
+  URL on a CM list via the CM API — no curl required.
+
+  Run it manually once per list: paste the webhook URL from the Opt-Out Webhook
+  workflow's detail page (Webhook URLs section) and the CM list ID. The
+  registration is idempotent — if the URL is already registered on the list the
+  create call is skipped, so re-running is safe.
+
+  Requires the CM_API_KEY secret and api.createsend.com on the allowed HTTP
+  hosts list. Registers Deactivate events only (the type CM fires for
+  unsubscribes, spam complaints, and hard bounces).
+category: campaign-monitor
+inputs:
+  list_id:
+    description: Campaign Monitor list ID to register the webhook on
+    type: string
+    required: true
+    default: ""
+  webhook_url:
+    description: The Opt-Out Webhook workflow's webhook URL (copy it from that workflow's detail page after saving)
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Register Opt-Out Webhook (Campaign Monitor)
+  description: Registers the opt-out webhook URL on a Campaign Monitor list (run manually, once per list).
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/link-plus.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  inputs:
+    list_id:
+      type: string
+      required: true
+      default: ""
+      label: List ID
+      hint: The Campaign Monitor list to register the webhook on
+    webhook_url:
+      type: string
+      required: true
+      default: ""
+      label: Webhook URL
+      hint: Copy from the Opt-Out Webhook workflow's detail page (Webhook URLs section)
+      validate: hasPrefix(value, "https://") && contains(value, "/webhook/")
+
+  steps:
+    - id: webhook
+      includes: libatomic/passport-actions/recipes/cm/webhook-register
+      with:
+        api_key: ${{ secrets.CM_API_KEY }}
+        list_id: ${{ inputs.list_id }}
+        url: ${{ inputs.webhook_url }}
+        events: ["Deactivate"]
+
+    - id: report
+      action: log
+      with:
+        message: ${{ ternary(steps.webhook.outputs.register.status == "skipped", "already registered on list " + inputs.list_id + " — nothing to do", "registered on list " + inputs.list_id) }}

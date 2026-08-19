@@ -40,5 +40,5 @@ Active subscriber.
 - Running several CM lists? Install once **per list**, mirroring your
   [`user-email-opt-out`](../user-email-opt-out/) installs, so the two stay
   symmetric.
-- Pair with [`optout-webhook`](../optout-webhook/) for the inbound direction
-  (CM-side unsubscribes flowing back into Passport).
+- Add [`optout-webhook`](../optout-webhook/) to pull CM-side unsubscribes back
+  into Passport, closing the consent loop in both directions.

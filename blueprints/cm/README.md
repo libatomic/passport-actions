@@ -14,28 +14,28 @@ subscriber on a CM list.
 | [`user-email-opt-in`](user-email-opt-in/) | `user.email.opt_in` | **Re-subscribe** users who opted back in |
 | [`preferences-updated`](preferences-updated/) | `user.preferences.updated` | **Sync** per-category opt-out fields (`opt_out_*`) |
 | [`user-deleted`](user-deleted/) | `user.deleted` | **Delete** erased accounts from a list (GDPR) |
-| [`optout-webhook`](optout-webhook/) | inbound CM webhook (`Deactivate`) | **Opt the Passport user out** of email (CM → Passport) |
+| [`optout-webhook`](optout-webhook/) | CM `Deactivate` webhook | **Opt out** Passport users who unsubscribe in CM |
+| [`optout-webhook-register`](optout-webhook-register/) | manual | **Register** the opt-out webhook on a CM list (setup helper) |
 
 Install as many as you need — they're independent, and each targets its own
-list (except `optout-webhook`, which is channel-wide). A typical setup is a
-single list: `new-user` adds members, `new-subscriber` + `subscription-updated`
-+ `subscription-canceled` keep the subscription custom fields current (CM
-segments do the rest — paid, auto-renew off, expired, win-back), with
-`user-email-opt-out` / `user-email-opt-in` / `optout-webhook` for two-way
-consent sync and `user-deleted` for erasure.
+list. A typical setup is a single list: `new-user` adds members,
+`new-subscriber` + `subscription-updated` + `subscription-canceled` keep the
+subscription custom fields current (CM segments do the rest — paid, auto-renew
+off, expired, win-back), with `user-email-opt-out` / `user-email-opt-in` /
+`optout-webhook` for two-way consent sync and `user-deleted` for erasure.
 
 ## Shared requirements
 
-**Secret** — every blueprint that calls the CM API uses the same one
-(`optout-webhook` is inbound-only and needs none):
+**Secret** — every blueprint uses the same one (except `optout-webhook`, which
+is inbound-only and needs no API key):
 
 | Name | Value |
 |---|---|
 | `CM_API_KEY` | Your Campaign Monitor API key (Account settings → API keys) |
 
-**Input** — each outbound blueprint takes a single `list_id`: the CM list to
-act on. Find it in the CM UI under **Lists & Subscribers → (list) → Settings**,
-or via `GET /api/v3.3/clients/{clientid}/lists.json`.
+**Input** — each outbound blueprint takes a single `list_id`: the CM list to act on.
+Find it in the CM UI under **Lists & Subscribers → (list) → Settings**, or via
+`GET /api/v3.3/clients/{clientid}/lists.json`.
 
 **Allowed HTTP hosts**
 
@@ -101,10 +101,11 @@ treated as re-consent. If you'd rather a previous unsubscribe always win on a
 particular list, set `resubscribe: "false"` on that blueprint's add step; CM
 then accepts the call but leaves the member unsubscribed.
 
-Consent syncs **both ways**: `user-email-opt-out` pushes Passport opt-outs to
-CM, [`optout-webhook`](optout-webhook/) pulls CM unsubscribes back into
-Passport, and [`user-email-opt-in`](user-email-opt-in/) reactivates the CM
-member when the user opts back in.
+Consent syncs both ways: `user-email-opt-out` pushes Passport opt-outs to CM,
+[`user-email-opt-in`](user-email-opt-in/) reactivates the CM member when the
+user opts back in, and [`optout-webhook`](optout-webhook/) pulls CM-side
+unsubscribes back into Passport (register it on the list with
+[`optout-webhook-register`](optout-webhook-register/)).
 
 ## Deleting vs unsubscribing
 
@@ -135,5 +136,6 @@ Notes on both:
 - [`cm/subscriber-add`](../../recipes/cm/subscriber-add/) — add/update a subscriber
 - [`cm/subscriber-unsubscribe`](../../recipes/cm/subscriber-unsubscribe/) — unsubscribe (consent)
 - [`cm/subscriber-delete`](../../recipes/cm/subscriber-delete/) — delete (membership)
+- [`cm/webhook-register`](../../recipes/cm/webhook-register/) — register a list webhook (used by `optout-webhook-register`)
 - Also available: [`cm/subscriber-get`](../../recipes/cm/subscriber-get/),
   [`cm/subscriber-update`](../../recipes/cm/subscriber-update/)
