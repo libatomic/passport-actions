@@ -46,15 +46,9 @@ The `action` input selects what a run does:
 | `webhook` | Includes the [cm/webhook-register](../../../recipes/cm/webhook-register/) recipe: lists the CM list's existing webhooks, then registers or unregisters the URL per the `action` input. |
 | `report-*` | Logs the outcome for the selected action (registered / already present, unregistered / wasn't registered, or the full webhook inventory). |
 
-Two event types are registered, matching what the Opt-Out Webhook workflow
-acts on: `Deactivate` (unsubscribes, spam complaints, hard bounces, and
-deletes) and `Subscribe` (subscriber added, re-added, or restored — used to
-opt the Passport user back in).
-
-Note the register action is idempotent **by URL**: it will not change the
-event set of a webhook that's already registered. If the URL was previously
-registered with `Deactivate` only, run `action: unregister` then
-`action: register` to pick up `Subscribe`.
+`Deactivate` is the only event type registered — it's what CM fires for
+unsubscribes, spam complaints, and hard bounces, and it's the only type the
+Opt-Out Webhook workflow acts on.
 
 ## Requirements
 

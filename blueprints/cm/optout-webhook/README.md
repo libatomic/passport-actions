@@ -1,15 +1,14 @@
 # Opt-Out Webhook (Campaign Monitor)
 
 Inbound webhook from Campaign Monitor: when a subscriber unsubscribes (or is
-otherwise deactivated — including deleted) in CM, the matching Passport user is
-opted out of the email channel; when a subscriber becomes active on the list
-again, the user is opted back in. Both systems agree in both directions.
+otherwise deactivated) in CM, the matching Passport user is opted out of the
+email channel so both systems agree.
 
 This is the **inbound half** of the consent loop:
 
 - [user-email-opt-out](../user-email-opt-out/) / [user-email-opt-in](../user-email-opt-in/)
   push Passport preference changes **to** CM.
-- This blueprint pulls CM-side consent changes **back into** Passport.
+- This blueprint pulls CM unsubscribes **back into** Passport.
 
 ## When it fires
 
@@ -19,20 +18,13 @@ inactive on the list — that single event type covers:
 - **unsubscribes** (`State: "Unsubscribed"`)
 - **spam complaints** (`State: "Unconfirmed"` / complaint states)
 - **hard bounces / deletions** (`State: "Deleted"`) — deleting a subscriber in
-  the CM UI fires `Deactivate` (verified empirically)
+  the CM UI fires `Deactivate` too (verified empirically)
 
-All of them mean "stop emailing this address", so the workflow opts the user
-out for any `Deactivate` regardless of `State`.
-
-It also handles `Subscribe`, fired when a subscriber becomes **active** on the
-list — added, re-added, resubscribed, or restored by an admin — which opts the
-Passport user back in. Note that `Subscribe` fires for **every** add: list
-imports and adds made by the outbound blueprints included. The echo runs are
-silent and harmless (they set `opt_out: false` on users who are almost always
-already opted in), but seed or import a list **before** registering the
-webhook on it, or a bulk import means one webhook run per member. A manual
-admin add in the CM UI is treated as a consent signal — it will flip a
-Passport-side opt-out back to opted in.
+Only the first is a consent signal, so the `optout` step acts on
+`State: "Unsubscribed"` **only**. Spam complaints and bounces are
+deliverability states, and a deletion is list cleanup — none of them should
+flip the user's Passport email consent, so those events are received and
+ignored.
 
 CM batches events into a single POST:
 
@@ -47,16 +39,14 @@ CM batches events into a single POST:
 ```
 
 `foreach: Events` fans each element out as its own run, so one bad element
-doesn't block the rest, and the trigger `if` filters to `Deactivate` and
-`Subscribe` events.
+doesn't block the rest, and the trigger `if` filters to `Deactivate` events.
 
 ## What it does
 
 | Step | Action | Purpose |
 |---|---|---|
 | `lookup` | `user.get` | Find the Passport user by the event's `EmailAddress`. `continue-on-error` — addresses that only exist in CM are skipped. Publishes the user's current channel preferences as `outputs.channels`. |
-| `optout` | `user.update` | On `Deactivate`: sends the user's **entire** channel-preferences structure back with only `email.opt_out` flipped to `true`. |
-| `optin` | `user.update` | On `Subscribe`: the mirror image — `email.opt_out` flipped to `false`. A future `opt_out_until` (snooze) is deliberately carried over unchanged: CM reactivation clears the opt-out flag, not a user-chosen snooze. |
+| `optout` | `user.update` | On `Deactivate` with `State: "Unsubscribed"` only: sends the user's **entire** channel-preferences structure back with only `email.opt_out` flipped to `true`. |
 
 ### Why the preferences round-trip
 
@@ -101,14 +91,9 @@ first, so CM stops posting to the dead URL.
 ```bash
 curl -u "<api key>:x" \
   -H "Content-Type: application/json" \
-  -d '{"Events":["Deactivate","Subscribe"],"Url":"<webhook url>","PayloadFormat":"json"}' \
+  -d '{"Events":["Deactivate"],"Url":"<webhook url>","PayloadFormat":"json"}' \
   https://api.createsend.com/api/v3.3/lists/<list id>/webhooks.json
 ```
-
-**Already registered with `Deactivate` only?** The register companion is
-idempotent by URL and will not update an existing registration's event set —
-run it once with `action: unregister`, then again with `action: register`, to
-pick up `Subscribe`.
 
 ## Security
 

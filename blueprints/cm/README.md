@@ -14,7 +14,7 @@ subscriber on a CM list.
 | [`user-email-opt-in`](user-email-opt-in/) | `user.email.opt_in` | **Re-subscribe** users who opted back in |
 | [`preferences-updated`](preferences-updated/) | `user.preferences.updated` | **Sync** per-category opt-out fields (`opt_out_*`) |
 | [`user-deleted`](user-deleted/) | `user.deleted` | **Delete** erased accounts from a list (GDPR) |
-| [`optout-webhook`](optout-webhook/) | CM `Deactivate` / `Subscribe` webhook | **Opt out** Passport users deactivated in CM (unsubscribe, spam, bounce, delete), **opt in** users made active again |
+| [`optout-webhook`](optout-webhook/) | CM `Deactivate` webhook | **Opt out** Passport users who unsubscribe in CM |
 | [`optout-webhook-register`](optout-webhook-register/) | manual | **Register** the opt-out webhook on a CM list (setup helper) |
 
 Install as many as you need — they're independent, and each targets its own
@@ -104,11 +104,7 @@ then accepts the call but leaves the member unsubscribed.
 Consent syncs both ways: `user-email-opt-out` pushes Passport opt-outs to CM,
 [`user-email-opt-in`](user-email-opt-in/) reactivates the CM member when the
 user opts back in, and [`optout-webhook`](optout-webhook/) pulls CM-side
-consent changes back into Passport — opt-out on `Deactivate` (which CM also
-fires when a subscriber is **deleted**, verified empirically), opt-in on
-`Subscribe` (re-added, resubscribed, or restored). Because `Subscribe` also
-fires for list imports and blueprint adds, seed or import a list **before**
-registering the webhook on it. Installing via the Campaign Monitor package
+unsubscribes back into Passport. Installing via the Campaign Monitor package
 registers the webhook on the list automatically (the installer generates the
 URL and runs [`optout-webhook-register`](optout-webhook-register/) for you);
 standalone installs run the register workflow manually.
