@@ -2,18 +2,21 @@ name: New Subscriber (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-star-outline.svg
 description: |
   Adds a user to a Campaign Monitor list when their subscription becomes ACTIVE
-  (user.subscription.status.active — i.e. payment succeeded). Only fires for
-  subscriptions that have a plan and a price — free/planless subscriptions are skipped.
+  (user.subscription.status.active — i.e. payment succeeded) or TRIALING
+  (user.subscription.status.trialing — trials and gifts, which are real
+  subscriptions issued in a trialing state). Only fires for subscriptions that
+  have a plan and a price — free/planless subscriptions are skipped.
   Tags the subscriber with instance, user, subscription and plan ids plus the
-  interval, and CLEARS SubscriptionExpiredAt — a new active subscription
-  supersedes any previous expiry, so win-back segments stop matching a
-  returning customer. Uses the cm/subscriber-add recipe.
+  interval, and CLEARS SubscriptionExpiredAt — a new subscription supersedes
+  any previous expiry, so win-back segments stop matching a returning customer.
+  Uses the cm/subscriber-add recipe.
 
-  NOTE: this triggers on status.active rather than user.subscription.created on purpose.
-  At subscription.created the subscription is still incomplete — payment hasn't been
-  confirmed yet. status.active fires when it is, so only genuinely paying subscribers
-  land on the list. If you also want trial signups, add a second trigger on
-  user.subscription.status.trialing.
+  NOTE: this triggers on the status events rather than user.subscription.created
+  on purpose. At subscription.created the subscription is still incomplete —
+  payment hasn't been confirmed yet. status.active fires when it is, and
+  status.trialing when a trial or gift starts, so incomplete checkouts never
+  land on the list. If you only want paying subscribers, remove the trialing
+  trigger.
 
   Requires the CM_API_KEY secret and a list_id input.
 category: campaign-monitor
@@ -25,7 +28,7 @@ inputs:
     default: ""
 definition:
   name: New Subscriber (Campaign Monitor)
-  description: Adds paid, plan-backed subscribers to a Campaign Monitor list once active.
+  description: Adds plan-backed subscribers to a Campaign Monitor list once active or trialing (trials and gifts).
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-star-outline.svg
   version: 1
 
@@ -34,6 +37,13 @@ definition:
         name: user.subscription.status.active
         schema:
           ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.active@v1.0.0
+    # Trials and gifts are real subscriptions issued in a trialing state — add
+    # them too. Incomplete checkouts never reach either status, so this stays
+    # safe against unconfirmed payments.
+    - event:
+        name: user.subscription.status.trialing
+        schema:
+          ref: libatomic/passport-actions/schemas/atomic/user.subscription.status.trialing@v1.0.0
 
   steps:
     # Load the full subscription so we have the plan id, interval and end date, and
@@ -72,7 +82,7 @@ definition:
             Value: ${{ steps.load-subscription.outputs.subscription.plan_id }}
           - Key: SubscriptionInterval
             Value: ${{ steps.load-subscription.outputs.subscription.recurring_interval }}
-          # A new active subscription supersedes any previous expiry — clear the
+          # A new subscription supersedes any previous expiry — clear the
           # terminal date so win-back segments stop matching a returning customer.
           - Key: SubscriptionExpiredAt
             Clear: true

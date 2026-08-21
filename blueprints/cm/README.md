@@ -7,7 +7,7 @@ subscriber on a CM list.
 | Blueprint | Fires on | Effect |
 |---|---|---|
 | [`new-user`](new-user/) | `user.email.verified` | **Add** users to a list once verified |
-| [`new-subscriber`](new-subscriber/) | `user.subscription.status.active` | **Add** paid, plan-backed subscribers |
+| [`new-subscriber`](new-subscriber/) | `user.subscription.status.active` / `.trialing` | **Add** plan-backed subscribers (paid, trials, and gifts) |
 | [`subscription-updated`](subscription-updated/) | `user.subscription.updated` | **Sync** `AutoRenew` / `SubscriptionCancelsAt` fields |
 | [`subscription-canceled`](subscription-canceled/) | `user.subscription.deleted` | **Clear** subscription fields, stamp `SubscriptionExpiredAt` |
 | [`user-email-opt-out`](user-email-opt-out/) | `user.email.opt_out` | **Unsubscribe** users who opted out |

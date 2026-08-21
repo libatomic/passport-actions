@@ -1,7 +1,9 @@
 # New Subscriber (Campaign Monitor)
 
 Adds a user to a Campaign Monitor list when their subscription becomes
-**active** — i.e. payment succeeded. Use this for your paid-subscriber list.
+**active** (payment succeeded) or **trialing** (trials and gifts — a gift is a
+real subscription issued in a trialing state). Use this for your
+subscriber list.
 
 Built on the [`cm/subscriber-add`](../../../recipes/cm/subscriber-add/) recipe.
 See the [Campaign Monitor overview](../README.md) for shared setup (API key,
@@ -9,14 +11,15 @@ allowed hosts, and the **custom-fields gotcha**).
 
 ## When it fires
 
-`user.subscription.status.active`.
+`user.subscription.status.active` and `user.subscription.status.trialing` —
+same body shape, same steps.
 
 **Why not `user.subscription.created`?** At creation the subscription is still
-`incomplete` — payment hasn't been confirmed yet. `status.active` fires when it
-is, so only *paying* subscribers land on the list.
+`incomplete` — payment hasn't been confirmed yet. The status events fire once
+it's a real subscription (confirmed payment, or a started trial/gift), so
+incomplete checkouts never land on the list.
 
-Want trial signups too? Add a second trigger on
-`user.subscription.status.trialing` — same body shape, same steps.
+Only want *paying* subscribers? Remove the `status.trialing` trigger.
 
 ## What it does
 
