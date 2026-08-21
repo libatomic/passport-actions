@@ -19,8 +19,14 @@ description: |
   webhook registered on the list, for auditing).
 
   Requires the CM_API_KEY secret and api.createsend.com on the allowed HTTP
-  hosts list. Registers Deactivate events only (the type CM fires for
-  unsubscribes, spam complaints, and hard bounces).
+  hosts list. Registers Deactivate events (unsubscribes, spam complaints, hard
+  bounces, deletes) and Subscribe events (subscriber added, re-added, or
+  restored), matching the two-way consent sync in the Opt-Out Webhook
+  blueprint.
+
+  NOTE: the register call is idempotent BY URL — it will not update the event
+  set of an already-registered webhook. To pick up an events change on an
+  existing registration, run unregister and then register again.
 category: campaign-monitor
 inputs:
   list_id:
@@ -79,7 +85,7 @@ definition:
         list_id: ${{ inputs.list_id }}
         action: ${{ inputs.action }}
         url: ${{ inputs.webhook_url }}
-        events: ["Deactivate"]
+        events: ["Deactivate", "Subscribe"]
 
     - id: report-register
       if: ${{ inputs.action == "register" }}

@@ -2,10 +2,17 @@ name: Opt-Out Webhook (Campaign Monitor)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/webhook.svg
 description: |
   Inbound webhook from Campaign Monitor: when a subscriber unsubscribes (or is
-  deactivated) in CM, the matching Passport user is opted out of the email channel
-  so both systems agree. This is the inbound half of the consent loop — the
-  user-email-opt-out blueprint pushes Passport opt-outs to CM; this one pulls CM
-  unsubscribes back into Passport.
+  deactivated — including deleted) in CM, the matching Passport user is opted out
+  of the email channel so both systems agree; when a subscriber becomes active
+  again (re-added, resubscribed, or restored by an admin), the user is opted back
+  in. This is the inbound half of the consent loop — the user-email-opt-out
+  blueprint pushes Passport opt-outs to CM; this one pulls CM-side consent
+  changes back into Passport.
+
+  NOTE: with Subscribe events registered, every subscriber-add echoes back as a
+  (silent, harmless) opt-in run — including adds made by the outbound blueprints,
+  list imports, and manual admin adds in the CM UI. Seed/import a list BEFORE
+  registering the webhook on it, or expect one run per imported member.
 
   Campaign Monitor batches events into a single POST; foreach: Events runs each
   element as its own run, so one bad element doesn't block the rest. Users who
@@ -27,7 +34,7 @@ description: |
 category: campaign-monitor
 definition:
   name: Opt-Out Webhook (Campaign Monitor)
-  description: Opts Passport users out of email when they unsubscribe in Campaign Monitor.
+  description: Syncs CM-side consent changes into Passport — opt-out on Deactivate, opt-in on Subscribe.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/webhook.svg
   version: 1
 
@@ -36,9 +43,11 @@ definition:
       name: campaign-monitor
       validate: false
       foreach: Events
-      # "Deactivate" is CM's only inactive-transition event type; it covers
-      # unsubscribes, spam complaints, and hard bounces.
-      if: body.Type == "Deactivate"
+      # "Deactivate" is CM's inactive-transition event: unsubscribes, spam
+      # complaints, hard bounces — and deletes (verified: deleting a subscriber
+      # in the CM UI fires Deactivate). "Subscribe" fires when a subscriber
+      # becomes active on the list (added, re-added, or restored).
+      if: body.Type == "Deactivate" || body.Type == "Subscribe"
 
   steps:
     # The unsubscriber may not exist in Passport (e.g. added to the list from
@@ -60,9 +69,21 @@ definition:
     # merge() is first-wins: the opt_out literal overrides, every other channel
     # and email setting is carried over from the lookup unchanged.
     - id: optout
-      if: ${{ steps.lookup.status == "ok" }}
+      if: ${{ steps.lookup.status == "ok" && trigger.body.Type == "Deactivate" }}
       action: user.update
       with:
         user_id: ${{ steps.lookup.outputs.user.id }}
         preferences:
           channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email ?? {})}, outputs.channels) }}'
+
+    # Mirror of optout for the Subscribe event: the subscriber is active in CM
+    # again, so opt the Passport user back in. A future opt_out_until (snooze)
+    # is deliberately carried over unchanged — reactivation in CM clears the
+    # opt-out flag, not a user-chosen snooze.
+    - id: optin
+      if: ${{ steps.lookup.status == "ok" && trigger.body.Type == "Subscribe" }}
+      action: user.update
+      with:
+        user_id: ${{ steps.lookup.outputs.user.id }}
+        preferences:
+          channels: '${{ merge({email: merge({opt_out: false}, outputs.channels.email ?? {})}, outputs.channels) }}'
