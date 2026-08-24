@@ -1,0 +1,185 @@
+name: cm
+label: Campaign Monitor
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-sync-outline.svg
+category: integrations
+version: "1.0.0"
+docs_url: https://www.campaignmonitor.com/api/v3-3/
+description: |
+  One Campaign Monitor connection for the whole instance. Install it once with
+  your API key and client id and every Campaign Monitor workflow uses it — no
+  per-workflow API key, and no base64 auth header to get right.
+
+  Add api.createsend.com to the workflow HTTP allowlist (Workflows → Settings)
+  before installing; the proxy honours the same fail-closed list the http.*
+  actions do.
+
+# Every request goes here. Authored, never supplied by a caller, and the
+# resolved request URL is re-checked against this host and path prefix after
+# parameters are bound.
+base_url: https://api.createsend.com/api/v3.3
+
+# The per-instance installable fields. Same vocabulary as a recipe `inputs:`
+# block on purpose — an author who can write a recipe can write a plugin, and
+# the admin app renders it with the field widgets it already has.
+config:
+  api_key:
+    label: API key
+    type: string
+    secret: true
+    required: true
+    order: 1
+    hint: Account Settings → API keys, in Campaign Monitor.
+    description: >
+      Never displayed again once saved. Leave the field blank when editing to
+      keep the stored value.
+  client_id:
+    label: Client ID
+    type: string
+    required: true
+    order: 2
+    pattern: "^[0-9a-f]{32}$"
+    hint: The 32-character client id from your Campaign Monitor account page.
+    description: >
+      Scopes list and segment lookups. One install per client — install a
+      second copy under a different id to reach a second client.
+
+# How config becomes request auth. Evaluated server-side immediately before the
+# request is built, against an environment holding `config` and the pure stdlib
+# functions and nothing else. The result is written onto the request and is
+# never returned to a caller, logged, or placed in a workflow's expression
+# environment.
+auth:
+  type: basic
+  username: ${{ config.api_key }}
+  password: "x"
+
+# The complete set of calls this plugin may make. A method that is not declared
+# here cannot be called: there is no passthrough, and callers name a method and
+# supply values for its declared parameters rather than a URL.
+methods:
+  account_clients_get:
+    label: Clients
+    description: Every client on the account. The cheapest call that proves the key works.
+    verb: GET
+    path: /clients.json
+    expect_status: [200]
+    result:
+      type: array
+      item: { value: ClientID, label: Name }
+
+  subscriber_lists_get:
+    label: Subscriber lists
+    description: The lists belonging to the configured client.
+    verb: GET
+    path: /clients/{client_id}/lists.json
+    params:
+      client_id:
+        in: path
+        required: true
+        default: ${{ config.client_id }}
+        pattern: "^[0-9a-f]{32}$"
+    expect_status: [200]
+    result:
+      type: array
+      item: { value: ListID, label: Name }
+
+  client_segments_get:
+    label: Segments
+    verb: GET
+    path: /clients/{client_id}/segments.json
+    params:
+      client_id:
+        in: path
+        required: true
+        default: ${{ config.client_id }}
+        pattern: "^[0-9a-f]{32}$"
+    expect_status: [200]
+    result:
+      type: array
+      item: { value: SegmentID, label: Title }
+
+  list_custom_fields_get:
+    label: List custom fields
+    description: The custom fields defined on a list. Campaign Monitor silently
+      drops values for fields that are not predefined, so this is what an
+      author should pick from rather than typing a key.
+    verb: GET
+    path: /lists/{list_id}/customfields.json
+    params:
+      list_id: { in: path, required: true, pattern: "^[0-9a-f]{32}$" }
+    expect_status: [200]
+    result:
+      type: array
+      item: { value: Key, label: FieldName }
+
+  subscriber_add:
+    label: Add subscriber
+    verb: POST
+    path: /subscribers/{list_id}.json
+    params:
+      list_id:          { in: path, required: true, pattern: "^[0-9a-f]{32}$" }
+      email:            { in: body, required: true, field: EmailAddress, type: string }
+      name:             { in: body, field: Name, type: string }
+      custom_fields:    { in: body, field: CustomFields, type: list }
+      resubscribe:      { in: body, field: Resubscribe, type: bool, default: true }
+      consent_to_track:
+        in: body
+        field: ConsentToTrack
+        type: string
+        default: "yes"
+        enum: ["yes", "no", "unchanged"]
+    expect_status: [200, 201]
+
+  subscriber_get:
+    label: Get subscriber
+    verb: GET
+    path: /subscribers/{list_id}.json
+    params:
+      list_id: { in: path, required: true, pattern: "^[0-9a-f]{32}$" }
+      email:   { in: query, required: true, field: email, type: string }
+    expect_status: [200]
+
+  subscriber_update:
+    label: Update subscriber
+    verb: PUT
+    path: /subscribers/{list_id}.json
+    params:
+      list_id:   { in: path, required: true, pattern: "^[0-9a-f]{32}$" }
+      email:     { in: query, required: true, field: email, type: string }
+      new_email: { in: body, field: EmailAddress, type: string }
+      name:      { in: body, field: Name, type: string }
+      resubscribe: { in: body, field: Resubscribe, type: bool, default: false }
+      consent_to_track:
+        in: body
+        field: ConsentToTrack
+        type: string
+        default: unchanged
+        enum: ["yes", "no", "unchanged"]
+    expect_status: [200]
+
+  subscriber_unsubscribe:
+    label: Unsubscribe subscriber
+    description: Returns 400 code 203 when the address is not on the list, which
+      is not an error worth failing a run over — callers generally set
+      continue-on-error.
+    verb: POST
+    path: /subscribers/{list_id}/unsubscribe.json
+    params:
+      list_id: { in: path, required: true, pattern: "^[0-9a-f]{32}$" }
+      email:   { in: body, required: true, field: EmailAddress, type: string }
+    expect_status: [200]
+
+# The method the "Test connection" button calls. It must need no parameter that
+# lacks a config-backed default.
+test: account_clients_get
+
+# Secrets an earlier, pre-plugin generation of workflows used for this vendor.
+# Declared so the plugin page can report "3 workflows still use
+# secrets.CM_API_KEY" rather than leaving the second copy of a credential to be
+# discovered during a rotation.
+legacy_secrets:
+  - CM_API_KEY
+
+# RESERVED — see plugins/README.md. Parsed, validated only for the method
+# references, and rendered nowhere yet.
+widgets: []
