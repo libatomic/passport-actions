@@ -26,10 +26,22 @@ description: |
 category: campaign-monitor
 inputs:
   list_id:
+    label: List holding the subscription custom fields
     description: Campaign Monitor list ID holding the subscription custom fields
     type: string
     required: true
     default: ""
+    # Renders as a dropdown of this account's own lists when the cm
+    # plugin is installed, so nobody has to look up a 32-character id.
+    # Falls back to a plain text box when it is not — the plugin is a
+    # convenience here, not a dependency: this workflow still
+    # authenticates with the CM_API_KEY secret either way.
+    #
+    # No label/value: subscriber_lists_get declares its own
+    # result.item, so the picker is two lines.
+    data_source:
+      plugin: cm
+      method: subscriber_lists_get
 definition:
   name: Subscription Updated (Campaign Monitor)
   description: Syncs AutoRenew and SubscriptionCancelsAt custom fields on subscription updates.

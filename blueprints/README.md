@@ -176,11 +176,16 @@ Each of these has its own README with setup steps, required secrets and hosts.
 
 | Blueprint | Integrates | Purpose |
 |---|---|---|
-| [`cm/new-user`](cm/) | Campaign Monitor | Add every new user to a list |
-| [`cm/new-subscriber`](cm/) | Campaign Monitor | Add paid subscribers to a list |
-| [`cm/subscription-canceled`](cm/) | Campaign Monitor | Remove canceled subscribers |
-| [`cm/subscription-expiring`](cm/) | Campaign Monitor | Add soon-to-lapse subscribers |
-| [`cm/user-email-opt-out`](cm/) | Campaign Monitor | Honor opt-outs in your ESP |
+| [`cm/new-user`](cm/) | Campaign Monitor | Add a user to a list on email verification |
+| [`cm/new-subscriber`](cm/) | Campaign Monitor | Add plan-backed subscribers once active or trialing |
+| [`cm/subscription-updated`](cm/) | Campaign Monitor | Sync AutoRenew and cancel-at custom fields |
+| [`cm/subscription-canceled`](cm/) | Campaign Monitor | Clear subscription fields and stamp the expiry |
+| [`cm/user-deleted`](cm/) | Campaign Monitor | Delete the user from the list on account deletion |
+| [`cm/user-email-opt-out`](cm/) | Campaign Monitor | Unsubscribe a user who opts out of email |
+| [`cm/user-email-opt-in`](cm/) | Campaign Monitor | Re-subscribe a user who opts back in |
+| [`cm/preferences-updated`](cm/) | Campaign Monitor | Flag per-category opt-outs as custom fields |
+| [`cm/optout-webhook`](cm/) | Campaign Monitor | Opt users out here when they unsubscribe there |
+| [`cm/optout-webhook-register`](cm/) | Campaign Monitor | Register that webhook on a list (run once, manually) |
 | [`fb/page-post`](fb/page-post/) | Facebook | **Channel** — publish to a Page feed |
 | [`x/post`](x/post/) | X (Twitter) | **Channel** — publish a post |
 | [`wp/create-post`](wp/create-post/) | WordPress | **Channel** — publish a post |
