@@ -2,7 +2,7 @@ name: Spotify Episode (Distribution)
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
 description: |
   Defines a custom "spotify" distribution channel that publishes episodes to a
-  Spotify show via the SOA Video Distribution API. Once saved, "spotify" appears
+  Spotify show via the Spotify Distribution API. Once saved, "spotify" appears
   in an article's Add Distribution menu.
 
   The channel declares base_type: podcast, so the Add Distribution editor is the

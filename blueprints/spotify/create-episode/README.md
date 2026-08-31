@@ -1,11 +1,11 @@
 # Spotify Episode (Distribution)
 
 Defines a custom **`spotify` distribution channel** that publishes episodes to a
-Spotify show via the **SOA Video Distribution API**. Once installed and enabled,
+Spotify show via the **Spotify Distribution API** (Api-Version 2026-04-01). Once installed and enabled,
 "Spotify" appears in an article's **Add Distribution** menu next to Email, RSS
 and Podcast.
 
-> The SOA Video Distribution API is a **pre-release beta** and requires an
+> The Spotify Distribution API is private documentation and requires an
 > agreement with Spotify covering the license, distribution and monetization of
 > your content. Expect occasional breaking changes.
 
