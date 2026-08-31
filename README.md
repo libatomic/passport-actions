@@ -240,6 +240,28 @@ All Stripe recipes require:
 
 Optional: `expand` — A Stripe expand field (e.g. `subscriptions`, `default_source`).
 
+### Spotify (recipes)
+
+Episode and show management via the Spotify **Distribution API** (private
+documentation; requires a distribution agreement with Spotify). Episode recipes
+are pinned to **Api-Version 2026-04-01** and perform the OAuth2
+client-credentials exchange themselves from a `client_id`/`client_secret` pair.
+
+| Recipe | Description |
+|--------|-------------|
+| `libatomic/passport-actions/recipes/spotify/create-episode` | Publish an episode to a show |
+| `libatomic/passport-actions/recipes/spotify/update-episode` | Partial update (e.g. backfill video onto an audio episode) |
+| `libatomic/passport-actions/recipes/spotify/delete-episode` | Delete an episode |
+| `libatomic/passport-actions/recipes/spotify/get-episode-status` | Media processing status + failure events |
+| `libatomic/passport-actions/recipes/spotify/create-show` | Create a show |
+| `libatomic/passport-actions/recipes/spotify/get-show` | Get show details |
+
+All Spotify recipes require `client_id`, `client_secret` (store as the
+`SPOTIFY_CLIENT_SECRET` secret), and the resource id (`show_id` or
+`episode_id`). Both `accounts.spotify.com` and `distribution.spotify.com` must
+be on the instance's HTTP allowlist. See `blueprints/spotify/create-episode`
+for the distribution-channel workflow packaged as the Spotify integration.
+
 ## Actions vs Recipes vs Blueprints
 
 | | Blueprints | Actions (`uses:`) | Recipes (`includes:`) |

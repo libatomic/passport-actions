@@ -1,8 +1,20 @@
 name: spotify-update-episode
-version: "1.0"
-description: Update an existing Spotify episode via the SOA Video Distribution API
+version: "1.1"
+description: >
+  Update an existing Spotify episode via the Distribution API
+  (pinned to Api-Version 2026-04-01). Partial update — only the
+  provided fields are sent.
 
 inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
   client_id:
     required: true
     type: string
@@ -79,15 +91,20 @@ inputs:
     default: ""
     type: string
     label: Episode Number
+    description: Integer; sent as a number, omitted when empty.
   season_number:
     default: ""
     type: string
     label: Season Number
+    description: Integer; sent as a number, omitted when empty.
   entitlements:
     default: []
     type: list
     label: Entitlements
-    description: Spotify Open Access entitlement identifiers (category slugs).
+    description: >
+      Spotify Open Access entitlement identifiers (category slugs). Omitted
+      when empty so an update without entitlements doesn't clear the
+      episode's gating.
 
 steps:
   - id: token
@@ -100,8 +117,27 @@ steps:
       body: "grant_type=client_credentials"
       expect_status: [200]
 
-  # Send only the attributes you want to change — Spotify treats the update as
-  # a partial write, so empty inputs are simply omitted by the engine.
+  # The update is a partial write: every field is optional, so send only the
+  # attributes that were provided — the engine does NOT drop empty values on
+  # its own, and the 2026-04-01 API types episode_number/season_number as
+  # integers. Empty inputs are omitted from the payload entirely.
+  - id: payload
+    action: set-output
+    with:
+      body: >-
+        ${{ merge(ternary(empty(inputs.title), {}, {"title": inputs.title}),
+        ternary(empty(inputs.pubdate), {}, {"pubdate": inputs.pubdate}),
+        ternary(empty(inputs.media_file_url), {}, {"media_file_url": inputs.media_file_url}),
+        ternary(empty(inputs.summary), {}, {"summary": inputs.summary}),
+        ternary(empty(inputs.link), {}, {"link": inputs.link}),
+        ternary(empty(inputs.image_file_url), {}, {"image_file_url": inputs.image_file_url}),
+        ternary(empty(inputs.explicit), {}, {"explicit": inputs.explicit}),
+        ternary(empty(inputs.content_rating), {}, {"content_rating": inputs.content_rating}),
+        ternary(empty(inputs.episode_type), {}, {"episode_type": inputs.episode_type}),
+        ternary(empty(inputs.episode_number), {}, {"episode_number": toInt(inputs.episode_number)}),
+        ternary(empty(inputs.season_number), {}, {"season_number": toInt(inputs.season_number)}),
+        ternary(empty(inputs.entitlements), {}, {"entitlements": inputs.entitlements})) }}
+
   - id: episode
     action: http.put
     with:
@@ -109,17 +145,6 @@ steps:
       headers:
         Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
         Content-Type: application/json
-      body:
-        title: ${{ inputs.title }}
-        pubdate: ${{ inputs.pubdate }}
-        media_file_url: ${{ inputs.media_file_url }}
-        summary: ${{ inputs.summary }}
-        link: ${{ inputs.link }}
-        image_file_url: ${{ inputs.image_file_url }}
-        explicit: ${{ inputs.explicit }}
-        content_rating: ${{ inputs.content_rating }}
-        episode_type: ${{ inputs.episode_type }}
-        episode_number: ${{ inputs.episode_number }}
-        season_number: ${{ inputs.season_number }}
-        entitlements: ${{ inputs.entitlements }}
+        Api-Version: ${{ inputs.api_version }}
+      body: ${{ steps.payload.outputs.body }}
       expect_status: [200]
