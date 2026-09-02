@@ -1,0 +1,149 @@
+name: spotify-update-show
+version: "1.0"
+description: >
+  Update an existing Spotify show's metadata via the Distribution API
+  (pinned to Api-Version 2026-04-01). Partial update — only the provided
+  fields are sent. Use is_sandbox to move a show out of (or into) Open
+  Access sandbox mode.
+
+inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  show_id:
+    required: true
+    type: string
+    label: Show ID
+    description: >
+      Spotify show id — the base-62 id at the end of the show URI
+      (spotify:show:<id>), not the full URI.
+  is_sandbox:
+    default: ""
+    type: string
+    label: Sandbox
+    description: >
+      Sandbox mode — "true" or "false"; sent as a boolean, omitted when
+      empty. Set "false" to take a sandbox show live.
+    enum:
+      - ""
+      - "true"
+      - "false"
+  title:
+    default: ""
+    type: string
+    label: Title
+  summary:
+    default: ""
+    type: string
+    label: Summary
+  itunes_categories:
+    default: []
+    type: list
+    label: iTunes Categories
+    description: iTunes-compatible category names; omitted when empty.
+  language:
+    default: ""
+    type: string
+    label: Language
+    description: Two-character ISO 639-1 language code (e.g. en).
+  link:
+    default: ""
+    type: string
+    label: Link
+    description: Website or landing page.
+  explicit:
+    default: ""
+    type: string
+    label: Explicit
+    enum:
+      - ""
+      - "no"
+      - "yes"
+      - clean
+  image_file_url:
+    default: ""
+    type: string
+    label: Show Art URL
+    description: Show artwork. Recommended 3000x3000 JPEG/PNG, 72dpi, RGB.
+  owner_name:
+    default: ""
+    type: string
+    label: Owner Name
+    description: Also the show's displayed author name on Spotify.
+  owner_email:
+    default: ""
+    type: string
+    label: Owner Email
+  show_type:
+    default: ""
+    type: string
+    label: Show Type
+    enum:
+      - ""
+      - episodic
+      - serial
+  soa_partner_id:
+    default: ""
+    type: string
+    label: SOA Partner ID
+    description: Partner id (exactly 22 characters) for Spotify Open Access gating.
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # The update is a partial write: every field is optional, so send only the
+  # attributes that were provided — the engine does NOT drop empty values on
+  # its own, and is_sandbox is typed as a boolean. Empty inputs are omitted
+  # from the payload entirely.
+  - id: payload
+    action: set-output
+    with:
+      body: >-
+        ${{ merge(ternary(empty(inputs.is_sandbox), {}, {"is_sandbox": toBool(inputs.is_sandbox)}),
+        ternary(empty(inputs.title), {}, {"title": inputs.title}),
+        ternary(empty(inputs.summary), {}, {"summary": inputs.summary}),
+        ternary(empty(inputs.itunes_categories), {}, {"itunes_categories": inputs.itunes_categories}),
+        ternary(empty(inputs.language), {}, {"language": inputs.language}),
+        ternary(empty(inputs.link), {}, {"link": inputs.link}),
+        ternary(empty(inputs.explicit), {}, {"explicit": inputs.explicit}),
+        ternary(empty(inputs.image_file_url), {}, {"image_file_url": inputs.image_file_url}),
+        ternary(empty(inputs.owner_name), {}, {"owner_name": inputs.owner_name}),
+        ternary(empty(inputs.owner_email), {}, {"owner_email": inputs.owner_email}),
+        ternary(empty(inputs.show_type), {}, {"show_type": inputs.show_type}),
+        ternary(empty(inputs.soa_partner_id), {}, {"soa_partner_id": inputs.soa_partner_id})) }}
+
+  - id: show
+    action: http.put
+    with:
+      url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+        Api-Version: ${{ inputs.api_version }}
+      body: ${{ steps.payload.outputs.body }}
+      expect_status: [200]

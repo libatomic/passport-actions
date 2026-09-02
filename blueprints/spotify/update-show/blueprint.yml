@@ -1,0 +1,108 @@
+name: Spotify Show Settings
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+description: |
+  Manual helper that updates a Spotify show's metadata through the Spotify
+  Distribution API (Api-Version 2026-04-01) — most notably flipping the
+  show's sandbox flag: set Sandbox to "false" to take a show created in
+  Open Access sandbox mode live, or "true" to sandbox it for testing.
+
+  The update is partial: only the fields you fill in are sent, everything
+  else is left untouched on the show. Run it from the workflow's detail
+  page whenever a setting needs changing — it is safe to re-run.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret plus client id and show id
+  inputs. accounts.spotify.com and distribution.spotify.com must be on the
+  instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+  spotify_show_id:
+    description: Spotify show id — the base-62 id from spotify:show:<id>
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Spotify Show Settings
+  description: Updates a Spotify show's metadata (e.g. the sandbox flag) via the Distribution API. Run manually.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  # NOTE: inputs are declared INSIDE definition: — when a blueprint does
+  # this, the installer ignores the top-level inputs block entirely; this
+  # copy is the one that reaches the stored workflow.
+  inputs:
+    spotify_client_id:
+      type: string
+      required: true
+      default: ""
+      label: Client ID
+      hint: Spotify application client id
+    spotify_show_id:
+      type: string
+      required: true
+      default: ""
+      label: Show ID
+      hint: The base-62 id from spotify:show:<id>
+    is_sandbox:
+      type: string
+      required: false
+      default: ""
+      label: Sandbox
+      hint: '"false" takes the show live; "true" sandboxes it; empty leaves it unchanged'
+      enum: ["", "true", "false"]
+    title:
+      type: string
+      required: false
+      default: ""
+      label: Title
+      hint: New show name; empty leaves it unchanged
+    summary:
+      type: string
+      required: false
+      default: ""
+      label: Summary
+      hint: New show summary; empty leaves it unchanged
+    owner_name:
+      type: string
+      required: false
+      default: ""
+      label: Owner Name
+      hint: Also the author name shown in podcast apps; empty leaves it unchanged
+    link:
+      type: string
+      required: false
+      default: ""
+      label: Link
+      hint: Website or landing page; empty leaves it unchanged
+    image_file_url:
+      type: string
+      required: false
+      default: ""
+      label: Show Art URL
+      hint: 3000x3000 JPEG/PNG; empty leaves it unchanged
+
+  steps:
+    - id: update
+      includes: libatomic/passport-actions/recipes/spotify/update-show
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        show_id: ${{ inputs.spotify_show_id }}
+        is_sandbox: ${{ inputs.is_sandbox }}
+        title: ${{ inputs.title }}
+        summary: ${{ inputs.summary }}
+        owner_name: ${{ inputs.owner_name }}
+        link: ${{ inputs.link }}
+        image_file_url: ${{ inputs.image_file_url }}
+
+    - id: report
+      action: log
+      with:
+        message: "show ${{ inputs.spotify_show_id }} updated — sandbox: ${{ steps.update.outputs.show.outputs.body.is_sandbox }}"

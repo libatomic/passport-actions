@@ -10,7 +10,9 @@ description: |
   resolves the media to a public URL, and creates the episode. The
   audience's category slugs become Spotify Open Access entitlements
   gating playback — an audience with no category filter publishes an
-  ungated episode.
+  ungated episode. Also installs a manual Show Settings helper for
+  updating show metadata — e.g. flipping the sandbox flag to take a
+  show live.
 
   Shared prerequisites: a SPOTIFY_CLIENT_SECRET workflow secret, plus your
   Spotify application client id and show id (workflow inputs);
@@ -19,3 +21,4 @@ description: |
 
 blueprints:
   - spotify/create-episode
+  - spotify/update-show

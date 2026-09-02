@@ -254,6 +254,7 @@ client-credentials exchange themselves from a `client_id`/`client_secret` pair.
 | `libatomic/passport-actions/recipes/spotify/delete-episode` | Delete an episode |
 | `libatomic/passport-actions/recipes/spotify/get-episode-status` | Media processing status + failure events |
 | `libatomic/passport-actions/recipes/spotify/create-show` | Create a show |
+| `libatomic/passport-actions/recipes/spotify/update-show` | Partial show update (e.g. flip `is_sandbox` to go live) |
 | `libatomic/passport-actions/recipes/spotify/get-show` | Get show details |
 
 All Spotify recipes require `client_id`, `client_secret` (store as the
