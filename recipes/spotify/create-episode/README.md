@@ -50,17 +50,27 @@ store the secret as `SPOTIFY_CLIENT_SECRET`.
 
 `entitlements` is an array of [Spotify Open Access](https://developer.spotify.com/documentation/open-access/concepts#entitlements)
 identifiers. In a Passport distribution workflow these come from the
-**audience's categories**: call the `audience.get` builtin and pass its
-`category_slugs` output. That is why the Spotify channel requires an audience
-even though it publishes once (broadcast) — the audience defines who can play
-the episode, not who receives it.
+**audience's categories**: `audience.get` resolves them, `application.get`
+(`integration_type: spotify`) supplies the Spotify application's
+`open_categories`, and a `set-output` expression applies the same rule as the
+Spotify podcast feed — category slugs, unless one of the categories is an
+*open category*, in which case the episode is open and `entitlements` is
+empty (see `blueprints/spotify/create-episode` for the exact YAML). That is
+why the Spotify channel requires an audience even though it publishes once
+(broadcast) — the audience defines who can play the episode, not who receives
+it — and why the channel only offers the Spotify application's audiences:
+those are the entitlements Spotify's account linking knows about.
 
 ## Media
 
 `media_file_url` must be a public URL Spotify can fetch. In a distribution
 workflow, resolve it from the distribution's enclosure asset with
-`asset.get` (`link: true`) and use `asset.link`. MP4/MOV are published as video;
-MP3/M4A as audio.
+`asset.get` (`link: true`, `application: spotify`) and use `asset.link`. A
+private asset is signed with the Spotify application's feed token — the same
+token that signs enclosures in that application's podcast feed — so Spotify can
+download the media whenever it processes the episode. The Spotify application
+must already have a feed token. MP4/MOV are published as video; MP3/M4A as
+audio.
 
 Both `accounts.spotify.com` and `distribution.spotify.com` must be on the
 instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
@@ -93,7 +103,7 @@ confirming which API version served the request.
     media_file_url: ${{ steps.media.outputs.asset.link }}
     summary: ${{ steps.render.outputs.body }}
     guid: ${{ trigger.distribution_id }}
-    entitlements: ${{ steps.audience.outputs.category_slugs }}
+    entitlements: ${{ steps.entitlements.outputs.entitlements }}
 ```
 
 See `blueprints/spotify/create-episode` for the complete distribution-channel

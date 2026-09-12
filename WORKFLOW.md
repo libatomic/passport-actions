@@ -144,6 +144,7 @@ on:
       content_type: text         # html | text — text channels accept UTF-8 plain text only
       max_body_length: 0         # optional character limit in characters (0 = none)
       connect_url: https://…     # optional; shows a "Connect" button on the member app
+      application: spotify       # optional; only that application's audiences may be selected
       address:                   # optional member identity fields for this channel
         - name: whatsapp_number  # lowercase key (a-z, 0-9, _)
           label: WhatsApp Number
@@ -177,6 +178,17 @@ Saving the workflow **registers the channel**: it then appears in an article's
   audience; broadcast only when the channel sets `requires_audience: true` — useful when
   the destination gates access by the audience's categories rather than delivering per
   member (see **spotify/create-episode**).
+
+**Application audiences.** `application: <name | slug | client id>` pins the channel's
+audience picker to that application's audiences (the audiences created for it under
+Applications, i.e. those with its `application_id`). Use it when the destination only
+understands entitlements that were provisioned through one application (Spotify Open Access
+resolves entitlements via the Spotify OIDC application, so a Spotify channel should only
+offer that application's audiences). This is an **admin UI hint**: the Add Distribution
+picker lists only those audiences; the API carries the value through to the channel
+definition but does not validate it. Application audiences are otherwise hidden from the
+picker; a channel that names an application (or is `base_type: podcast | rss`) shows them.
+Inside the workflow, `application.get` returns the same application and its audiences.
 
 **Base type.** A channel may declare `base_type: podcast | rss | email | sms` to say it
 is *shaped like* a built-in channel. It's a hint, not a behavior switch — your workflow

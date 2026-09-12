@@ -8,7 +8,7 @@ Built-in **actions** and **expression functions** available to workflows.
 - **[Builtin Actions](#builtin-actions)** — steps you invoke with `action:`, with their inputs and outputs
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
-  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
+  - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
   - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
@@ -212,6 +212,55 @@ Load an audience and the content categories it gates on. Use this when you need 
 | `category_ids` | Category IDs |
 
 An audience that doesn't filter on categories returns empty arrays (i.e. ungated).
+
+### `application.get`
+Load an application with its audiences and its non-secret metadata. Use it to read an
+integration's settings from a workflow — e.g. the Spotify integration application's
+`metadata.spotify.open_categories` — or to know which audiences belong to an application.
+
+| Input | Required | Description |
+|---|---|---|
+| `application_id` | one required | Application by ID |
+| `name` | one required | Application by name **or slug** |
+| `client_id` | one required | Application by OAuth client id |
+| `integration_type` | one required | The instance's integration application of that type (e.g. `spotify`) |
+
+| Output | Description |
+|---|---|
+| `application` | `{id, name, slug, description, type, client_id, integration_type, metadata, audiences}` |
+| `id` | The application ID |
+| `audiences` | The application's audiences — array of `{id, name}` |
+| `audience_ids` | Audience IDs |
+
+Credentials are never returned: the client secret, session secret and integration blob are
+omitted, and any metadata key that looks like a secret (`secret`, `password`, `token`,
+`private_key`, `api_key`) is removed at every depth. A missing application is a `not_found`
+error — pair with `continue-on-error: true` and optional chaining when the application is
+optional:
+
+```yaml
+- id: app
+  action: application.get
+  continue-on-error: true
+  with:
+    integration_type: spotify
+
+- id: audience
+  action: audience.get
+  with:
+    audience_id: ${{ steps.load.outputs.distribution.audience_id }}
+  outputs:
+    open_categories: ${{ steps.app?.outputs?.application?.metadata?.spotify?.open_categories ?? [] }}
+
+# Spotify podcast-feed rule: category slugs, unless a category is open.
+- id: entitlements
+  action: set-output
+  with:
+    entitlements: >-
+      ${{ (len(steps.audience.outputs.category_ids) == 0
+          || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
+        ? [] : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
+```
 
 ### `template.render`
 Renders a template (by id or name) or a raw body against a context, returning the result as a string.
@@ -495,12 +544,27 @@ Load an asset by ID (or filename), optionally resolving a public URL.
 |---|---|---|
 | `asset_id` | one of `asset_id`/`filename` | Asset ID |
 | `filename` | one of `asset_id`/`filename` | Look up by filename |
-| `link` | no | Populate a resolvable public URL on the asset |
+| `link` | no | Populate a resolvable public URL on the asset (`asset.link`) |
+| `application` | with `link`, for private assets | Application (name, slug, client id or integration type) whose **feed token** signs the URL |
 
 | Output | Description |
 |---|---|
 | `asset` | The asset object |
 | `id` | The asset ID |
+
+With `link: true`, `asset.link` is a URL a third party can fetch. Public assets
+get a plain URL. A private asset is signed the way that application's
+podcast/RSS feed signs its enclosures: with the application's non-expiring feed
+token (`?access_token=…`), so the link stays valid for as long as the recipient
+needs it (e.g. Spotify fetching `media_file_url`). Name the application the
+destination is integrated through — `application: spotify` for the Spotify
+channel. The application must already have a feed token (as it does once its
+feed has been set up); no token is created. If the instance has a CDN asset
+host configured, the link uses it. The step fails, rather than returning a URL
+containing the feed placeholder `[[ getToken ... ]]`, when the asset is private
+and no application or feed token is available. The `enclosure_asset_id` input
+of `feed.item.create` resolves its URL the same way (it also takes
+`application`).
 
 ### `article.get`
 Load an article by ID.

@@ -15,7 +15,11 @@ description: |
   an audience. Spotify Open Access gates playback by "entitlements", and this
   workflow passes the audience's category slugs as those entitlements — the
   audience decides who can play the episode, not who receives it. An audience
-  with no category filter publishes an ungated episode.
+  with no category filter publishes an ungated episode. Only the audiences of
+  the instance's "spotify" application (the OIDC client Spotify links accounts
+  through) are offered, since those are the entitlements Spotify knows about;
+  rename the trigger's `application` if your Spotify application is called
+  something else.
 
   Requires the SPOTIFY_CLIENT_SECRET secret, plus client id and show id inputs.
   accounts.spotify.com and distribution.spotify.com must be on the instance's
@@ -58,6 +62,9 @@ definition:
         base_type: podcast
         content_type: html
         requires_audience: true
+        # Only the Spotify application's audiences may be selected — those are
+        # the entitlements Spotify Open Access can resolve for this instance.
+        application: spotify
 
   inputs:
     spotify_client_id:
@@ -98,18 +105,48 @@ definition:
       with:
         distribution_id: ${{ trigger.distribution_id }}
 
-    # Resolve the enclosure asset to a public URL Spotify can fetch.
+    # Resolve the enclosure asset to a public URL Spotify can fetch. A private
+    # asset is signed with the Spotify application's feed token — the same
+    # token that signs enclosures in that application's podcast feed.
     - id: media
       action: asset.get
       with:
         asset_id: ${{ steps.load.outputs.distribution.asset_id }}
         link: true
+        application: spotify
 
-    # The audience's categories become Spotify Open Access entitlements.
+    # Setup: the instance's Spotify integration application, if it has one
+    # (Applications → Spotify). Its audiences are the ones this channel offers
+    # in the admin, and its open_categories decide which categories publish
+    # open episodes — the same setting the Spotify podcast feed honours.
+    # continue-on-error: an instance without the application still publishes,
+    # gating on every category (the feed's legacy behaviour).
+    - id: app
+      action: application.get
+      continue-on-error: true
+      with:
+        integration_type: spotify
+
+    # The audience's categories become Spotify Open Access entitlements using
+    # the podcast feed's rule: category slugs, unless one of them is an open
+    # category of the Spotify application — then the episode is open and
+    # entitlements is empty. Hidden categories are never sent.
     - id: audience
       action: audience.get
       with:
         audience_id: ${{ steps.load.outputs.distribution.audience_id }}
+      outputs:
+        open_categories: ${{ steps.app?.outputs?.application?.metadata?.spotify?.open_categories ?? [] }}
+
+    - id: entitlements
+      action: set-output
+      with:
+        open_categories: ${{ outputs.open_categories }}
+        entitlements: >-
+          ${{ (len(steps.audience.outputs.category_ids) == 0
+              || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
+            ? []
+            : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
 
     - id: publish
       # Pin @spotify so this run fetches the 2026-04-01 recipe. Unpinned
@@ -126,7 +163,7 @@ definition:
         summary: ${{ steps.render.outputs.body }}
         # A stable guid so a re-publish maps to the same Spotify episode.
         guid: ${{ trigger.distribution_id }}
-        entitlements: ${{ steps.audience.outputs.category_slugs }}
+        entitlements: ${{ steps.entitlements.outputs.entitlements }}
         content_rating: ${{ inputs.content_rating }}
         explicit: ${{ inputs.explicit }}
         episode_type: ${{ inputs.episode_type }}

@@ -22,8 +22,10 @@ Publishing a distribution to the `spotify` channel runs this workflow once
 |---|---|---|
 | `load` | `distribution.get` | Load the episode metadata the editor collected |
 | `render` | `distribution.render` | Render the template into the episode summary |
-| `media` | `asset.get` (`link: true`) | Resolve the enclosure asset to a public URL |
-| `audience` | `audience.get` | Read the audience's category slugs |
+| `media` | `asset.get` (`link: true`, `application: spotify`) | Resolve the enclosure asset to a URL signed with the Spotify app's feed token |
+| `app` | `application.get` | Load the Spotify application (if installed) for its open categories |
+| `audience` | `audience.get` | Read the audience's categories |
+| `entitlements` | `set-output` | Apply the podcast-feed rule: slugs, or `[]` if a category is open |
 | `publish` | recipe `spotify/create-episode` | `POST /shows/{show_id}/episodes` |
 
 Field mapping:
@@ -35,7 +37,7 @@ Field mapping:
 | `summary` | the rendered template body |
 | `media_file_url` | the enclosure asset's public URL |
 | `guid` | `trigger.distribution_id` (stable across re-publishes) |
-| `entitlements` | the audience's `category_slugs` |
+| `entitlements` | the audience's category slugs, or `[]` if one is an open category of the Spotify application |
 | `content_rating` / `explicit` / `episode_type` | blueprint inputs |
 
 ## The channel
@@ -49,6 +51,7 @@ on:
       base_type: podcast
       content_type: html
       requires_audience: true
+      application: spotify
 ```
 
 **`base_type: podcast`** — the Add Distribution editor shows the familiar
@@ -60,7 +63,14 @@ The episode is posted **once**, not per member, but you must still select an
 audience: Spotify Open Access gates playback by **entitlements**, and this
 workflow passes the audience's category slugs as those entitlements. The
 audience decides *who can play the episode*, not who receives it. An audience
-with no category filter publishes an ungated episode.
+with no category filter publishes an ungated episode, and so does one whose
+categories include an **open category** of the Spotify application — exactly
+the rule the Spotify podcast feed applies to its items.
+
+**`application: spotify`** — the admin picker offers only the Spotify
+application's audiences for this channel. Those audiences are the entitlements
+Spotify's account linking was set up with, so nothing else would resolve on
+Spotify's side. (A UI hint — the API does not enforce it.)
 
 This lines up with Passport's existing Spotify Open Access integration, which
 syncs each user's entitlements using the same category slugs — so the episode's

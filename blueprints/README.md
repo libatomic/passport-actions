@@ -212,6 +212,7 @@ on:
       base_type: podcast      # reuse the podcast distribution editor
       content_type: html
       requires_audience: true
+      application: spotify    # only this application's audiences can be selected
 ```
 
 Saving the workflow **registers the channel**: it then appears in an article's
@@ -225,6 +226,11 @@ runs the workflow, which receives `trigger.distribution_id` and
 - **`requires_audience`** on a broadcast channel means the distribution must
   still pick an audience, even though it publishes once — used when the
   destination gates access by the audience's categories.
+- **`application`** makes the admin's audience picker offer only that
+  application's audiences (those created for it under Applications) — used
+  when the destination only knows entitlements provisioned through that
+  application, as Spotify Open Access does through the Spotify OIDC
+  application. A UI hint; not enforced by the API.
 
 See [WORKFLOW.md](../WORKFLOW.md#distribution-triggers--define-a-custom-channel)
 for the full contract.
