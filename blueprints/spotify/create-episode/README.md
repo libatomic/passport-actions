@@ -10,7 +10,8 @@ and Podcast.
 > your content. Expect occasional breaking changes.
 
 Built on the [`spotify/create-episode`](../../../recipes/spotify/create-episode/)
-recipe.
+recipe. The `includes:` ref is pinned `@spotify` until that recipe is on the
+default branch — unpinned includes fetch GitHub `HEAD` (`master`).
 
 ## What it does
 

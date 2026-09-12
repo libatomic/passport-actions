@@ -112,7 +112,10 @@ definition:
         audience_id: ${{ steps.load.outputs.distribution.audience_id }}
 
     - id: publish
-      includes: libatomic/passport-actions/recipes/spotify/create-episode
+      # Pin @spotify so this run fetches the 2026-04-01 recipe. Unpinned
+      # includes resolve to GitHub HEAD (master), which still has the older
+      # recipe without the Api-Version header.
+      includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
       with:
         client_id: ${{ inputs.spotify_client_id }}
         client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}

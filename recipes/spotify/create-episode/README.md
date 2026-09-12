@@ -65,6 +65,13 @@ MP3/M4A as audio.
 Both `accounts.spotify.com` and `distribution.spotify.com` must be on the
 instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
 
+A **403** from the episode step means Spotify rejected the bearer token for the
+Distribution API (the token exchange itself succeeded). Spotify's spec maps that
+to "Invalid or missing authorization token" — typically the Client ID is not
+allow-listed for distribution, or the `show_id` is not owned by that app.
+Contact your Spotify partner manager. The job error now includes Spotify's
+response body so you can tell those cases apart from a payload problem.
+
 ## Outputs
 
 Step outputs are available at `steps.<id>.outputs.episode.outputs.body.*` and
@@ -76,7 +83,7 @@ confirming which API version served the request.
 
 ```yaml
 - id: publish
-  includes: libatomic/passport-actions/recipes/spotify/create-episode
+  includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
   with:
     client_id: ${{ inputs.spotify_client_id }}
     client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
