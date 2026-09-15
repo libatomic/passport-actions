@@ -256,6 +256,7 @@ client-credentials exchange themselves from a `client_id`/`client_secret` pair.
 | `libatomic/passport-actions/recipes/spotify/create-show` | Create a show |
 | `libatomic/passport-actions/recipes/spotify/update-show` | Partial show update (e.g. flip `is_sandbox` to go live) |
 | `libatomic/passport-actions/recipes/spotify/get-show` | Get show details |
+| `libatomic/passport-actions/recipes/spotify/import-show` | Move an RSS-distributed show under the API (check → preflight → import → verify) |
 
 All Spotify recipes require `client_id`, `client_secret` (store as the
 `SPOTIFY_CLIENT_SECRET` secret), and the resource id (`show_id` or

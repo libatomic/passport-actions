@@ -214,9 +214,10 @@ Load an audience and the content categories it gates on. Use this when you need 
 An audience that doesn't filter on categories returns empty arrays (i.e. ungated).
 
 ### `application.get`
-Load an application with its audiences and its non-secret metadata. Use it to read an
-integration's settings from a workflow — e.g. the Spotify integration application's
-`metadata.spotify.open_categories` — or to know which audiences belong to an application.
+Load an application with its audiences, plus only the metadata paths you ask for. Use it
+to read an integration's settings from a workflow — e.g. the Spotify integration
+application's `spotify.open_categories` — or to know which audiences belong to an
+application.
 
 | Input | Required | Description |
 |---|---|---|
@@ -224,6 +225,7 @@ integration's settings from a workflow — e.g. the Spotify integration applicat
 | `name` | one required | Application by name **or slug** |
 | `client_id` | one required | Application by OAuth client id |
 | `integration_type` | one required | The instance's integration application of that type (e.g. `spotify`) |
+| `metadata_keys` | no | Dot paths to return under `application.metadata`, e.g. `spotify.open_categories`. Omit for none. |
 
 | Output | Description |
 |---|---|
@@ -233,10 +235,11 @@ integration's settings from a workflow — e.g. the Spotify integration applicat
 | `audience_ids` | Audience IDs |
 
 Credentials are never returned: the client secret, session secret and integration blob are
-omitted, and any metadata key that looks like a secret (`secret`, `password`, `token`,
-`private_key`, `api_key`) is removed at every depth. A missing application is a `not_found`
-error — pair with `continue-on-error: true` and optional chaining when the application is
-optional:
+omitted, and metadata is an **allowlist** — only the paths listed in `metadata_keys` come
+back (nested as in the application; missing paths are simply absent), and nothing when the
+input is omitted. Known credential paths (`spotify.client_secret`) are refused even when
+listed. A missing application is a `not_found` error — pair with `continue-on-error: true`
+and optional chaining when the application is optional:
 
 ```yaml
 - id: app
@@ -244,6 +247,7 @@ optional:
   continue-on-error: true
   with:
     integration_type: spotify
+    metadata_keys: [spotify.open_categories]
 
 - id: audience
   action: audience.get
@@ -545,7 +549,7 @@ Load an asset by ID (or filename), optionally resolving a public URL.
 | `asset_id` | one of `asset_id`/`filename` | Asset ID |
 | `filename` | one of `asset_id`/`filename` | Look up by filename |
 | `link` | no | Populate a resolvable public URL on the asset (`asset.link`) |
-| `application` | with `link`, for private assets | Application (name, slug, client id or integration type) whose **feed token** signs the URL |
+| `application` | with `link`, for private assets | Application (id, name, slug, client id or integration type) whose **durable feed token** signs the URL |
 
 | Output | Description |
 |---|---|
@@ -562,9 +566,11 @@ channel. The application must already have a feed token (as it does once its
 feed has been set up); no token is created. If the instance has a CDN asset
 host configured, the link uses it. The step fails, rather than returning a URL
 containing the feed placeholder `[[ getToken ... ]]`, when the asset is private
-and no application or feed token is available. The `enclosure_asset_id` input
-of `feed.item.create` resolves its URL the same way (it also takes
-`application`).
+and no application or durable feed token is available. The `enclosure_asset_id`
+input of `feed.item.create` resolves its URL the same way; there, `application`
+defaults to the step's `application_id`, so a feed item published for an
+application signs its enclosure with that application's token without repeating
+it.
 
 ### `article.get`
 Load an article by ID.

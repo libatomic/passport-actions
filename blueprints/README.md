@@ -190,6 +190,8 @@ Each of these has its own README with setup steps, required secrets and hosts.
 | [`x/post`](x/post/) | X (Twitter) | **Channel** — publish a post |
 | [`wp/create-post`](wp/create-post/) | WordPress | **Channel** — publish a post |
 | [`spotify/create-episode`](spotify/create-episode/) | Spotify | **Channel** — publish a podcast/video episode |
+| [`spotify/update-show`](spotify/update-show/) | Spotify | Update show metadata / flip the sandbox flag (run manually) |
+| [`spotify/import-show`](spotify/import-show/) | Spotify | Move an RSS-distributed show under the Distribution API (run manually) |
 | [`gh/slack-notify`](gh/) | Slack | Notify a channel when a distribution publishes |
 | [`gh/twilio-sms`](gh/) | Twilio | SMS alert on cancellation |
 | [`gh/sendgrid-mail`](gh/) | SendGrid | Send mail via SendGrid |

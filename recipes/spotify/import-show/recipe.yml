@@ -1,0 +1,169 @@
+name: spotify-import-show
+version: "1.0"
+description: >
+  Bring an RSS-distributed Spotify show under Distribution API management
+  (pinned to Api-Version 2026-04-01). Checks whether the show is already
+  managed by this client, runs the import preflight, starts the import when
+  Spotify says it is eligible, and optionally polls until it finishes. Once
+  imported, Spotify stops polling the RSS feed and the show must be managed
+  through the API; the show id (spotify:show:<id>) does not change.
+
+inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  show_id:
+    required: true
+    type: string
+    label: Show ID
+    description: >
+      Spotify show id — the base-62 id at the end of the show URI
+      (spotify:show:<id>), not the full URI. The show must already be in
+      Spotify's catalog as an RSS-distributed show.
+  wait:
+    default: "true"
+    type: string
+    label: Wait For Import
+    description: >
+      "true" polls the import until it succeeds or fails (up to 40 polls);
+      "false" returns as soon as Spotify accepts the import request.
+    enum:
+      - "true"
+      - "false"
+  poll_interval:
+    default: "15s"
+    type: string
+    label: Poll Interval
+    description: >
+      Delay between import status checks (Go duration, max 90s). Spotify
+      recommends 10-30s; shows with many episodes can take several minutes.
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # Is the show already managed by this client? 200 = yes (nothing to import);
+  # 404 = not managed — either RSS-delivered or owned by another client, which
+  # the preflight below distinguishes. Any other status (401/403/5xx) fails.
+  - id: show
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200, 404]
+
+  # Preflight (read-only): reports the feed_url Spotify is polling, how the
+  # show is currently delivered, and whether POST /imports would succeed.
+  #   200 eligible_for_import=false → ineligibility_reason (DOMAIN_NOT_AUTHORIZED:
+  #       the feed URL is not on one of this account's authorized RSS domains)
+  #   409 → already imported / already exists in this account / an import is
+  #       already running — reported as "conflict" with Spotify's message
+  #   404 → no such show in Spotify's catalog; 403 → client lacks import access;
+  #       422 → hosted on Megaphone or another non-RSS method — all fail the run.
+  - id: preflight
+    if: ${{ steps.show.outputs.status == 404 }}
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/imports/preflight"
+      query:
+        show_uri: "spotify:show:${{ inputs.show_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200, 409]
+
+  # Start the import only when Spotify says it will succeed. Returns 202 with
+  # an import_id. From this point Spotify no longer fetches the RSS feed.
+  - id: import
+    if: ${{ steps.show.outputs.status == 404 && steps.preflight?.outputs?.body?.eligible_for_import == true }}
+    action: http.post
+    with:
+      url: "https://distribution.spotify.com/imports"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+        Api-Version: ${{ inputs.api_version }}
+      body:
+        show_uri: "spotify:show:${{ inputs.show_id }}"
+      expect_status: [202]
+
+  # Poll GET /imports/{import_id} until status is success or failed (pending
+  # otherwise). Sleep first: Spotify recommends waiting ~5s before the first
+  # check. 40 × poll_interval (default 15s) ≈ 10 minutes.
+  - id: poll
+    if: ${{ inputs.wait == "true" && steps.import?.status == "ok" }}
+    until: ${{ steps.import_status?.outputs?.body?.status in ["success", "failed"] }}
+    max: 40
+    steps:
+      - id: pause
+        action: sleep
+        with:
+          duration: ${{ inputs.poll_interval }}
+      - id: import_status
+        action: http.get
+        with:
+          url: "https://distribution.spotify.com/imports/${{ steps.import.outputs.body.import_id }}"
+          headers:
+            Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+            Api-Version: ${{ inputs.api_version }}
+          expect_status: [200]
+
+  # After a successful import the show must be readable through the API under
+  # this client. A 404 here fails the run — the import reported success but the
+  # show is not visible, which needs a look from Spotify.
+  - id: verify
+    if: ${{ steps.import_status?.outputs?.body?.status == "success" }}
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200]
+
+  # One flat summary for callers: steps.<id>.outputs.result.outputs.*
+  #   outcome: already_managed | conflict | not_eligible | pending | success | failed
+  - id: result
+    action: set-output
+    with:
+      show_uri: "spotify:show:${{ inputs.show_id }}"
+      outcome: >-
+        ${{ ternary(steps.show.outputs.status == 200, "already_managed",
+        ternary(steps.preflight?.outputs?.status == 409, "conflict",
+        ternary(steps.preflight?.outputs?.body?.eligible_for_import != true, "not_eligible",
+        steps.import_status?.outputs?.body?.status ?? "pending"))) }}
+      reason: >-
+        ${{ steps.preflight?.outputs?.body?.ineligibility_reason
+        ?? ((steps.preflight?.outputs?.body?.errors ?? [{}])[0]?.detail ?? "") }}
+      distribution_method: ${{ ternary(steps.show.outputs.status == 200, "api", steps.preflight?.outputs?.body?.distribution_method ?? "") }}
+      feed_url: ${{ steps.preflight?.outputs?.body?.feed_url ?? "" }}
+      title: ${{ steps.show?.outputs?.body?.title ?? (steps.preflight?.outputs?.body?.title ?? "") }}
+      import_id: ${{ steps.import?.outputs?.body?.import_id ?? "" }}
+      import_status: ${{ steps.import_status?.outputs?.body?.status ?? "" }}
+      episode_count: ${{ steps.import_status?.outputs?.body?.episode_count ?? (steps.preflight?.outputs?.body?.episode_count ?? 0) }}

@@ -126,6 +126,9 @@ definition:
       continue-on-error: true
       with:
         integration_type: spotify
+        # Only the metadata paths listed here are returned (never credentials).
+        metadata_keys:
+          - spotify.open_categories
 
     # The audience's categories become Spotify Open Access entitlements using
     # the podcast feed's rule: category slugs, unless one of them is an open
