@@ -11,6 +11,15 @@ description: |
   for the episode summary, resolves the enclosure asset to a public URL, and
   posts the episode.
 
+  LIFECYCLE: the workflow handles the whole life of the episode, keyed off
+  trigger.action. The first publish creates the episode and records its Spotify
+  id on the distribution (context.spotify_episode_id). "Publish Now" on an
+  already-published distribution runs it again as a republish, which updates
+  that episode in place (title, summary, media, entitlements) instead of
+  creating a duplicate. Deleting the distribution in the admin runs it with
+  action=delete first: the episode is deleted from Spotify, and only if that
+  succeeds is the distribution removed from Passport.
+
   AUDIENCE: this is a broadcast channel (published once), but it still requires
   an audience. Spotify Open Access gates playback by "entitlements", and this
   workflow passes the audience's category slugs as those entitlements — the
@@ -50,7 +59,9 @@ inputs:
     default: full
 definition:
   name: Spotify Episode (Distribution)
-  description: Publishes a distribution as an episode on a Spotify show.
+  description: >-
+    Publishes a distribution as an episode on a Spotify show; republishes
+    update the episode and deleting the distribution deletes it from Spotify.
   icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
   version: 1
 
@@ -97,6 +108,42 @@ definition:
       action: distribution.get
       with:
         distribution_id: ${{ trigger.distribution_id }}
+
+    # The Spotify episode this distribution published, if any — recorded in
+    # the distribution's context by the first publish. Decides create vs
+    # update below and is what a delete removes.
+    - id: existing
+      action: set-output
+      with:
+        id: ${{ steps.load.outputs.distribution.context?.spotify_episode_id ?? "" }}
+
+    # DELETE: the admin's Delete button runs this workflow synchronously with
+    # trigger.action = "delete" BEFORE removing the distribution. Delete the
+    # episode from Spotify; a failure here fails the run and the platform
+    # keeps the distribution (with the error) so nothing is orphaned on
+    # Spotify. A distribution whose publish never got as far as creating an
+    # episode has nothing to remove.
+    - id: teardown
+      if: ${{ trigger.action == "delete" }}
+      then:
+        - id: remove
+          if: ${{ steps.existing.outputs.id != "" }}
+          then:
+            - id: delete
+              includes: libatomic/passport-actions/recipes/spotify/delete-episode@spotify
+              with:
+                client_id: ${{ inputs.spotify_client_id }}
+                client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+                episode_id: ${{ steps.existing.outputs.id }}
+          else:
+            - id: nothing-to-delete
+              action: log
+              with:
+                message: "distribution ${{ trigger.distribution_id }} has no Spotify episode recorded; nothing to delete"
+        - id: deleted
+          action: workflow.exit
+          with:
+            reason: "spotify episode ${{ steps.existing.outputs.id }} deleted"
 
     # Render the selected template into the episode summary/show notes. Spotify
     # accepts plain text or HTML here.
@@ -153,22 +200,63 @@ definition:
           || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
           ? [] : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
 
+    # PUBLISH / REPUBLISH. Create the episode the first time and remember its
+    # id; every later run (trigger.action = "republish", or a retry after the
+    # id was recorded) updates that episode in place. Spotify's create is not
+    # idempotent on guid, so posting again would make a duplicate episode.
+    #
+    # Includes are pinned @spotify so runs fetch the 2026-04-01 recipes.
+    # Unpinned includes resolve to GitHub HEAD (master), which still has the
+    # older recipes without the Api-Version header.
     - id: publish
-      # Pin @spotify so this run fetches the 2026-04-01 recipe. Unpinned
-      # includes resolve to GitHub HEAD (master), which still has the older
-      # recipe without the Api-Version header.
-      includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
-      with:
-        client_id: ${{ inputs.spotify_client_id }}
-        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-        show_id: ${{ inputs.spotify_show_id }}
-        title: ${{ steps.load.outputs.distribution.title }}
-        pubdate: ${{ steps.load.outputs.distribution.published_at }}
-        media_file_url: ${{ steps.media.outputs.asset.link }}
-        summary: ${{ steps.render.outputs.body }}
-        # A stable guid so a re-publish maps to the same Spotify episode.
-        guid: ${{ trigger.distribution_id }}
-        entitlements: ${{ steps.entitlements.outputs.entitlements }}
-        content_rating: ${{ inputs.content_rating }}
-        explicit: ${{ inputs.explicit }}
-        episode_type: ${{ inputs.episode_type }}
+      if: ${{ steps.existing.outputs.id == "" }}
+      then:
+        - id: create
+          includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
+          with:
+            client_id: ${{ inputs.spotify_client_id }}
+            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+            show_id: ${{ inputs.spotify_show_id }}
+            title: ${{ steps.load.outputs.distribution.title }}
+            pubdate: ${{ steps.load.outputs.distribution.published_at }}
+            media_file_url: ${{ steps.media.outputs.asset.link }}
+            summary: ${{ steps.render.outputs.body }}
+            # The distribution id doubles as the episode's guid.
+            guid: ${{ trigger.distribution_id }}
+            entitlements: ${{ steps.entitlements.outputs.entitlements }}
+            content_rating: ${{ inputs.content_rating }}
+            explicit: ${{ inputs.explicit }}
+            episode_type: ${{ inputs.episode_type }}
+
+        # Record the episode on the distribution so republish updates it and
+        # delete can remove it. merge() keeps any other context keys; the new
+        # values win. This context-only update is allowed while the
+        # distribution is mid-publish.
+        - id: remember
+          action: distribution.update
+          with:
+            distribution_id: ${{ trigger.distribution_id }}
+            context: >-
+              ${{ merge({"spotify_episode_id": steps.create.outputs.episode.outputs.body.episode_id,
+              "spotify_episode_uri": steps.create.outputs.episode.outputs.body.episode_uri,
+              "spotify_show_id": inputs.spotify_show_id},
+              steps.load.outputs.distribution.context) }}
+      else:
+        # Partial update — only the fields sent change. Entitlements are
+        # recomputed from the audience above and always sent (an empty list
+        # opens the episode), since this workflow owns the episode's gating.
+        - id: update
+          includes: libatomic/passport-actions/recipes/spotify/update-episode@spotify
+          with:
+            client_id: ${{ inputs.spotify_client_id }}
+            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+            episode_id: ${{ steps.existing.outputs.id }}
+            title: ${{ steps.load.outputs.distribution.title }}
+            pubdate: ${{ steps.load.outputs.distribution.published_at }}
+            media_file_url: ${{ steps.media.outputs.asset.link }}
+            summary: ${{ steps.render.outputs.body }}
+            entitlements: ${{ steps.entitlements.outputs.entitlements }}
+            clear_entitlements: true
+            content_rating: ${{ inputs.content_rating }}
+            explicit: ${{ inputs.explicit }}
+            episode_type: ${{ inputs.episode_type }}

@@ -104,7 +104,16 @@ inputs:
     description: >
       Spotify Open Access entitlement identifiers (category slugs). Omitted
       when empty so an update without entitlements doesn't clear the
-      episode's gating.
+      episode's gating — unless clear_entitlements is true.
+  clear_entitlements:
+    default: false
+    type: boolean
+    label: Clear Entitlements When Empty
+    description: >
+      When true, an empty entitlements list is sent as [] so the episode
+      becomes open (ungated). Use when the caller owns the episode's gating,
+      e.g. a distribution republish that recomputes entitlements from the
+      audience.
 
 steps:
   - id: token
@@ -136,7 +145,7 @@ steps:
         ternary(empty(inputs.episode_type), {}, {"episode_type": inputs.episode_type}),
         ternary(empty(inputs.episode_number), {}, {"episode_number": toInt(inputs.episode_number)}),
         ternary(empty(inputs.season_number), {}, {"season_number": toInt(inputs.season_number)}),
-        ternary(empty(inputs.entitlements), {}, {"entitlements": inputs.entitlements})) }}
+        ternary(empty(inputs.entitlements) && !toBool(inputs.clear_entitlements), {}, {"entitlements": inputs.entitlements ?? []})) }}
 
   - id: episode
     action: http.put

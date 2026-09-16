@@ -33,7 +33,8 @@ libatomic/passport-actions/recipes/spotify/update-episode
 | `content_rating` | no | `""` | `unspecified` or `eighteen_plus` |
 | `episode_type` | no | `""` | `full`, `bonus`, or `trailer` |
 | `episode_number`, `season_number` | no | `""` | Integers; sent as numbers, omitted when empty |
-| `entitlements` | no | `[]` | Open Access entitlement ids; omitted when empty |
+| `entitlements` | no | `[]` | Open Access entitlement ids; omitted when empty (unless `clear_entitlements`) |
+| `clear_entitlements` | no | `false` | Send an empty `entitlements` as `[]` to make the episode open — for callers that own the gating (e.g. a distribution republish) |
 
 ## Outputs
 
