@@ -145,11 +145,13 @@ definition:
       action: set-output
       with:
         open_categories: ${{ outputs.open_categories }}
+        # Keep every continuation line at the same indent: YAML `>-` folds
+        # equally-indented lines into one line, but preserves newlines before
+        # more-indented ones, and the engine's ${{ }} matcher is single-line.
         entitlements: >-
           ${{ (len(steps.audience.outputs.category_ids) == 0
-              || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
-            ? []
-            : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
+          || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
+          ? [] : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
 
     - id: publish
       # Pin @spotify so this run fetches the 2026-04-01 recipe. Unpinned
