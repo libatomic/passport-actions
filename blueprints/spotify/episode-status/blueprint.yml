@@ -42,6 +42,7 @@ definition:
     distribution_id:
       type: string
       required: true
+      runtime: true # supplied per run (by the admin panel or the run form), not at install
       default: ""
       label: Distribution ID
       hint: The Spotify-channel distribution whose episode to check
@@ -78,6 +79,21 @@ definition:
         processing_status: ${{ steps.check.outputs.status.outputs.body.processing_status ?? "unknown" }}
         status_updated_at: ${{ steps.check.outputs.status.outputs.body.status_updated_at ?? "" }}
         failure_events: ${{ steps.check.outputs.status.outputs.body.failure_events ?? [] }}
+
+    # Persist the result on the distribution so the admin shows Spotify's
+    # last known state (and flags a failed episode as an error) without
+    # re-running the check. A context-only update is allowed while the
+    # distribution is active.
+    - id: remember
+      action: distribution.update
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+        context: >-
+          ${{ merge({"spotify_processing_status": outputs.processing_status,
+          "spotify_status_updated_at": outputs.status_updated_at,
+          "spotify_failure_events": outputs.failure_events,
+          "spotify_status_checked_at": now()},
+          steps.load.outputs.distribution.context) }}
 
     - id: report
       action: log

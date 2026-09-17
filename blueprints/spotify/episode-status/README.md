@@ -38,5 +38,16 @@ Read from the run's `outputs`:
 | `status_updated_at` | When Spotify last updated the status |
 | `failure_events` | Most recent first; each has `type`, `occurred_at`, and `details` (`error_message` or `issues[]`) |
 
+The result is also written to the distribution's `context`
+(`spotify_processing_status`, `spotify_status_updated_at`,
+`spotify_failure_events`, `spotify_status_checked_at`), so the admin shows the
+last known state without re-running the check and lists a `failed` episode as
+an error. A failed episode is fixed by either deleting the distribution (which
+removes the episode from Spotify) or correcting the media and publishing again
+(which updates the episode in place).
+
+`distribution_id` is a **run-time** input (`runtime: true`): the installer does
+not ask for it; the admin panel or the run form supplies it.
+
 Spotify's status can lag: an episode may be playable before the status reads
 `success`, and failure events can appear after a delay.
