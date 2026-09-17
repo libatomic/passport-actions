@@ -219,8 +219,17 @@ on:
 
 Saving the workflow **registers the channel**: it then appears in an article's
 **Add Distribution** menu alongside Email, RSS and Podcast. Publishing to it
-runs the workflow, which receives `trigger.distribution_id` and
-`trigger.channel` (plus `trigger.user_id` for unicast).
+runs the workflow, which receives `trigger.distribution_id`, `trigger.channel`
+and `trigger.action` (plus `trigger.user_id` for unicast).
+
+`trigger.action` is `publish` on the first publish, `republish` when the
+operator presses Publish Now on an already-published broadcast distribution
+(update what you published — don't create it again), and `delete` when the
+distribution is being deleted (remove what you published; the platform runs
+this **before** deleting the distribution and keeps it if the run fails).
+Record the destination's id in the distribution's `context` with
+`distribution.update` so the later runs can find it —
+`spotify/create-episode` shows the pattern.
 
 - **`base_type`** makes the Add Distribution editor reuse a built-in channel's
   form — a podcast-shaped channel collects a title, summary and media file

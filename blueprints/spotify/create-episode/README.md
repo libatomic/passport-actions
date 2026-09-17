@@ -9,24 +9,43 @@ and Podcast.
 > agreement with Spotify covering the license, distribution and monetization of
 > your content. Expect occasional breaking changes.
 
-Built on the [`spotify/create-episode`](../../../recipes/spotify/create-episode/)
-recipe. The `includes:` ref is pinned `@spotify` until that recipe is on the
-default branch — unpinned includes fetch GitHub `HEAD` (`master`).
+Built on the [`spotify/create-episode`](../../../recipes/spotify/create-episode/),
+[`spotify/update-episode`](../../../recipes/spotify/update-episode/) and
+[`spotify/delete-episode`](../../../recipes/spotify/delete-episode/) recipes. The
+`includes:` refs are pinned `@spotify` until those recipes are on the default
+branch — unpinned includes fetch GitHub `HEAD` (`master`).
 
 ## What it does
 
-Publishing a distribution to the `spotify` channel runs this workflow once
-(broadcast):
+The workflow owns the whole life of the episode. Every run is told why it is
+running through `trigger.action`:
+
+| `trigger.action` | Triggered by | Result |
+|---|---|---|
+| `publish` | first **Publish Now** / scheduled publish | `POST /shows/{show_id}/episodes`; the new `episode_id` is stored on the distribution as `context.spotify_episode_id` (with `spotify_episode_uri`, `spotify_show_id`) |
+| `republish` | **Publish Now** on an already-published distribution (after editing it or syncing it with the article) | `PUT /episodes/{episode_id}` — title, pubdate, summary, media, entitlements, rating/explicit/type updated in place; no duplicate episode |
+| `delete` | **Delete** on the distribution in the admin | `DELETE /episodes/{episode_id}`, run by the platform **before** the distribution row is removed. If Spotify refuses, the run fails, the delete is refused and the distribution stays with the error — the episode is never orphaned |
+
+Steps, in order:
 
 | Step | Action | Purpose |
 |---|---|---|
 | `load` | `distribution.get` | Load the episode metadata the editor collected |
+| `existing` | `set-output` | `context.spotify_episode_id` from a previous publish, or `""` |
+| `teardown` | `if trigger.action == "delete"` | recipe `spotify/delete-episode` for the recorded episode (nothing to do if none), then `workflow.exit` |
 | `render` | `distribution.render` | Render the template into the episode summary |
 | `media` | `asset.get` (`link: true`, `application: spotify`) | Resolve the enclosure asset to a URL signed with the Spotify app's feed token |
 | `app` | `application.get` | Load the Spotify application (if installed) for its open categories |
 | `audience` | `audience.get` | Read the audience's categories |
 | `entitlements` | `set-output` | Apply the podcast-feed rule: slugs, or `[]` if a category is open |
-| `publish` | recipe `spotify/create-episode` | `POST /shows/{show_id}/episodes` |
+| `publish` | `if existing == ""` | **then** recipe `spotify/create-episode` + `distribution.update` recording the episode in `context`; **else** recipe `spotify/update-episode` (`clear_entitlements: true`, so an episode can go from gated to open) |
+
+Spotify's create is not idempotent on `guid`, so the recorded `episode_id`, not
+the guid, is what keeps a republish from creating a second episode. A
+distribution published before this version of the blueprint has no
+`spotify_episode_id`; its next republish will therefore **create** a new
+episode and record that id — delete the old one in Spotify (or set
+`context.spotify_episode_id` on the distribution first).
 
 Field mapping:
 
@@ -36,7 +55,7 @@ Field mapping:
 | `pubdate` | `distribution.published_at` |
 | `summary` | the rendered template body |
 | `media_file_url` | the enclosure asset's public URL |
-| `guid` | `trigger.distribution_id` (stable across re-publishes) |
+| `guid` | `trigger.distribution_id` (create only) |
 | `entitlements` | the audience's category slugs, or `[]` if one is an open category of the Spotify application |
 | `content_rating` / `explicit` / `episode_type` | blueprint inputs |
 

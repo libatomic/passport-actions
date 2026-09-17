@@ -179,6 +179,18 @@ Saving the workflow **registers the channel**: it then appears in an article's
   the destination gates access by the audience's categories rather than delivering per
   member (see **spotify/create-episode**).
 
+**Lifecycle (`trigger.action`).** Every run also receives `trigger.action`, telling the
+workflow what the platform wants done with the distribution on the channel:
+
+| `trigger.action` | When | What the workflow should do |
+|---|---|---|
+| `publish` | first publish (or a retry after a failed attempt) | create the destination object and record its id in the distribution's `context` (`distribution.update` with only `context` — allowed while the distribution is mid-publish) |
+| `republish` | Publish Now on an already-published **broadcast** distribution | update the object it recorded; do not create a duplicate |
+| `delete` | the distribution is being deleted (**broadcast** channels that completed a publish) | remove the object. The platform runs this synchronously **before** deleting the distribution; if the run fails the delete is refused and the distribution is kept with the error |
+
+A missing channel workflow no longer blocks a delete; a disabled one does (enable it and
+retry). **spotify/create-episode** implements all three branches.
+
 **Application audiences.** `application: <name | slug | client id>` pins the channel's
 audience picker to that application's audiences (the audiences created for it under
 Applications, i.e. those with its `application_id`). Use it when the destination only
