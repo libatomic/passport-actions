@@ -262,8 +262,8 @@ and optional chaining when the application is optional:
   with:
     entitlements: >-
       ${{ (len(steps.audience.outputs.category_ids) == 0
-          || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
-        ? [] : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
+      || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
+      ? [] : map(filter(steps.audience.outputs.categories, !.hidden), .slug) }}
 ```
 
 ### `template.render`

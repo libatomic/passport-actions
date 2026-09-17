@@ -193,8 +193,9 @@ definition:
       with:
         open_categories: ${{ outputs.open_categories }}
         # Keep every continuation line at the same indent: YAML `>-` folds
-        # equally-indented lines into one line, but preserves newlines before
-        # more-indented ones, and the engine's ${{ }} matcher is single-line.
+        # equally-indented lines into one line but preserves newlines before
+        # more-indented ones. The engine matches multi-line spans too, but a
+        # one-line expression reads better in run output and the editor.
         entitlements: >-
           ${{ (len(steps.audience.outputs.category_ids) == 0
           || any(steps.audience.outputs.category_ids, # in outputs.open_categories))
