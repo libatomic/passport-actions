@@ -242,6 +242,12 @@ Record the destination's id in the distribution's `context` with
   when the destination only knows entitlements provisioned through that
   application, as Spotify Open Access does through the Spotify OIDC
   application. A UI hint; not enforced by the API.
+- A separate manual blueprint can declare a top-level **`channel: <name>`**
+  to attach itself as that channel's status check (`spotify/episode-status`
+  does). Together with `context.channel_link` written on publish, that gives
+  the distribution an *Open on …* link, a *Check status* button, failure
+  reasons, and an **Error** state. See
+  [WORKFLOW.md](../WORKFLOW.md#distribution-triggers--define-a-custom-channel).
 
 See [WORKFLOW.md](../WORKFLOW.md#distribution-triggers--define-a-custom-channel)
 for the full contract.

@@ -10,11 +10,13 @@ description: |
   resolves the media to a public URL, and creates the episode. The
   audience's category slugs become Spotify Open Access entitlements
   gating playback — an audience with no category filter publishes an
-  ungated episode. Also installs two manual helpers: Show Settings for
+  ungated episode. Also installs three manual helpers: Show Settings for
   updating show metadata — e.g. flipping the sandbox flag to take a
-  show live — and Import Show for moving a show that is already on
+  show live — Import Show for moving a show that is already on
   Spotify via RSS under the API (after which Spotify stops polling its
-  feed; the show id is unchanged).
+  feed; the show id is unchanged), and Episode Status, which the admin's
+  distribution panel runs to report Spotify's processing status and
+  failure reasons for a published episode.
 
   Shared prerequisites: a SPOTIFY_CLIENT_SECRET workflow secret, plus your
   Spotify application client id and show id (workflow inputs);

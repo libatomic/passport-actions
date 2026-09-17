@@ -22,9 +22,16 @@ running through `trigger.action`:
 
 | `trigger.action` | Triggered by | Result |
 |---|---|---|
-| `publish` | first **Publish Now** / scheduled publish | `POST /shows/{show_id}/episodes`; the new `episode_id` is stored on the distribution as `context.spotify_episode_id` (with `spotify_episode_uri`, `spotify_show_id`) |
+| `publish` | first **Publish Now** / scheduled publish | `POST /shows/{show_id}/episodes`; the new `episode_id` is stored on the distribution as `context.spotify_episode_id` (with `spotify_episode_uri`, `spotify_show_id`), plus `context.channel_link` — the episode's open.spotify.com URL, which the admin shows as *Open on Spotify* |
 | `republish` | **Publish Now** on an already-published distribution (after editing it or syncing it with the article) | `PUT /episodes/{episode_id}` — title, pubdate, summary, media, entitlements, rating/explicit/type updated in place; no duplicate episode |
 | `delete` | **Delete** on the distribution in the admin | `DELETE /episodes/{episode_id}`, run by the platform **before** the distribution row is removed. If Spotify refuses, the run fails, the delete is refused and the distribution stays with the error — the episode is never orphaned |
+
+Checking on an episode after publish is a separate manual workflow,
+[`spotify/episode-status`](../episode-status/), installed with the package. It
+attaches itself to this channel (`channel: spotify` in its blueprint), so the
+admin's distribution panel gets a *Check status* button that reports Spotify's
+processing status and failure reasons and marks a rejected episode as
+**Error**. This workflow does not need to know it exists.
 
 Steps, in order:
 

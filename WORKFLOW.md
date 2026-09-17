@@ -202,6 +202,19 @@ definition but does not validate it. Application audiences are otherwise hidden 
 picker; a channel that names an application (or is `base_type: podcast | rss`) shows them.
 Inside the workflow, `application.get` returns the same application and its audiences.
 
+**Destination link and status.** Two conventions let the admin show what a channel published
+without knowing the destination. The publish workflow records the object's URL as
+`context.channel_link` (`distribution.update` with `context`, merged over the existing context);
+the admin renders it as *Open on <label>*. And a separate **manual** blueprint can attach itself
+to the channel with a top-level `channel: <channel name>` (the installer records it as
+`metadata.channel_status_for`); it takes a `runtime: true` input `distribution_id`, and the
+admin's *Check status* runs it for a distribution. Its run `outputs` must provide `status` (`success` | `pending` |
+`failed` | `removed`), optional `status_updated_at`, and `failures` (list of
+`{type, occurred_at, messages: [..]}`); it should also write them to the distribution's context
+as `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_status_checked_at`
+so the last known state shows without a re-check and a `failed` distribution lists as **Error**.
+See `spotify/episode-status` for the reference implementation and `runtime` under Inputs.
+
 **Base type.** A channel may declare `base_type: podcast | rss | email | sms` to say it
 is *shaped like* a built-in channel. It's a hint, not a behavior switch — your workflow
 still does the publishing — but the Add Distribution editor then reuses that channel's

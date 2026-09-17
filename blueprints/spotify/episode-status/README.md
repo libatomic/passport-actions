@@ -29,22 +29,28 @@ Spotify exits cleanly with a reason.
 
 ## Outputs
 
-Read from the run's `outputs`:
+This is the reference implementation of the admin's **channel status
+contract** (see `docs/DISTRO.md`, *Destination status*): the Spotify shape is
+normalized so the admin never has to know Spotify.
 
 | Output | Description |
 |---|---|
 | `episode_id` / `episode_uri` | The episode, from the distribution's context |
-| `processing_status` | `success`, `pending`, `failed`, `removed`, `no_content`, `unknown` |
+| `spotify_status` | Spotify's raw `processing_status` |
+| `status` | Contract status: `success`, `pending`, `failed`, `removed` (`no_content`/`unknown` → `pending`) |
 | `status_updated_at` | When Spotify last updated the status |
-| `failure_events` | Most recent first; each has `type`, `occurred_at`, and `details` (`error_message` or `issues[]`) |
+| `failures` | `[{type, occurred_at, messages: [..]}]` — each Spotify failure event's `error_message` or `issues[]` as its messages |
 
-The result is also written to the distribution's `context`
-(`spotify_processing_status`, `spotify_status_updated_at`,
-`spotify_failure_events`, `spotify_status_checked_at`), so the admin shows the
-last known state without re-running the check and lists a `failed` episode as
-an error. A failed episode is fixed by either deleting the distribution (which
-removes the episode from Spotify) or correcting the media and publishing again
-(which updates the episode in place).
+The result is also written to the distribution's `context` as
+`channel_status`, `channel_status_updated_at`, `channel_failures` and
+`channel_status_checked_at`, so the admin shows the last known state without
+re-running the check and lists a `failed` episode as **Error**. A failed
+episode is fixed by either deleting the distribution (which removes the
+episode from Spotify) or correcting the media and publishing again (which
+updates the episode in place). This blueprint attaches itself to the channel
+with its top-level `channel: spotify` (recorded as
+`metadata.channel_status_for` on install); the channel workflow only has to
+record `context.channel_link` on publish.
 
 `distribution_id` is a **run-time** input (`runtime: true`): the installer does
 not ask for it; the admin panel or the run form supplies it.
