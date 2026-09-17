@@ -25,3 +25,4 @@ blueprints:
   - spotify/create-episode
   - spotify/update-show
   - spotify/import-show
+  - spotify/episode-status

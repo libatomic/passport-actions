@@ -1,0 +1,85 @@
+name: Spotify Episode Status
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+description: |
+  Checks the processing status of an episode published by the Spotify
+  channel: whether Spotify has finished transcoding it, and the failure
+  events (upload, validation, transcoding) with their reasons if not.
+
+  Run manually with a distribution id, or from the distribution's Spotify
+  panel in the admin, which runs this workflow and shows the result. The
+  episode id comes from the distribution's context, where the Spotify
+  channel workflow records it on publish.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret and the client id input;
+  accounts.spotify.com and distribution.spotify.com must be on the
+  instance's HTTP allowlist.
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Spotify Episode Status
+  description: Reports Spotify's processing status and failure reasons for a published episode. Run manually or from the distribution's Spotify panel.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  # NOTE: inputs are declared INSIDE definition: — when a blueprint does
+  # this, the installer ignores the top-level inputs block entirely; this
+  # copy is the one that reaches the stored workflow.
+  inputs:
+    spotify_client_id:
+      type: string
+      required: true
+      default: ""
+      label: Client ID
+      hint: Spotify application client id
+    distribution_id:
+      type: string
+      required: true
+      default: ""
+      label: Distribution ID
+      hint: The Spotify-channel distribution whose episode to check
+
+  steps:
+    # The channel workflow stores the episode on the distribution when it
+    # publishes (context.spotify_episode_id / spotify_episode_uri).
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+      outputs:
+        episode_id: ${{ steps.load.outputs.distribution.context?.spotify_episode_id ?? "" }}
+        episode_uri: ${{ steps.load.outputs.distribution.context?.spotify_episode_uri ?? "" }}
+
+    - id: not-published
+      if: ${{ outputs.episode_id == "" }}
+      then:
+        - id: exit
+          action: workflow.exit
+          with:
+            reason: "distribution ${{ inputs.distribution_id }} has no Spotify episode yet"
+
+    - id: check
+      includes: libatomic/passport-actions/recipes/spotify/get-episode-status@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        episode_id: ${{ outputs.episode_id }}
+      # Surface the status as run outputs so a caller (the admin panel, or a
+      # workflow.run step) reads them from the run instead of digging through
+      # the include's step tree.
+      outputs:
+        processing_status: ${{ steps.check.outputs.status.outputs.body.processing_status ?? "unknown" }}
+        status_updated_at: ${{ steps.check.outputs.status.outputs.body.status_updated_at ?? "" }}
+        failure_events: ${{ steps.check.outputs.status.outputs.body.failure_events ?? [] }}
+
+    - id: report
+      action: log
+      with:
+        message: "episode ${{ outputs.episode_id }}: ${{ outputs.processing_status }} (${{ len(outputs.failure_events) }} failure event(s))"
