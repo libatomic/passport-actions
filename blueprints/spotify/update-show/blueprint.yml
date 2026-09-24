@@ -87,6 +87,13 @@ definition:
       default: ""
       label: Show Art URL
       hint: 3000x3000 JPEG/PNG; empty leaves it unchanged
+    soa_partner_id:
+      type: string
+      required: false
+      default: ""
+      label: SOA Partner ID
+      hint: Spotify Open Access partner id (exactly 22 characters) that gates this show's entitlements; empty leaves it unchanged
+      validate: value == "" || len(value) == 22
 
   steps:
     - id: update
@@ -101,6 +108,7 @@ definition:
         owner_name: ${{ inputs.owner_name }}
         link: ${{ inputs.link }}
         image_file_url: ${{ inputs.image_file_url }}
+        soa_partner_id: ${{ inputs.soa_partner_id }}
 
     - id: report
       action: log
