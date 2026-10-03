@@ -40,6 +40,10 @@ function validateTwilioSignature(authToken, url, params, signature) {
   );
 }
 
+function formDecode(s) {
+  return decodeURIComponent(s.replace(/\+/g, " "));
+}
+
 function run() {
   const rawBody = getInput("body");
   const headersRaw = getInput("headers");
@@ -75,7 +79,9 @@ function run() {
     for (const pair of rawBody.split("&")) {
       const [key, ...rest] = pair.split("=");
       if (key) {
-        params[decodeURIComponent(key)] = decodeURIComponent(rest.join("="));
+        // application/x-www-form-urlencoded encodes a space as "+", which
+        // decodeURIComponent leaves alone; Twilio signs the decoded values.
+        params[formDecode(key)] = formDecode(rest.join("="));
       }
     }
   }
