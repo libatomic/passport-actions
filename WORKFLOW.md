@@ -123,8 +123,9 @@ generate a separate URL per integration and revoke them independently. Each toke
 authorizes this one webhook — it grants nothing else.
 
 **Caller security & attribution.** `ip_allowlist` rejects callers outside the listed
-IPs/CIDRs (the client IP honors the first `X-Forwarded-For` hop when a proxy sets it —
-only rely on it when a trusted proxy fronts the API). Every webhook run records the
+IPs/CIDRs. The client IP is the `X-Forwarded-For` entry the daemon's own proxies wrote
+(`ATOMIC_TRUSTED_PROXY_HOPS` from the right, default 2), so a caller cannot claim an
+allowlisted address by sending its own header. Every webhook run records the
 caller on its trigger context: `trigger.remote_ip`, `trigger.token_id`, and
 `trigger.token_label` are available in expressions and shown on the run detail.
 Some senders require a specific success status (e.g. 204) — set `response_status`.
