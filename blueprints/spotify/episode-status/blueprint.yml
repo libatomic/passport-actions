@@ -1,0 +1,116 @@
+name: Spotify Episode Status
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+# Attaches this status workflow to the "spotify" distribution channel: the
+# installer records it as metadata.channel_status_for, and the admin's
+# distribution panel runs it for "Check status" on that channel.
+channel: spotify
+description: |
+  Checks the processing status of an episode published by the Spotify
+  channel: whether Spotify has finished transcoding it, and the failure
+  events (upload, validation, transcoding) with their reasons if not.
+
+  Run manually with a distribution id, or from the distribution's Spotify
+  panel in the admin, which runs this workflow and shows the result. The
+  episode id comes from the distribution's context, where the Spotify
+  channel workflow records it on publish.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret and the client id input;
+  accounts.spotify.com and distribution.spotify.com must be on the
+  instance's HTTP allowlist.
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Spotify Episode Status
+  description: Reports Spotify's processing status and failure reasons for a published episode. Run manually or from the distribution's Spotify panel.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  # NOTE: inputs are declared INSIDE definition: — when a blueprint does
+  # this, the installer ignores the top-level inputs block entirely; this
+  # copy is the one that reaches the stored workflow.
+  inputs:
+    spotify_client_id:
+      type: string
+      required: true
+      default: ""
+      label: Client ID
+      hint: Spotify application client id
+    distribution_id:
+      type: string
+      required: true
+      runtime: true # supplied per run (by the admin panel or the run form), not at install
+      default: ""
+      label: Distribution ID
+      hint: The Spotify-channel distribution whose episode to check
+
+  steps:
+    # The channel workflow stores the episode on the distribution when it
+    # publishes (context.spotify_episode_id / spotify_episode_uri).
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+      outputs:
+        episode_id: ${{ steps.load.outputs.distribution.context?.spotify_episode_id ?? "" }}
+        episode_uri: ${{ steps.load.outputs.distribution.context?.spotify_episode_uri ?? "" }}
+
+    - id: not-published
+      if: ${{ outputs.episode_id == "" }}
+      then:
+        - id: exit
+          action: workflow.exit
+          with:
+            reason: "distribution ${{ inputs.distribution_id }} has no Spotify episode yet"
+
+    - id: check
+      includes: libatomic/passport-actions/recipes/spotify/get-episode-status@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        episode_id: ${{ outputs.episode_id }}
+      # Normalize Spotify's shape to the channel-status contract the admin
+      # reads from the run outputs (see docs/DISTRO.md):
+      #   status            success | pending | failed | removed
+      #   status_updated_at RFC3339
+      #   failures          [{ type, occurred_at, messages: [..] }]
+      # Spotify: processing_status success/pending/failed/removed/no_content/
+      # unknown; failure_events[].details carries error_message or issues[].
+      outputs:
+        spotify_status: ${{ steps.check.outputs.status.outputs.body.processing_status ?? "unknown" }}
+        status: >-
+          ${{ {"success": "success", "pending": "pending", "failed": "failed", "removed": "removed",
+          "no_content": "pending", "unknown": "pending"}[steps.check.outputs.status.outputs.body.processing_status ?? "unknown"] ?? "pending" }}
+        status_updated_at: ${{ steps.check.outputs.status.outputs.body.status_updated_at ?? "" }}
+        # The object literal is parenthesised: a bare `{` after the list is
+        # read by the engine as a closure block, not a map.
+        failures: >-
+          ${{ map(steps.check.outputs.status.outputs.body.failure_events ?? [],
+          ({"type": .type, "occurred_at": .occurred_at,
+          "messages": .details?.error_message != nil ? [.details.error_message] : (.details?.issues ?? [])})) }}
+
+    # Persist the result on the distribution (context-only updates are
+    # allowed while it is active) so the admin shows the last known state
+    # without re-running the check and lists a failed distribution as Error.
+    - id: remember
+      action: distribution.update
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+        context: >-
+          ${{ merge({"channel_status": outputs.status,
+          "channel_status_updated_at": outputs.status_updated_at,
+          "channel_failures": outputs.failures,
+          "channel_status_checked_at": now()},
+          steps.load.outputs.distribution.context) }}
+
+    - id: report
+      action: log
+      with:
+        message: "episode ${{ outputs.episode_id }}: ${{ outputs.spotify_status }} → ${{ outputs.status }} (${{ len(outputs.failures) }} failure(s))"

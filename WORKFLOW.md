@@ -144,6 +144,7 @@ on:
       content_type: text         # html | text — text channels accept UTF-8 plain text only
       max_body_length: 0         # optional character limit in characters (0 = none)
       connect_url: https://…     # optional; shows a "Connect" button on the member app
+      application: spotify       # optional; only that application's audiences may be selected
       address:                   # optional member identity fields for this channel
         - name: whatsapp_number  # lowercase key (a-z, 0-9, _)
           label: WhatsApp Number
@@ -177,6 +178,42 @@ Saving the workflow **registers the channel**: it then appears in an article's
   audience; broadcast only when the channel sets `requires_audience: true` — useful when
   the destination gates access by the audience's categories rather than delivering per
   member (see **spotify/create-episode**).
+
+**Lifecycle (`trigger.action`).** Every run also receives `trigger.action`, telling the
+workflow what the platform wants done with the distribution on the channel:
+
+| `trigger.action` | When | What the workflow should do |
+|---|---|---|
+| `publish` | first publish (or a retry after a failed attempt) | create the destination object and record its id in the distribution's `context` (`distribution.update` with only `context` — allowed while the distribution is mid-publish) |
+| `republish` | Publish Now on an already-published **broadcast** distribution | update the object it recorded; do not create a duplicate |
+| `delete` | the distribution is being deleted (**broadcast** channels that completed a publish) | remove the object. The platform runs this synchronously **before** deleting the distribution; if the run fails the delete is refused and the distribution is kept with the error |
+
+A missing channel workflow no longer blocks a delete; a disabled one does (enable it and
+retry). **spotify/create-episode** implements all three branches.
+
+**Application audiences.** `application: <name | slug | client id>` pins the channel's
+audience picker to that application's audiences (the audiences created for it under
+Applications, i.e. those with its `application_id`). Use it when the destination only
+understands entitlements that were provisioned through one application (Spotify Open Access
+resolves entitlements via the Spotify OIDC application, so a Spotify channel should only
+offer that application's audiences). This is an **admin UI hint**: the Add Distribution
+picker lists only those audiences; the API carries the value through to the channel
+definition but does not validate it. Application audiences are otherwise hidden from the
+picker; a channel that names an application (or is `base_type: podcast | rss`) shows them.
+Inside the workflow, `application.get` returns the same application and its audiences.
+
+**Destination link and status.** Two conventions let the admin show what a channel published
+without knowing the destination. The publish workflow records the object's URL as
+`context.channel_link` (`distribution.update` with `context`, merged over the existing context);
+the admin renders it as *Open on <label>*. And a separate **manual** blueprint can attach itself
+to the channel with a top-level `channel: <channel name>` (the installer records it as
+`metadata.channel_status_for`); it takes a `runtime: true` input `distribution_id`, and the
+admin's *Check status* runs it for a distribution. Its run `outputs` must provide `status` (`success` | `pending` |
+`failed` | `removed`), optional `status_updated_at`, and `failures` (list of
+`{type, occurred_at, messages: [..]}`); it should also write them to the distribution's context
+as `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_status_checked_at`
+so the last known state shows without a re-check and a `failed` distribution lists as **Error**.
+See `spotify/episode-status` for the reference implementation and `runtime` under Inputs.
 
 **Base type.** A channel may declare `base_type: podcast | rss | email | sms` to say it
 is *shaped like* a built-in channel. It's a hint, not a behavior switch — your workflow

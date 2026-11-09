@@ -1,0 +1,127 @@
+name: Spotify Import Show (RSS → API)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+description: |
+  Manual helper that switches an RSS-distributed Spotify show to Distribution
+  API management (Api-Version 2026-04-01) so the Spotify channel can publish
+  episodes to it. It first checks whether the show is already managed by your
+  Spotify application (nothing to do), then runs Spotify's import preflight —
+  which reports the RSS feed Spotify is currently polling and whether the show
+  is eligible — and only starts the import when it is. The show id does not
+  change; existing followers and analytics are preserved.
+
+  Once imported, Spotify stops fetching the RSS feed: every future show and
+  episode change must go through the API (the Spotify channel does this). The
+  most common blocker is DOMAIN_NOT_AUTHORIZED — the show's feed URL must live
+  on an RSS domain your Spotify partner manager has authorized for the
+  account; after repointing a feed it can take up to ~3 hours for Spotify to
+  notice. Safe to re-run: it reports "already managed" once the import is done.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret plus client id and show id
+  inputs. accounts.spotify.com and distribution.spotify.com must be on the
+  instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+  spotify_show_id:
+    description: Spotify show id — the base-62 id from spotify:show:<id>
+    type: string
+    required: true
+    default: ""
+definition:
+  name: Spotify Import Show (RSS → API)
+  description: Moves an RSS-distributed Spotify show under Distribution API management (checks, preflights, imports, verifies). Run manually.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  # NOTE: inputs are declared INSIDE definition: — when a blueprint does
+  # this, the installer ignores the top-level inputs block entirely; this
+  # copy is the one that reaches the stored workflow.
+  inputs:
+    spotify_client_id:
+      type: string
+      required: true
+      default: ""
+      label: Client ID
+      hint: Spotify application client id
+    spotify_show_id:
+      type: string
+      required: true
+      default: ""
+      label: Show ID
+      hint: The base-62 id from spotify:show:<id> — must already be on Spotify via RSS
+    wait_for_import:
+      type: string
+      required: false
+      default: "true"
+      label: Wait For Import
+      hint: '"true" waits up to ~10 minutes for the import to finish; "false" returns once Spotify accepts it'
+      enum: ["true", "false"]
+
+  steps:
+    # Pin @spotify so this run fetches the 2026-04-01 recipe. Unpinned
+    # includes fetch GitHub HEAD (master).
+    - id: import
+      includes: libatomic/passport-actions/recipes/spotify/import-show@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        show_id: ${{ inputs.spotify_show_id }}
+        wait: ${{ inputs.wait_for_import }}
+      outputs:
+        outcome: ${{ steps.import.outputs.result.outputs.outcome }}
+        result: ${{ steps.import.outputs.result.outputs }}
+
+    # Value-matching switch: outcome is one of already_managed | success |
+    # pending | not_eligible | conflict | failed. The non-success outcomes end
+    # the run via workflow.exit so the reason is visible on the run detail.
+    - id: report
+      expression: ${{ outputs.outcome }}
+      switch:
+        - when: already_managed
+          steps:
+            - id: already_managed
+              action: log
+              with:
+                message: "${{ outputs.result.show_uri }} (${{ outputs.result.title }}) is already managed by client ${{ inputs.spotify_client_id }} — nothing to import"
+
+        - when: success
+          steps:
+            - id: imported
+              action: log
+              with:
+                message: "${{ outputs.result.show_uri }} (${{ outputs.result.title }}) imported — ${{ outputs.result.episode_count }} episode(s) now managed via the Distribution API; Spotify has stopped polling ${{ outputs.result.feed_url }}"
+
+        - when: pending
+          steps:
+            - id: pending
+              action: log
+              with:
+                message: "import ${{ outputs.result.import_id }} for ${{ outputs.result.show_uri }} is still pending — re-run this workflow later; it reports 'already managed' once Spotify finishes"
+
+        - when: not_eligible
+          steps:
+            - id: not_eligible
+              action: workflow.exit
+              with:
+                reason: "${{ outputs.result.show_uri }} is not eligible for import (${{ outputs.result.reason }}) — Spotify is polling ${{ outputs.result.feed_url }}; the feed must be on an RSS domain authorized for this Spotify account (allow up to ~3h after repointing it), then re-run"
+
+        - when: conflict
+          steps:
+            - id: conflict
+              action: workflow.exit
+              with:
+                reason: "${{ outputs.result.show_uri }} cannot be imported by client ${{ inputs.spotify_client_id }}: ${{ outputs.result.reason }}"
+
+        - default: true
+          steps:
+            - id: failed
+              action: workflow.exit
+              with:
+                reason: "import ${{ outputs.result.import_id }} for ${{ outputs.result.show_uri }} ended with status '${{ outputs.result.import_status }}' — re-run this workflow to retry; contact distribution-api@spotify.com if it keeps failing"

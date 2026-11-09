@@ -3,14 +3,20 @@ label: Spotify
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
 category: integrations
 description: |
-  Publishes episodes to a Spotify show through the SOA Video Distribution
-  API. Installs a workflow that adds a "spotify" distribution channel to
+  Publishes episodes to a Spotify show through the Spotify Distribution
+  API (pinned to Api-Version 2026-04-01). Installs a workflow that adds a "spotify" distribution channel to
   the article editor: the podcast-style form collects title, summary and a
   media file, and the workflow renders the distribution's template,
   resolves the media to a public URL, and creates the episode. The
   audience's category slugs become Spotify Open Access entitlements
   gating playback — an audience with no category filter publishes an
-  ungated episode.
+  ungated episode. Also installs three manual helpers: Show Settings for
+  updating show metadata — e.g. flipping the sandbox flag to take a
+  show live — Import Show for moving a show that is already on
+  Spotify via RSS under the API (after which Spotify stops polling its
+  feed; the show id is unchanged), and Episode Status, which the admin's
+  distribution panel runs to report Spotify's processing status and
+  failure reasons for a published episode.
 
   Shared prerequisites: a SPOTIFY_CLIENT_SECRET workflow secret, plus your
   Spotify application client id and show id (workflow inputs);
@@ -19,3 +25,6 @@ description: |
 
 blueprints:
   - spotify/create-episode
+  - spotify/update-show
+  - spotify/import-show
+  - spotify/episode-status

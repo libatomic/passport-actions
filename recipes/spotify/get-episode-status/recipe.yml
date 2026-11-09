@@ -1,0 +1,61 @@
+name: spotify-get-episode-status
+version: "1.0"
+description: >
+  Get the processing status for a Spotify episode via the Distribution API
+  (pinned to Api-Version 2026-04-01).
+
+inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  episode_id:
+    required: true
+    type: string
+    label: Episode ID
+    description: >
+      Spotify episode id — the base-62 id at the end of the episode URI
+      (spotify:episode:<id>).
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # Response body: episode_uri, processing_status (success / pending / failed /
+  # removed / no_content / unknown), status_updated_at, and failure_events —
+  # most recent first, each with type (upload_failed / validation_failed /
+  # processing_failed / transcoding_failed / content_removed), occurred_at,
+  # and an optional details object. NOTE: Spotify's status reporting can lag —
+  # an episode may be live before the status reflects success, and failure
+  # events may appear after a delay.
+  - id: status
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/episodes/${{ inputs.episode_id }}/status"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200]

@@ -190,6 +190,8 @@ Each of these has its own README with setup steps, required secrets and hosts.
 | [`x/post`](x/post/) | X (Twitter) | **Channel** — publish a post |
 | [`wp/create-post`](wp/create-post/) | WordPress | **Channel** — publish a post |
 | [`spotify/create-episode`](spotify/create-episode/) | Spotify | **Channel** — publish a podcast/video episode |
+| [`spotify/update-show`](spotify/update-show/) | Spotify | Update show metadata — sandbox flag, title/summary/art, Open Access `soa_partner_id` (run manually) |
+| [`spotify/import-show`](spotify/import-show/) | Spotify | Move an RSS-distributed show under the Distribution API (run manually) |
 | [`gh/slack-notify`](gh/) | Slack | Notify a channel when a distribution publishes |
 | [`gh/twilio-sms`](gh/) | Twilio | SMS alert on cancellation |
 | [`gh/sendgrid-mail`](gh/) | SendGrid | Send mail via SendGrid |
@@ -212,12 +214,22 @@ on:
       base_type: podcast      # reuse the podcast distribution editor
       content_type: html
       requires_audience: true
+      application: spotify    # only this application's audiences can be selected
 ```
 
 Saving the workflow **registers the channel**: it then appears in an article's
 **Add Distribution** menu alongside Email, RSS and Podcast. Publishing to it
-runs the workflow, which receives `trigger.distribution_id` and
-`trigger.channel` (plus `trigger.user_id` for unicast).
+runs the workflow, which receives `trigger.distribution_id`, `trigger.channel`
+and `trigger.action` (plus `trigger.user_id` for unicast).
+
+`trigger.action` is `publish` on the first publish, `republish` when the
+operator presses Publish Now on an already-published broadcast distribution
+(update what you published — don't create it again), and `delete` when the
+distribution is being deleted (remove what you published; the platform runs
+this **before** deleting the distribution and keeps it if the run fails).
+Record the destination's id in the distribution's `context` with
+`distribution.update` so the later runs can find it —
+`spotify/create-episode` shows the pattern.
 
 - **`base_type`** makes the Add Distribution editor reuse a built-in channel's
   form — a podcast-shaped channel collects a title, summary and media file
@@ -225,6 +237,17 @@ runs the workflow, which receives `trigger.distribution_id` and
 - **`requires_audience`** on a broadcast channel means the distribution must
   still pick an audience, even though it publishes once — used when the
   destination gates access by the audience's categories.
+- **`application`** makes the admin's audience picker offer only that
+  application's audiences (those created for it under Applications) — used
+  when the destination only knows entitlements provisioned through that
+  application, as Spotify Open Access does through the Spotify OIDC
+  application. A UI hint; not enforced by the API.
+- A separate manual blueprint can declare a top-level **`channel: <name>`**
+  to attach itself as that channel's status check (`spotify/episode-status`
+  does). Together with `context.channel_link` written on publish, that gives
+  the distribution an *Open on …* link, a *Check status* button, failure
+  reasons, and an **Error** state. See
+  [WORKFLOW.md](../WORKFLOW.md#distribution-triggers--define-a-custom-channel).
 
 See [WORKFLOW.md](../WORKFLOW.md#distribution-triggers--define-a-custom-channel)
 for the full contract.
