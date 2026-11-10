@@ -188,7 +188,8 @@ definition:
 
     # PUBLISH / REPUBLISH.
     #
-    # 1. Swap each restricted block's else branch for the spoken fallback.
+    # 1. Swap each restricted block's else branch for the spoken fallback,
+    #    unless an editor wrote that section's own spoken line.
     #    The pattern and the pieces of the replacement are plain strings (no
     #    ${{ }}), because an expression can't contain a literal "}}". The
     #    pattern matches an `if hasAnyAudience`/`if audiences` block with no
@@ -200,6 +201,12 @@ definition:
         pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
         open: "{{ else }}"
         close: "{{ end }}"
+        # An else branch that starts with an editor's own spoken line
+        # (<p data-narration="spoken">, written by the admin's narration
+        # editor) keeps it: its else tag is swapped for custom_open first,
+        # which the pattern above doesn't match, then swapped back.
+        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-narration="spoken")'
+        custom_open: "{{ narration-else }}"
         # Where the body goes in the template input.
         body_pattern: '\{\{-?\s*\.distribution\.body\s*-?\}\}'
         # The body's own document wrapper (<html>, <head>…</head>, <body>),
@@ -238,11 +245,13 @@ definition:
         # "$" is special in a regexReplace replacement, so it is doubled in
         # the admin's text.
         body: >-
-          ${{ regexReplace(steps.blocks.outputs.pattern,
-          steps.source.outputs.body,
+          ${{ let kept = regexReplace(steps.blocks.outputs.custom_pattern,
+          steps.source.outputs.body, steps.blocks.outputs.custom_open + "${1}");
+          let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
           "${1}" + steps.blocks.outputs.open
           + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")
-          + steps.blocks.outputs.close) }}
+          + steps.blocks.outputs.close);
+          replace(rewritten, steps.blocks.outputs.custom_open, steps.blocks.outputs.open) }}
 
     # 2. Put the body into the template input, so the two render in one pass
     #    (a template's {{ .distribution.body }} would otherwise come out as

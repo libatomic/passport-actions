@@ -30,6 +30,15 @@ branch is replaced by `fallback_text`, read in the same voice. If several
 blocks are hidden, the fallback is read once. An empty `fallback_text` skips
 hidden blocks silently.
 
+A section can have its own spoken line instead of `fallback_text`: in the
+admin's narration editor, edit the section's **Read instead** line. It is
+stored as `<p data-narration="spoken">…</p>` right after the section's
+`{{ else }}` (the editor adds an else branch if there is none), and the rest
+of the else branch is marked skip. The workflow keeps such a section as it
+is, so audiences without access hear that line; sections without one still
+get `fallback_text`, read once. Emptying the line (or the reset button) goes
+back to `fallback_text`.
+
 Add one narration distribution per audience that should get its own version,
 for example one for free readers and one for paid subscribers.
 
@@ -189,7 +198,10 @@ voice, model and text hash too, and its duration is read from the MP3.
 The rewrite is a `regexReplace` in the `blocks`/`rewrite` steps. It matches an
 `if hasAnyAudience` or `if audiences` block with no other template action
 nested inside it, with or without an `{{ else }}`, and replaces the else
-branch. Other blocks (e.g. legacy `isChannel`) are left alone. A block that
+branch. A section whose else tag is followed (past closing tags and
+whitespace) by `<p data-narration="spoken">` is protected first: its else tag
+is swapped for `custom_open`, which the pattern doesn't match, and swapped
+back afterwards. Other blocks (e.g. legacy `isChannel`) are left alone. A block that
 nests another template action keeps its original else branch, so its web
 call to action would be read. The expressions (and the pronunciation and cleanup steps)
 are pinned by `pkg/atomic/workflow_expr_narration_test.go` in atomic and
