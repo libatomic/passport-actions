@@ -41,9 +41,35 @@ images, figures, captions, tables, code, forms, navigation, anything with
 `skip_selectors` input adds more; its default skips WordPress buttons, the
 post title, date, categories, author and share/related blocks.
 
-Leave the distribution's **template empty**: a template's header and footer
-would be read aloud. Editors can trim the distribution's body in the editor to
-change what is read without touching the article.
+### The template input
+
+What is read is set by the workflow's `template` input, not a template record.
+It is filled in at install and can be changed by editing the workflow. The
+default reads the title and publish date, then the body:
+
+```
+<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}
+```
+
+`{{ .distribution.body }}` marks where the body goes. The workflow puts the
+body (after the restricted-block rewrite) into the template and renders the
+two together for the audience, so template actions in both run. A template
+without the placeholder is read before the body; an empty template reads the
+body alone. Write it as HTML on one line: the input field is single-line, and
+each `<p>` becomes its own paragraph.
+
+### Editing what is read
+
+The admin shows a narration distribution's body as the list of paragraphs that
+will be read. Each can be edited (as plain text) or switched off, which marks
+it `data-narration="skip"`. Restricted-content tags appear as markers that
+can't be edited, and each paragraph says whether it is read for the
+distribution's audience or replaced by the spoken fallback. "Edit HTML" opens
+the source. None of this changes the article.
+
+An edited body is flagged as `context.body_edited`. **Update Distribution**
+(after the article changes) then asks before replacing the edits with the
+article's current text.
 
 ### Length
 
@@ -75,8 +101,7 @@ minutes.
 | `voice_id` | — (required) | ElevenLabs voice id. Run **List ElevenLabs Voices** to find it |
 | `model_id` | `eleven_flash_v2_5` | See Length |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
-| `intro` | `""` | Optional sentence read first, e.g. an AI-voice disclosure |
-| `read_title` | `true` | Read the distribution's title first |
+| `template` | Title and publish date, then the body (see above) | What is read around the body |
 | `skip_selectors` | WordPress chrome (see above) | Comma-separated CSS selectors not to read |
 
 ## Recorded on the distribution (`context`)
@@ -90,6 +115,7 @@ minutes.
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
 | `narration_error` | Why the last run stopped without audio; empty after a successful run |
+| `body_edited` | Set by the admin when the body was edited for narration |
 
 The asset's `metadata.narration` carries the distribution, article, audience,
 voice, model and text hash too, and its duration is read from the MP3.
@@ -99,8 +125,9 @@ voice, model and text hash too, and its duration is read from the MP3.
 - Secret `ELEVENLABS_API_KEY`: a restricted key with **Text to Speech**
   access. Give it a credit limit in ElevenLabs to cap spending.
 - `api.elevenlabs.io` on the instance's HTTP allowlist.
-- Atomic with `http.*` `response_asset`, `asset.delete`, `htmlText`, `sha256`
-  and `distribution.render` `as_audience`/`body`.
+- Atomic with `http.*` `response_asset`, `asset.delete`, `htmlText`, `sha256`,
+  `distribution.render` `as_audience`/`body`, and template-less distributions
+  rendering their own body (earlier builds panic on them).
 
 ## Restricted-block rewrite
 

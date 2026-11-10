@@ -18,8 +18,10 @@ description: |
   edited, use the distribution's "Update Distribution" button to copy the
   new body in, then Publish Now.
 
-  Leave the distribution's template empty: a template's header and footer
-  would be read aloud.
+  The template input sets what is read around the body, e.g. a line with
+  the title and publish date; it is part of the workflow, not a template
+  record. Edit the distribution's body to change what is read without
+  touching the article.
 
   Requires the ELEVENLABS_API_KEY secret and a voice id (run "List
   ElevenLabs Voices" to find one). api.elevenlabs.io must be on the
@@ -44,14 +46,14 @@ inputs:
       empty to skip those sections silently.
     type: string
     default: "The rest of this section is for subscribers. Subscribe to hear the full article."
-  intro:
-    description: Optional sentence read first, e.g. "This article is narrated by an AI voice."
+  template:
+    description: >-
+      What is read, as a template. {{ .distribution.body }} is the
+      distribution's body, rendered for its audience; the rest can use the
+      usual template data and functions, e.g. {{ .article.title }} and
+      timeFormat. Without {{ .distribution.body }} the body is read after it.
     type: string
-    default: ""
-  read_title:
-    description: Read the distribution's title before the body
-    type: boolean
-    default: true
+    default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
   skip_selectors:
     description: >-
       CSS selectors for page parts that shouldn't be read, comma-separated.
@@ -98,14 +100,14 @@ definition:
         empty to skip those sections silently.
       type: string
       default: "The rest of this section is for subscribers. Subscribe to hear the full article."
-    intro:
-      description: Optional sentence read first, e.g. "This article is narrated by an AI voice."
+    template:
+      description: >-
+        What is read, as a template. {{ .distribution.body }} is the
+        distribution's body, rendered for its audience; the rest can use the
+        usual template data and functions, e.g. {{ .article.title }} and
+        timeFormat. Without {{ .distribution.body }} the body is read after it.
       type: string
-      default: ""
-    read_title:
-      description: Read the distribution's title before the body
-      type: boolean
-      default: true
+      default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
     skip_selectors:
       description: >-
         CSS selectors for page parts that shouldn't be read, comma-separated.
@@ -154,6 +156,11 @@ definition:
         pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
         open: "{{ else }}"
         close: "{{ end }}"
+        # Where the body goes in the template input.
+        body_pattern: '\{\{-?\s*\.distribution\.body\s*-?\}\}'
+        # The body's own document wrapper (<html>, <head>…</head>, <body>),
+        # removed so the template can go in front of it.
+        doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
 
     - id: rewrite
       action: set-output
@@ -167,17 +174,30 @@ definition:
           + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")
           + steps.blocks.outputs.close) }}
 
-    # 2. Render the rewritten body as a member of the distribution's
-    #    audience: blocks it can see render their content, the others render
-    #    the fallback.
+    # 2. Put the body into the template input, so the two render in one pass
+    #    (a template's {{ .distribution.body }} would otherwise come out as
+    #    the raw body, restricted-block tags and all). A template without the
+    #    placeholder is followed by the body; an empty one is just the body.
+    - id: compose
+      action: set-output
+      with:
+        body: >-
+          ${{ let body = regexReplace(steps.blocks.outputs.doc_pattern, steps.rewrite.outputs.body, "");
+          trim(inputs.template ?? "") == "" ? body
+          : regexMatch(steps.blocks.outputs.body_pattern, inputs.template)
+          ? regexReplace(steps.blocks.outputs.body_pattern, inputs.template, replace(body, "$", "$$"))
+          : inputs.template + body }}
+
+    # 3. Render it as a member of the distribution's audience: blocks it can
+    #    see render their content, the others render the fallback.
     - id: render
       action: distribution.render
       with:
         distribution_id: ${{ trigger.distribution_id }}
         as_audience: true
-        body: ${{ steps.rewrite.outputs.body }}
+        body: ${{ steps.compose.outputs.body }}
 
-    # 3. Several hidden blocks would repeat the fallback; keep the first and
+    # 4. Several hidden blocks would repeat the fallback; keep the first and
     #    mark the rest skip (htmlText drops data-narration="skip"). Then turn
     #    the HTML into the text that is read, and hash it with the voice and
     #    model to tell whether anything audible changed.
@@ -192,11 +212,7 @@ definition:
     - id: speech
       action: set-output
       with:
-        text: >-
-          ${{ trim((trim(inputs.intro) == "" ? "" : trim(inputs.intro) + "\n\n")
-          + (!toBool(inputs.read_title) || trim(steps.render.outputs.title ?? "") == "" ? ""
-          : trim(steps.render.outputs.title) + (regexMatch("[.!?:]$", trim(steps.render.outputs.title)) ? "" : ".") + "\n\n")
-          + htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
+        text: ${{ trim(htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
 
     - id: measure
       action: set-output
@@ -257,7 +273,7 @@ definition:
           with:
             reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
 
-    # 4. Generate. The MP3 goes straight into the asset store, never into
+    # 5. Generate. The MP3 goes straight into the asset store, never into
     #    the run output. overwrite keeps the asset's id across republishes,
     #    and the asset is only written once the whole file has arrived. A
     #    long article takes several minutes; retries counts attempts, and
@@ -292,7 +308,7 @@ definition:
               model_id: ${{ inputs.model_id }}
               text_hash: ${{ steps.measure.outputs.hash }}
 
-    # 5. Record what was published, for the next republish and for delete.
+    # 6. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
     #    narration_error is cleared.
     - id: record
