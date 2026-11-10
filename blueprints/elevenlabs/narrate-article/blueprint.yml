@@ -227,17 +227,25 @@ definition:
           "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
         hash: ${{ sha256(steps.speech.outputs.text + "|" + inputs.voice_id + "|" + inputs.model_id) }}
 
+    # The run stops without audio in the two cases below. The reason is
+    # recorded as context.channel_error, which the admin shows under the
+    # distribution (the run itself ends cleanly; there is no generic way to
+    # fail it from YAML yet).
     - id: empty
       if: ${{ steps.measure.outputs.characters == 0 }}
       then:
+        - id: record-empty
+          action: distribution.update
+          with:
+            distribution_id: ${{ trigger.distribution_id }}
+            context: >-
+              ${{ merge({"channel_error": "There is no text to read for this audience. Check the body, the skipped paragraphs and the audience."},
+              steps.load.outputs.distribution.context) }}
         - id: nothing-to-read
           action: workflow.exit
           with:
             reason: "distribution ${{ trigger.distribution_id }} has no text to read for its audience"
 
-    # TODO: fail the publish instead (needs a generic workflow.fail
-    # builtin). For now the run stops and the reason is recorded on the
-    # distribution as context.narration_error.
     - id: too-long
       if: ${{ steps.measure.outputs.characters > steps.measure.outputs.limit }}
       then:
@@ -246,7 +254,7 @@ definition:
           with:
             distribution_id: ${{ trigger.distribution_id }}
             context: >-
-              ${{ merge({"narration_error": "The text is " + toString(steps.measure.outputs.characters)
+              ${{ merge({"channel_error": "The text is " + toString(steps.measure.outputs.characters)
               + " characters; " + inputs.model_id + " reads at most " + toString(steps.measure.outputs.limit)
               + (inputs.model_id == "eleven_flash_v2_5" ? ". Shorten the body." : ". Shorten the body or choose eleven_flash_v2_5.")},
               steps.load.outputs.distribution.context) }}
@@ -310,7 +318,7 @@ definition:
 
     # 6. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
-    #    narration_error is cleared.
+    #    channel_error is cleared.
     - id: record
       action: distribution.update
       with:
@@ -322,6 +330,6 @@ definition:
           "characters_billed": steps.tts.outputs.headers?.["Character-Cost"] ?? "",
           "voice_id": inputs.voice_id,
           "model_id": inputs.model_id,
-          "narration_error": "",
+          "channel_error": "",
           "generated_at": now()},
           steps.load.outputs.distribution.context) }}

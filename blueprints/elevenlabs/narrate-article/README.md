@@ -85,11 +85,12 @@ Each model has a per-request limit, checked before ElevenLabs is called
 
 The count is in bytes, so accented letters and curly quotes count more than
 once. Text over the limit stops the run and records the reason on the
-distribution as `context.narration_error`.
+distribution as `context.channel_error`, which the admin shows under the
+distribution. An empty text (nothing readable for the audience) is recorded the
+same way.
 
-> The run currently *exits* rather than *fails* in that case, so the
-> distribution still shows as published. Check `narration_error` (or the run)
-> if no MP3 appears.
+> The run *exits* rather than *fails* in these cases, so the distribution
+> still shows as published; the error under it says why there is no audio.
 
 A long article takes several minutes to generate; the request allows 15
 minutes.
@@ -108,13 +109,13 @@ minutes.
 
 | Key | Meaning |
 |---|---|
-| `asset_id` | The MP3 asset |
+| `asset_id` | The MP3 asset. The admin plays it under the distribution |
 | `text_hash` | sha256 of the text, voice and model; decides whether a republish regenerates |
 | `characters` | Length of the text sent |
 | `characters_billed` | ElevenLabs' `character-cost` header for the request |
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
-| `narration_error` | Why the last run stopped without audio; empty after a successful run |
+| `channel_error` | Why the last run stopped without audio; empty after a successful run. The admin shows it under the distribution |
 | `body_edited` | Set by the admin when the body was edited for narration |
 
 The asset's `metadata.narration` carries the distribution, article, audience,
