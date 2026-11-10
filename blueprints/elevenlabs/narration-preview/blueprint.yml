@@ -9,9 +9,10 @@ description: |
   template, the restricted-section fallback, skipped paragraphs and
   pronunciations applied. Nothing is sent to ElevenLabs.
 
-  LISTEN: given a short text, applies the pronunciations and reads it with
-  the voice, storing the sample as a private asset (narration-preview.mp3,
-  replaced by each sample). Each sample uses ElevenLabs characters.
+  LISTEN: given a short text, applies the pronunciations and cleanup and
+  reads it with the voice. The audio comes back in the run's output as
+  base64 (no asset is saved), at a lower bitrate that is fine for checking
+  pronunciation. Each sample uses ElevenLabs characters.
 
   Its voice, model, template, fallback, skip and pronunciation inputs must
   match the Audio Narration workflow's; installing the ElevenLabs package
@@ -336,32 +337,23 @@ definition:
       with:
         reason: "a sample is at most 2,000 characters; this one is ${{ steps.measure.outputs.characters }}"
 
-    # LISTEN: each sample replaces the last one (same asset id) and is billed.
+    # LISTEN: the with-timestamps variant returns JSON with the MP3 as
+    # base64 (audio_base64) plus character timings, so nothing is saved as
+    # an asset; the admin reads steps.tts.outputs.body.audio_base64 from the
+    # run. 32 kbps keeps the run record small. Each sample is billed.
     - id: tts
       action: http.post
       with:
-        url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}"
+        url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}/with-timestamps"
         query:
-          output_format: mp3_44100_128
+          output_format: mp3_22050_32
         headers:
           xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
           Content-Type: application/json
-          Accept: audio/mpeg
+          Accept: application/json
         body:
           text: ${{ steps.cleanup.outputs.text }}
           model_id: ${{ inputs.model_id }}
         timeout: 2m
         retries: 1
         expect_status: [200]
-        response_asset:
-          filename: narration-preview.mp3
-          overwrite: true
-          mime_type: audio/mpeg
-          description: Audio Narration sample (replaced by each preview)
-          metadata:
-            narration:
-              preview: true
-              voice_id: ${{ inputs.voice_id }}
-              model_id: ${{ inputs.model_id }}
-      outputs:
-        asset_id: ${{ steps.tts.outputs.asset_id }}

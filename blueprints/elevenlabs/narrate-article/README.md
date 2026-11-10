@@ -79,10 +79,10 @@ also offers:
   pronunciations applied, with the character count against the model's
   limit. Nothing is sent to ElevenLabs.
 - **Listen** (the play button on a paragraph): reads that paragraph in the
-  voice, with the pronunciations applied. Each sample uses ElevenLabs
-  characters (about the paragraph's length) and replaces the previous one
-  in the `narration-preview.mp3` asset. Samples are capped at 2,000
-  characters.
+  voice, with the pronunciations and cleanup applied. Each sample uses
+  ElevenLabs characters (about the paragraph's length). The audio comes back
+  in the preview run itself, at a lower bitrate; no asset is saved. Samples
+  are capped at 2,000 characters.
 
 ### Pronunciations
 

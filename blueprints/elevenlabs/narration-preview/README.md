@@ -13,10 +13,13 @@ pronunciations, the built-in cleanup and the per-model limit) word for word.
 | Inputs (runtime) | Result in the run's `outputs` | ElevenLabs |
 |---|---|---|
 | `distribution_id`, optional `body` (unsaved edits; empty uses the saved body) | `text`, `characters`, `limit`, `model_id`, `mode: text` | not called |
-| `listen` (up to 2,000 characters) | `text` (after pronunciations), `characters`, `asset_id` of the sample, `mode: listen` | one text-to-speech request, billed |
+| `listen` (up to 2,000 characters) | `text` (after pronunciations and cleanup), `characters`, `mode: listen`; the audio is `steps.tts.outputs.body.audio_base64` | one text-to-speech request, billed |
 
-The sample is stored as the private asset `narration-preview.mp3` and replaced
-(same asset id) by every sample. A longer `listen` text exits without calling
+Listen calls ElevenLabs' `with-timestamps` variant, which returns JSON: the MP3
+as base64 (`audio_base64`, 22.05 kHz / 32 kbps, enough to judge
+pronunciation) plus per-character timings. Nothing is saved as an asset; the
+audio lives in the run record (roughly 4 KB per second of speech, about
+160 KB for a typical paragraph). A longer `listen` text exits without calling
 ElevenLabs.
 
 ## Inputs
