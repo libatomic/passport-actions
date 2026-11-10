@@ -61,6 +61,28 @@ inputs:
       class="no-audio" or data-narration="skip" are always skipped.
     type: string
     default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+  pronunciations:
+    label: Pronunciations
+    description: >-
+      Words the voice should say differently, e.g. a name it gets wrong.
+      Each Term is replaced by its Say as text before the text is read.
+      Terms match whole words with the same capitalization (Dr. and C++
+      work too).
+    hint: "e.g. Term: Wemby, Say as: Wem-bee"
+    type: list
+    items:
+      - { name: term, label: Term }
+      - { name: say_as, label: Say as }
+    default: []
+  text_cleanup:
+    label: Clean up numbers and symbols
+    description: >-
+      Rewrite money, percentages, scores, heights and common abbreviations
+      the way a broadcaster reads them ($5M → 5 million dollars, 112-108 →
+      112 to 108, No. 1 → number 1, vs. → versus). Runs after the
+      pronunciations, so a pronunciation for the same text wins.
+    type: bool
+    default: true
 definition:
   name: Audio Narration (ElevenLabs)
   description: >-
@@ -115,6 +137,28 @@ definition:
         class="no-audio" or data-narration="skip" are always skipped.
       type: string
       default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+    pronunciations:
+      label: Pronunciations
+      description: >-
+        Words the voice should say differently, e.g. a name it gets wrong.
+        Each Term is replaced by its Say as text before the text is read.
+        Terms match whole words with the same capitalization (Dr. and C++
+        work too).
+      hint: "e.g. Term: Wemby, Say as: Wem-bee"
+      type: list
+      items:
+        - { name: term, label: Term }
+        - { name: say_as, label: Say as }
+      default: []
+    text_cleanup:
+      label: Clean up numbers and symbols
+      description: >-
+        Rewrite money, percentages, scores, heights and common abbreviations
+        the way a broadcaster reads them ($5M → 5 million dollars, 112-108 →
+        112 to 108, No. 1 → number 1, vs. → versus). Runs after the
+        pronunciations, so a pronunciation for the same text wins.
+      type: bool
+      default: true
 
   steps:
     - id: load
@@ -161,6 +205,32 @@ definition:
         # The body's own document wrapper (<html>, <head>…</head>, <body>),
         # removed so the template can go in front of it.
         doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
+        # Regex metacharacters, escaped in pronunciation terms.
+        meta: '([\\.+*?()|\[\]{}^$])'
+        # Built-in cleanup (the cleanup step), applied in order. Each find is
+        # an RE2 pattern, each say its replacement (${1} is the first group).
+        cleanup:
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', say: '${1} million dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', say: '${1} billion dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', say: '${1} thousand dollars' }
+          - { find: '(\d)\s?%', say: '${1} percent' }
+          - { find: '\bNo\.\s?(\d)', say: 'number ${1}' }
+          - { find: '#(\d)', say: 'number ${1}' }
+          - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', say: '${1} foot ${2}' }
+          - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', say: '${1} ${2}' }
+          - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', say: '${1} to ${2}' }
+          - { find: '\bvs\.?(\s)', say: 'versus${1}' }
+          - { find: '\s&\s', say: ' and ' }
+          - { find: '\be\.g\.', say: 'for example' }
+          - { find: '\bi\.e\.', say: 'that is' }
+          - { find: '\betc\.', say: 'et cetera' }
+          - { find: '\bJr\.', say: 'Junior' }
+          - { find: '\bSr\.', say: 'Senior' }
+
+    - id: source
+      action: set-output
+      with:
+        body: ${{ steps.load.outputs.distribution.body ?? "" }}
 
     - id: rewrite
       action: set-output
@@ -169,7 +239,7 @@ definition:
         # the admin's text.
         body: >-
           ${{ regexReplace(steps.blocks.outputs.pattern,
-          steps.load.outputs.distribution.body ?? "",
+          steps.source.outputs.body,
           "${1}" + steps.blocks.outputs.open
           + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")
           + steps.blocks.outputs.close) }}
@@ -214,6 +284,43 @@ definition:
       with:
         text: ${{ trim(htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
 
+    # Future: an AI normalization step ("rewrite this as a broadcaster would
+    # read it": numbers, symbols, abbreviations, the long tail the built-in
+    # cleanup misses) goes here, between speech and pronounce, so the
+    # editors' pronunciations still apply after it. When it is on, skip the
+    # cleanup step. Hash the text from *before* the AI step (plus the model
+    # and prompt) in measure, or every republish would regenerate the audio
+    # because the AI's wording varies; cache its output in the
+    # distribution's context keyed by that hash.
+
+    # 5. Pronunciations: replace each term with its "say as" text. A term
+    #    matches with the same capitalization, as a whole word when it starts
+    #    or ends with a letter or digit; regex characters in it are escaped.
+    #    "$" is doubled in the replacement.
+    - id: pronounce
+      action: set-output
+      with:
+        text: >-
+          ${{ reduce(inputs.pronunciations ?? [],
+          let term = trim(toString(#.term ?? ""));
+          term == "" ? #acc
+          : regexReplace((regexMatch("^\\w", term) ? "\\b" : "")
+          + regexReplace(steps.blocks.outputs.meta, term, "\\${1}")
+          + (regexMatch("\\w$", term) ? "\\b" : ""),
+          #acc, replace(toString(#.say_as ?? ""), "$", "$$")),
+          steps.speech.outputs.text) }}
+
+    # 6. Built-in cleanup of numbers, symbols and abbreviations (the
+    #    blocks step's cleanup list), after the pronunciations so an
+    #    editor's rule for the same text wins.
+    - id: cleanup
+      action: set-output
+      with:
+        text: >-
+          ${{ toBool(inputs.text_cleanup ?? true)
+          ? reduce(steps.blocks.outputs.cleanup ?? [], regexReplace(#.find, #acc, #.say), steps.pronounce.outputs.text)
+          : steps.pronounce.outputs.text }}
+
     - id: measure
       action: set-output
       with:
@@ -221,11 +328,11 @@ definition:
         # ElevenLabs doesn't reject longer text reliably, so it is checked
         # here. len() counts bytes, so accented letters and curly quotes
         # count more than once: the check errs on the safe side.
-        characters: ${{ len(steps.speech.outputs.text) }}
+        characters: ${{ len(steps.cleanup.outputs.text) }}
         limit: >-
           ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
           "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
-        hash: ${{ sha256(steps.speech.outputs.text + "|" + inputs.voice_id + "|" + inputs.model_id) }}
+        hash: ${{ sha256(steps.cleanup.outputs.text + "|" + inputs.voice_id + "|" + inputs.model_id) }}
 
     # The run stops without audio in the two cases below. The reason is
     # recorded as context.channel_error, which the admin shows under the
@@ -281,7 +388,7 @@ definition:
           with:
             reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
 
-    # 5. Generate. The MP3 goes straight into the asset store, never into
+    # 7. Generate. The MP3 goes straight into the asset store, never into
     #    the run output. overwrite keeps the asset's id across republishes,
     #    and the asset is only written once the whole file has arrived. A
     #    long article takes several minutes; retries counts attempts, and
@@ -297,7 +404,7 @@ definition:
           Content-Type: application/json
           Accept: audio/mpeg
         body:
-          text: ${{ steps.speech.outputs.text }}
+          text: ${{ steps.cleanup.outputs.text }}
           model_id: ${{ inputs.model_id }}
         timeout: 15m
         retries: 2
@@ -316,7 +423,7 @@ definition:
               model_id: ${{ inputs.model_id }}
               text_hash: ${{ steps.measure.outputs.hash }}
 
-    # 6. Record what was published, for the next republish and for delete.
+    # 8. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
     #    channel_error is cleared.
     - id: record

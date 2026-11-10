@@ -12,7 +12,15 @@ description: |
   private MP3 asset. Republish regenerates it in place only when the spoken
   text changed; deleting the distribution deletes the MP3. Also installs
   List ElevenLabs Voices, a manual helper that lists your voice ids and the
-  characters left this month.
+  characters left this month, and Narration Preview, which the narration
+  editor runs to show the text that will be read and to play a short sample
+  in the voice.
+
+  Pronunciations (a Term → Say as list) fix names and terms the voice gets
+  wrong, and a built-in cleanup reads money, percentages, scores, heights
+  and common abbreviations the way a broadcaster would. The installer carries the voice, model, template and pronunciations
+  from Audio Narration to Narration Preview; after installing, change them on
+  both workflows (or reinstall the package) so the preview matches.
 
   Shared prerequisites: an ELEVENLABS_API_KEY workflow secret (a restricted
   key with Text to Speech access, Voices read and User read) and a voice id
@@ -23,3 +31,4 @@ description: |
 blueprints:
   - elevenlabs/narrate-article
   - elevenlabs/list-voices
+  - elevenlabs/narration-preview

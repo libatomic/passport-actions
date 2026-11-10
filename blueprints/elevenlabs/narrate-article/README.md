@@ -71,6 +71,58 @@ An edited body is flagged as `context.body_edited`. **Update Distribution**
 (after the article changes) then asks before replacing the edits with the
 article's current text.
 
+With **Narration Preview** installed (it comes with the package), the editor
+also offers:
+
+- **Spoken text**: exactly what will be read for the distribution's audience,
+  using the unsaved body: template, spoken fallback, skipped paragraphs and
+  pronunciations applied, with the character count against the model's
+  limit. Nothing is sent to ElevenLabs.
+- **Listen** (the play button on a paragraph): reads that paragraph in the
+  voice, with the pronunciations applied. Each sample uses ElevenLabs
+  characters (about the paragraph's length) and replaces the previous one
+  in the `narration-preview.mp3` asset. Samples are capped at 2,000
+  characters.
+
+### Pronunciations
+
+The `pronunciations` input is a list of **Term** → **Say as** pairs, applied
+to the text just before it is read: `Wemby` → `Wem-bee`, `NBA` → `N B A`,
+`Dr.` → `Doctor`, `$5M` → `5 million dollars`. A term matches with the same
+capitalization, as a whole word (so `US` → `U S` leaves "us" and "USA"
+alone), and characters such as `.`, `+` and `$` are matched literally. Rules
+apply in order, each to the result of the ones before it.
+
+### Numbers and symbols
+
+With `text_cleanup` on (the default), a built-in set of rules rewrites what
+the voice tends to misread, after the pronunciations (so a pronunciation for
+the same text wins):
+
+| Written | Read as |
+|---|---|
+| `$5M`, `$1.2 billion`, `$250K` | 5 million dollars, 1.2 billion dollars, 250 thousand dollars |
+| `45%` | 45 percent |
+| `No. 1`, `#3` | number 1, number 3 |
+| `6'9"`, `5’11”` | 6 foot 9, 5 foot 11 |
+| `2025-26` (seasons) | 2025 26 |
+| `112-108`, `3 – 2` (scores, records, ranges) | 112 to 108, 3 to 2 |
+| `vs.`, `vs`, ` & ` | versus, and |
+| `e.g.`, `i.e.`, `etc.`, `Jr.`, `Sr.` | for example, that is, et cetera, Junior, Senior |
+
+`21-year-old`, `3-pointer`, `6-foot-9` and `AT&T` are left alone. A date
+written `11-10-2026` would be misread ("11 to 10-2026"); write dates out.
+The rules are the `cleanup` list in the `blocks` step. An AI rewrite for the
+long tail is planned; the blueprint marks where it goes.
+
+Turning the cleanup on or off, or changing a rule, changes the text of the
+articles it touches, so their next **Publish Now** regenerates the audio.
+
+Changing the list changes the text, so the next **Publish Now** of an
+affected article regenerates its audio; articles the change doesn't touch
+are skipped as unchanged. Narration Preview has its own copy of the
+inputs: keep the two the same (the package installer fills both).
+
 ### Length
 
 Each model has a per-request limit, checked before ElevenLabs is called
@@ -104,6 +156,8 @@ minutes.
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |
 | `skip_selectors` | WordPress chrome (see above) | Comma-separated CSS selectors not to read |
+| `pronunciations` | none | Term → Say as replacements (see Pronunciations) |
+| `text_cleanup` | on | Rewrite numbers, symbols and abbreviations (see Numbers and symbols) |
 
 ## Recorded on the distribution (`context`)
 
@@ -137,5 +191,6 @@ The rewrite is a `regexReplace` in the `blocks`/`rewrite` steps. It matches an
 nested inside it, with or without an `{{ else }}`, and replaces the else
 branch. Other blocks (e.g. legacy `isChannel`) are left alone. A block that
 nests another template action keeps its original else branch, so its web
-call to action would be read. The expressions are pinned by
-`pkg/atomic/workflow_expr_narration_test.go` in atomic; keep the two in sync.
+call to action would be read. The expressions (and the pronunciation and cleanup steps)
+are pinned by `pkg/atomic/workflow_expr_narration_test.go` in atomic and
+copied into `elevenlabs/narration-preview`; keep all three in sync.
