@@ -1,0 +1,311 @@
+name: Audio Narration (ElevenLabs)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+description: |
+  Defines a custom "narration" distribution channel. Publishing a narration
+  distribution reads its body aloud with an ElevenLabs voice and stores the
+  result as a private MP3 asset (narration-<distribution id>.mp3).
+
+  AUDIENCE: each narration distribution has one audience, and the body is
+  rendered as a member of that audience. Restricted-content blocks the
+  audience can see are read; blocks it can't see are replaced by a short
+  spoken note (the fallback_text input) instead of the web call to action.
+  Add one narration distribution per audience that should get its own
+  version.
+
+  LIFECYCLE: republish regenerates the audio in place (same asset id) only
+  if the spoken text, voice or model changed; otherwise ElevenLabs isn't
+  called. Deleting the distribution deletes its MP3. After the article is
+  edited, use the distribution's "Update Distribution" button to copy the
+  new body in, then Publish Now.
+
+  Leave the distribution's template empty: a template's header and footer
+  would be read aloud.
+
+  Requires the ELEVENLABS_API_KEY secret and a voice id (run "List
+  ElevenLabs Voices" to find one). api.elevenlabs.io must be on the
+  instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
+category: content
+inputs:
+  voice_id:
+    description: ElevenLabs voice id, a premade voice or your own clone (see List ElevenLabs Voices)
+    type: string
+    required: true
+    default: ""
+  model_id:
+    description: >-
+      ElevenLabs model. eleven_flash_v2_5 reads up to 40,000 characters per
+      article; eleven_multilingual_v2 sounds best but stops at 10,000.
+    type: string
+    default: eleven_flash_v2_5
+    enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+  fallback_text:
+    description: >-
+      Read in place of a restricted section the audience can't access. Leave
+      empty to skip those sections silently.
+    type: string
+    default: "The rest of this section is for subscribers. Subscribe to hear the full article."
+  intro:
+    description: Optional sentence read first, e.g. "This article is narrated by an AI voice."
+    type: string
+    default: ""
+  read_title:
+    description: Read the distribution's title before the body
+    type: boolean
+    default: true
+  skip_selectors:
+    description: >-
+      CSS selectors for page parts that shouldn't be read, comma-separated.
+      Scripts, images, figures, tables, code, forms and anything marked
+      class="no-audio" or data-narration="skip" are always skipped.
+    type: string
+    default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+definition:
+  name: Audio Narration (ElevenLabs)
+  description: >-
+    Reads a narration distribution's body aloud with ElevenLabs, as its
+    audience sees it, and stores the MP3 as an asset. Republish regenerates
+    it in place; delete removes it.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: narration
+        label: Audio Narration
+        mode: broadcast
+        # html, not text: creating a distribution copies the article's HTML
+        # body in, and text channels reject HTML.
+        content_type: html
+        # The body is rendered as a member of this audience.
+        requires_audience: true
+
+  inputs:
+    voice_id:
+      description: ElevenLabs voice id, a premade voice or your own clone (see List ElevenLabs Voices)
+      type: string
+      required: true
+      default: ""
+    model_id:
+      description: >-
+        ElevenLabs model. eleven_flash_v2_5 reads up to 40,000 characters per
+        article; eleven_multilingual_v2 sounds best but stops at 10,000.
+      type: string
+      default: eleven_flash_v2_5
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+    fallback_text:
+      description: >-
+        Read in place of a restricted section the audience can't access. Leave
+        empty to skip those sections silently.
+      type: string
+      default: "The rest of this section is for subscribers. Subscribe to hear the full article."
+    intro:
+      description: Optional sentence read first, e.g. "This article is narrated by an AI voice."
+      type: string
+      default: ""
+    read_title:
+      description: Read the distribution's title before the body
+      type: boolean
+      default: true
+    skip_selectors:
+      description: >-
+        CSS selectors for page parts that shouldn't be read, comma-separated.
+        Scripts, images, figures, tables, code, forms and anything marked
+        class="no-audio" or data-narration="skip" are always skipped.
+      type: string
+      default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+
+  steps:
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+      outputs:
+        asset_id: ${{ steps.load.outputs.distribution.context?.asset_id ?? "" }}
+        text_hash: ${{ steps.load.outputs.distribution.context?.text_hash ?? "" }}
+
+    # DELETE: runs before the distribution row is removed. The MP3 belongs
+    # to this distribution alone, so it goes too. continue-on-error: an
+    # asset someone already deleted by hand mustn't block the delete.
+    - id: teardown
+      if: ${{ trigger.action == "delete" }}
+      then:
+        - id: remove
+          if: ${{ outputs.asset_id != "" }}
+          action: asset.delete
+          continue-on-error: true
+          with:
+            asset_id: ${{ outputs.asset_id }}
+        - id: deleted
+          action: workflow.exit
+          with:
+            reason: "narration ${{ outputs.asset_id }} removed"
+
+    # PUBLISH / REPUBLISH.
+    #
+    # 1. Swap each restricted block's else branch for the spoken fallback.
+    #    The pattern and the pieces of the replacement are plain strings (no
+    #    ${{ }}), because an expression can't contain a literal "}}". The
+    #    pattern matches an `if hasAnyAudience`/`if audiences` block with no
+    #    template action nested inside it, with or without an else branch;
+    #    other blocks (e.g. isChannel) are left as they are.
+    - id: blocks
+      action: set-output
+      with:
+        pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        open: "{{ else }}"
+        close: "{{ end }}"
+
+    - id: rewrite
+      action: set-output
+      with:
+        # "$" is special in a regexReplace replacement, so it is doubled in
+        # the admin's text.
+        body: >-
+          ${{ regexReplace(steps.blocks.outputs.pattern,
+          steps.load.outputs.distribution.body ?? "",
+          "${1}" + steps.blocks.outputs.open
+          + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")
+          + steps.blocks.outputs.close) }}
+
+    # 2. Render the rewritten body as a member of the distribution's
+    #    audience: blocks it can see render their content, the others render
+    #    the fallback.
+    - id: render
+      action: distribution.render
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+        as_audience: true
+        body: ${{ steps.rewrite.outputs.body }}
+
+    # 3. Several hidden blocks would repeat the fallback; keep the first and
+    #    mark the rest skip (htmlText drops data-narration="skip"). Then turn
+    #    the HTML into the text that is read, and hash it with the voice and
+    #    model to tell whether anything audible changed.
+    - id: text
+      action: set-output
+      with:
+        html: >-
+          ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
+          len(parts) < 3 ? steps.render.outputs.body
+          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-narration=\"skip\"") }}
+
+    - id: speech
+      action: set-output
+      with:
+        text: >-
+          ${{ trim((trim(inputs.intro) == "" ? "" : trim(inputs.intro) + "\n\n")
+          + (!toBool(inputs.read_title) || trim(steps.render.outputs.title ?? "") == "" ? ""
+          : trim(steps.render.outputs.title) + (regexMatch("[.!?:]$", trim(steps.render.outputs.title)) ? "" : ".") + "\n\n")
+          + htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
+
+    - id: measure
+      action: set-output
+      with:
+        # Per-request limits ElevenLabs lists for each model (/v1/models).
+        # ElevenLabs doesn't reject longer text reliably, so it is checked
+        # here. len() counts bytes, so accented letters and curly quotes
+        # count more than once: the check errs on the safe side.
+        characters: ${{ len(steps.speech.outputs.text) }}
+        limit: >-
+          ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
+          "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
+        hash: ${{ sha256(steps.speech.outputs.text + "|" + inputs.voice_id + "|" + inputs.model_id) }}
+
+    - id: empty
+      if: ${{ steps.measure.outputs.characters == 0 }}
+      then:
+        - id: nothing-to-read
+          action: workflow.exit
+          with:
+            reason: "distribution ${{ trigger.distribution_id }} has no text to read for its audience"
+
+    # TODO: fail the publish instead (needs a generic workflow.fail
+    # builtin). For now the run stops and the reason is recorded on the
+    # distribution as context.narration_error.
+    - id: too-long
+      if: ${{ steps.measure.outputs.characters > steps.measure.outputs.limit }}
+      then:
+        - id: record-too-long
+          action: distribution.update
+          with:
+            distribution_id: ${{ trigger.distribution_id }}
+            context: >-
+              ${{ merge({"narration_error": "The text is " + toString(steps.measure.outputs.characters)
+              + " characters; " + inputs.model_id + " reads at most " + toString(steps.measure.outputs.limit)
+              + (inputs.model_id == "eleven_flash_v2_5" ? ". Shorten the body." : ". Shorten the body or choose eleven_flash_v2_5.")},
+              steps.load.outputs.distribution.context) }}
+        - id: stop-too-long
+          action: workflow.exit
+          with:
+            reason: "narration text is ${{ steps.measure.outputs.characters }} characters; ${{ inputs.model_id }} reads at most ${{ steps.measure.outputs.limit }}"
+
+    # Nothing audible changed since the last publish and the MP3 is still
+    # there: keep it. continue-on-error: a missing asset just means it is
+    # generated again.
+    - id: current
+      if: ${{ outputs.asset_id != "" && outputs.text_hash == steps.measure.outputs.hash }}
+      action: asset.get
+      continue-on-error: true
+      with:
+        asset_id: ${{ outputs.asset_id }}
+
+    - id: unchanged
+      if: ${{ steps.current?.outputs?.asset != nil }}
+      then:
+        - id: reuse
+          action: workflow.exit
+          with:
+            reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
+
+    # 4. Generate. The MP3 goes straight into the asset store, never into
+    #    the run output. overwrite keeps the asset's id across republishes,
+    #    and the asset is only written once the whole file has arrived. A
+    #    long article takes several minutes; retries counts attempts, and
+    #    every attempt that reaches ElevenLabs is billed.
+    - id: tts
+      action: http.post
+      with:
+        url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}"
+        query:
+          output_format: mp3_44100_128
+        headers:
+          xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+          Content-Type: application/json
+          Accept: audio/mpeg
+        body:
+          text: ${{ steps.speech.outputs.text }}
+          model_id: ${{ inputs.model_id }}
+        timeout: 15m
+        retries: 2
+        expect_status: [200]
+        response_asset:
+          filename: "narration-${{ trigger.distribution_id }}.mp3"
+          overwrite: true
+          mime_type: audio/mpeg
+          description: "Narration of ${{ steps.render.outputs.title ?? trigger.distribution_id }}"
+          metadata:
+            narration:
+              distribution_id: ${{ trigger.distribution_id }}
+              article_id: ${{ steps.load.outputs.distribution.article_id ?? "" }}
+              audience_id: ${{ steps.load.outputs.distribution.audience_id ?? "" }}
+              voice_id: ${{ inputs.voice_id }}
+              model_id: ${{ inputs.model_id }}
+              text_hash: ${{ steps.measure.outputs.hash }}
+
+    # 5. Record what was published, for the next republish and for delete.
+    #    Context-only, so it is allowed while the distribution is publishing.
+    #    narration_error is cleared.
+    - id: record
+      action: distribution.update
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+        context: >-
+          ${{ merge({"asset_id": steps.tts.outputs.asset_id,
+          "text_hash": steps.measure.outputs.hash,
+          "characters": steps.measure.outputs.characters,
+          "characters_billed": steps.tts.outputs.headers?.["Character-Cost"] ?? "",
+          "voice_id": inputs.voice_id,
+          "model_id": inputs.model_id,
+          "narration_error": "",
+          "generated_at": now()},
+          steps.load.outputs.distribution.context) }}

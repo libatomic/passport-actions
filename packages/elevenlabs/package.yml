@@ -1,0 +1,25 @@
+name: elevenlabs
+label: ElevenLabs Narration
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+category: integrations
+description: |
+  Narrates articles with an ElevenLabs voice: a premade voice, or a clone
+  of your own writer or host created (and consent-verified) in the
+  ElevenLabs dashboard. Adds an "Audio Narration" distribution channel to
+  the article editor. Publishing a narration distribution reads its body
+  aloud as its audience sees it, with restricted sections the audience
+  can't access replaced by a short spoken note, and stores the result as a
+  private MP3 asset. Republish regenerates it in place only when the spoken
+  text changed; deleting the distribution deletes the MP3. Also installs
+  List ElevenLabs Voices, a manual helper that lists your voice ids and the
+  characters left this month.
+
+  Shared prerequisites: an ELEVENLABS_API_KEY workflow secret (a restricted
+  key with Text to Speech access, Voices read and User read) and a voice id
+  (run List ElevenLabs Voices after installing to find it).
+  api.elevenlabs.io must be on the instance's http allowlist (the installer
+  offers it).
+
+blueprints:
+  - elevenlabs/narrate-article
+  - elevenlabs/list-voices
