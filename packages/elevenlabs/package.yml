@@ -20,7 +20,7 @@ description: |
   wrong, and a built-in cleanup reads money, percentages, scores, heights
   and common abbreviations the way a broadcaster would. After installing,
   change the voice, model, template and pronunciations under Settings →
-  Integrations → ElevenLabs Narration, which updates Audio Narration and
+  Workflows → ElevenLabs Narration, which updates Audio Narration and
   Narration Preview together.
 
   Shared prerequisites: an ELEVENLABS_API_KEY workflow secret (a restricted

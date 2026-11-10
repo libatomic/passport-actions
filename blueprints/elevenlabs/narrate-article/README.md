@@ -95,6 +95,12 @@ also offers:
 
 ### Pronunciations
 
+In the narration editor, right-click a word (or a selected phrase) in a
+paragraph and choose **Add pronunciation** to add it to this list without
+leaving the distribution; the dialog plays the sentence with the new Say as
+before saving. Rules that apply to a paragraph show as chips under it (click
+one to edit or remove it). Shift + right-click keeps the browser's own menu.
+
 The `pronunciations` input is a list of **Term** → **Say as** pairs, applied
 to the text just before it is read: `Wemby` → `Wem-bee`, `NBA` → `N B A`,
 `Dr.` → `Doctor`, `$5M` → `5 million dollars`. A term matches with the same
@@ -130,7 +136,7 @@ articles it touches, so their next **Publish Now** regenerates the audio.
 Changing the list changes the text, so the next **Publish Now** of an
 affected article regenerates its audio; articles the change doesn't touch
 are skipped as unchanged. Narration Preview has its own copy of the
-inputs; change them under **Settings → Integrations → ElevenLabs Narration**,
+inputs; change them under **Settings → Workflows → ElevenLabs Narration**,
 which updates both workflows together.
 
 ### Length

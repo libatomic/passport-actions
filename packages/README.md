@@ -63,7 +63,7 @@ settings:
 ## Settings page
 
 Once a package is installed, the admin shows it under **Settings →
-Integrations → <label>**. The page lists the configurable inputs of the
+Workflows → <label>**. The page lists the configurable inputs of the
 package's installed workflows (found by `metadata.package`), each once, and
 saving writes the value as that input's default in every workflow that
 declares it (one new workflow version each). Values that differ between

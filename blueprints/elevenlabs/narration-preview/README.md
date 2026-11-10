@@ -28,7 +28,7 @@ ElevenLabs.
 `pronunciations` and `text_cleanup` mean the same as on Audio Narration and must have the same
 values, or the preview won't match what is published. The package installer
 carries them from Audio Narration; after installing, change them under
-**Settings → Integrations → ElevenLabs Narration**, which updates both.
+**Settings → Workflows → ElevenLabs Narration**, which updates both.
 
 ## Requirements
 
