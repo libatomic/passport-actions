@@ -52,7 +52,30 @@ custom_fields:
     type: Text
     set_by: [cm/new-subscriber]
     description: The user's Passport ID
+
+# Optional: how the package's Settings page groups its inputs (see below).
+settings:
+  - title: List
+    description: The Campaign Monitor list the workflows sync to.
+    inputs: [list_id]
 ```
+
+## Settings page
+
+Once a package is installed, the admin shows it under **Settings →
+Integrations → <label>**. The page lists the configurable inputs of the
+package's installed workflows (found by `metadata.package`), each once, and
+saving writes the value as that input's default in every workflow that
+declares it (one new workflow version each). Values that differ between
+workflows are flagged, and saving makes them the same. Run-time inputs
+(`runtime: true`) and the ones the installer fills itself (a webhook
+consumer's `webhook_url` and `action`) are not shown. The page also lists the
+package's workflows and the secrets they reference.
+
+`settings:` is optional. Each section has a `title`, an optional
+`description` and the `inputs` it shows, in order; keys no installed workflow
+declares are skipped, and inputs no section lists appear in a final "Other"
+section. Without `settings:` every input is shown in one section.
 
 ## Conventions
 

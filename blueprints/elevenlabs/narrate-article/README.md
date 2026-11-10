@@ -130,7 +130,8 @@ articles it touches, so their next **Publish Now** regenerates the audio.
 Changing the list changes the text, so the next **Publish Now** of an
 affected article regenerates its audio; articles the change doesn't touch
 are skipped as unchanged. Narration Preview has its own copy of the
-inputs: keep the two the same (the package installer fills both).
+inputs; change them under **Settings → Integrations → ElevenLabs Narration**,
+which updates both workflows together.
 
 ### Length
 

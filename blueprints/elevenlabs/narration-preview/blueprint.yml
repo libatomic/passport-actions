@@ -20,11 +20,13 @@ description: |
 category: content
 inputs:
   voice_id:
+    label: Voice
     description: ElevenLabs voice id, a premade voice or your own clone (see List ElevenLabs Voices)
     type: string
     required: true
     default: ""
   model_id:
+    label: Model
     description: >-
       ElevenLabs model. eleven_flash_v2_5 reads up to 40,000 characters per
       article; eleven_multilingual_v2 sounds best but stops at 10,000.
@@ -32,12 +34,14 @@ inputs:
     default: eleven_flash_v2_5
     enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
   fallback_text:
+    label: Spoken note for restricted sections
     description: >-
       Read in place of a restricted section the audience can't access. Leave
       empty to skip those sections silently.
     type: string
     default: "The rest of this section is for subscribers. Subscribe to hear the full article."
   template:
+    label: What is read
     description: >-
       What is read, as a template. {{ .distribution.body }} is the
       distribution's body, rendered for its audience; the rest can use the
@@ -46,6 +50,7 @@ inputs:
     type: string
     default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
   skip_selectors:
+    label: Page parts to skip
     description: >-
       CSS selectors for page parts that shouldn't be read, comma-separated.
       Scripts, images, figures, tables, code, forms and anything marked
@@ -107,11 +112,13 @@ definition:
 
   inputs:
     voice_id:
+      label: Voice
       description: ElevenLabs voice id, a premade voice or your own clone (see List ElevenLabs Voices)
       type: string
       required: true
       default: ""
     model_id:
+      label: Model
       description: >-
         ElevenLabs model. eleven_flash_v2_5 reads up to 40,000 characters per
         article; eleven_multilingual_v2 sounds best but stops at 10,000.
@@ -119,12 +126,14 @@ definition:
       default: eleven_flash_v2_5
       enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
     fallback_text:
+      label: Spoken note for restricted sections
       description: >-
         Read in place of a restricted section the audience can't access. Leave
         empty to skip those sections silently.
       type: string
       default: "The rest of this section is for subscribers. Subscribe to hear the full article."
     template:
+      label: What is read
       description: >-
         What is read, as a template. {{ .distribution.body }} is the
         distribution's body, rendered for its audience; the rest can use the
@@ -133,6 +142,7 @@ definition:
       type: string
       default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
     skip_selectors:
+      label: Page parts to skip
       description: >-
         CSS selectors for page parts that shouldn't be read, comma-separated.
         Scripts, images, figures, tables, code, forms and anything marked

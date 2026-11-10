@@ -27,8 +27,8 @@ ElevenLabs.
 `voice_id`, `model_id`, `fallback_text`, `template`, `skip_selectors`,
 `pronunciations` and `text_cleanup` mean the same as on Audio Narration and must have the same
 values, or the preview won't match what is published. The package installer
-carries them from Audio Narration; after installing, change both workflows (or
-reinstall the package with update in place).
+carries them from Audio Narration; after installing, change them under
+**Settings → Integrations → ElevenLabs Narration**, which updates both.
 
 ## Requirements
 

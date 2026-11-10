@@ -18,9 +18,10 @@ description: |
 
   Pronunciations (a Term → Say as list) fix names and terms the voice gets
   wrong, and a built-in cleanup reads money, percentages, scores, heights
-  and common abbreviations the way a broadcaster would. The installer carries the voice, model, template and pronunciations
-  from Audio Narration to Narration Preview; after installing, change them on
-  both workflows (or reinstall the package) so the preview matches.
+  and common abbreviations the way a broadcaster would. After installing,
+  change the voice, model, template and pronunciations under Settings →
+  Integrations → ElevenLabs Narration, which updates Audio Narration and
+  Narration Preview together.
 
   Shared prerequisites: an ELEVENLABS_API_KEY workflow secret (a restricted
   key with Text to Speech access, Voices read and User read) and a voice id
@@ -32,3 +33,18 @@ blueprints:
   - elevenlabs/narrate-article
   - elevenlabs/list-voices
   - elevenlabs/narration-preview
+
+settings:
+  - title: Voice
+    description: The ElevenLabs voice and model that read every narration.
+    inputs: [voice_id, model_id]
+  - title: What is read
+    description: >-
+      Read around the article body, in place of restricted sections the
+      audience can't access, and which page parts are skipped.
+    inputs: [template, fallback_text, skip_selectors]
+  - title: Pronunciation and cleanup
+    description: >-
+      Names and terms the voice should say differently, and the built-in
+      rewrite of numbers, symbols and abbreviations.
+    inputs: [pronunciations, text_cleanup]
