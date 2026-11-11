@@ -44,7 +44,7 @@ settings:
     description: >-
       The default voice, other voices a distribution can pick, the model,
       and the longest article to read (to cap what one article can cost).
-    inputs: [voice_id, voices, model_id, max_characters]
+    inputs: [voice_id, voice_name, voices, model_id, max_characters]
   - title: What is read
     description: >-
       Read around the article body, in place of restricted sections the

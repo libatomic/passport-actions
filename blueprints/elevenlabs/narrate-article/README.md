@@ -157,8 +157,9 @@ articles it touches, so their next **Publish Now** regenerates the audio.
 
 ### Voices
 
-`voice_id` is the default voice. List others in `voices` (Name, Voice id) and
-the distribution form shows a **Voice** menu: the default first, then the list.
+`voice_id` is the default voice, and `voice_name` what the menu calls it.
+List others in `voices` (Name, Voice id) and the distribution form shows a
+**Voice** menu: the default first ("Jon (default)"), then the list.
 The pick is saved on the distribution (`context.voice`); a pick that is no
 longer listed falls back to the default. The voice is part of the change
 hash, so a new pick regenerates the audio on the next **Publish Now**. Listen
@@ -231,6 +232,7 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | Input | Default | Description |
 |---|---|---|
 | `voice_id` | — (required) | The default voice: an ElevenLabs voice id. Run **List ElevenLabs Voices** to find it |
+| `voice_name` | none | What the Voice menu calls the default voice (e.g. the narrator's name) |
 | `voices` | none | Other voices a distribution can pick (Name, Voice id); see Voices |
 | `model_id` | `eleven_flash_v2_5` | See Length |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |

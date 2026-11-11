@@ -60,6 +60,13 @@ inputs:
     type: string
     required: true
     default: ""
+  voice_name:
+    label: Default voice name
+    description: >-
+      What the distribution editor's Voice menu calls the default voice,
+      e.g. the narrator's name.
+    type: string
+    default: ""
   voices:
     label: Other voices
     description: >-
@@ -190,6 +197,7 @@ definition:
             value: voice_id
             label: label
             default_input: voice_id
+            default_label_input: voice_name
             help: >-
               The voice that reads this narration. Changing it regenerates
               the audio on the next Publish Now.
@@ -272,6 +280,13 @@ definition:
         clone (see List ElevenLabs Voices)
       type: string
       required: true
+      default: ""
+    voice_name:
+      label: Default voice name
+      description: >-
+        What the distribution editor's Voice menu calls the default voice,
+        e.g. the narrator's name.
+      type: string
       default: ""
     voices:
       label: Other voices
