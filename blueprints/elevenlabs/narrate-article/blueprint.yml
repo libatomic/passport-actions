@@ -211,8 +211,10 @@ definition:
               eleven_v3:
                 note: >-
                   Type a tag in square brackets just before the words it
-                  changes. Tags work best when they suit the voice; a
-                  serious narrator may ignore playful ones.
+                  changes. Tags are suggestions, not commands: not every
+                  voice responds to every tag (a serious narrator may ignore
+                  playful ones), and sounds such as [applause] are the least
+                  reliable. Try a paragraph with Listen before publishing.
                 groups:
                   - label: Pauses
                     tags:
@@ -263,7 +265,8 @@ definition:
                   [pause 2.5s] sets the length (up to 3 seconds). Too many
                   in one article can make the voice speed up. The other
                   tags (whispers, emotions, sounds) need eleven_v3; with
-                  this model they are left out.
+                  this model they are left out. Even on eleven_v3, not every
+                  voice responds to every tag.
                 groups:
                   - label: Pauses
                     tags:
