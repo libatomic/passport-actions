@@ -51,7 +51,7 @@ for example one for free readers and one for paid subscribers.
 
 `htmlText` turns the rendered HTML into paragraphs. It always skips markup
 that isn't content (scripts, styles, forms, embeds) and anything marked
-`data-text="skip"`. The `skip_selectors` input says what else isn't read; its
+`data-text="skip"`. The `skip_parts` input says what else isn't read; its
 default skips images, media, figures, tables, code, navigation, anything with
 `class="no-audio"` or `data-narration="skip"`, and WordPress chrome (buttons,
 post title, date, categories, author, share and related blocks).
@@ -96,8 +96,9 @@ preview (`trigger.action: "preview"`, no side effects):
 - **Spoken text**: exactly what would be read for the distribution's audience,
   using the unsaved body (`trigger.preview.body`): template, fallback, skipped
   paragraphs, pronunciations and cleanup applied, with the character count
-  against the model's limit. Outputs `text`, `characters`, `limit`,
-  `model_id`. Nothing is sent to ElevenLabs.
+  (against `max_characters` when it is set) and, for a long article, how many
+  requests it takes. Outputs `text`, `characters`, `limit` (`max_characters`,
+  0 for none), `requests` and `note`. Nothing is sent to ElevenLabs.
 - **Listen** (the play button on a paragraph, and in the pronunciation
   dialog): reads the `listen` input in the voice, with pronunciations and
   cleanup applied (the dialog passes its unsaved list as `pronunciations`).
@@ -154,20 +155,41 @@ articles it touches, so their next **Publish Now** regenerates the audio.
 
 ### Length
 
-Each model has a per-request limit, checked before ElevenLabs is called
-(ElevenLabs doesn't reliably reject longer text, it bills it):
+Each model takes a limited amount of text per request (per ElevenLabs'
+`/v1/models`):
 
-| Model | Limit (characters) | Notes |
+| Model | Per request (characters) | Notes |
 |---|---|---|
-| `eleven_flash_v2_5` (default) | 40,000 | Fast; covers every article seen so far |
+| `eleven_flash_v2_5` (default) | 40,000 | Fast; one request covers nearly every article |
 | `eleven_turbo_v2_5` | 40,000 | |
-| `eleven_multilingual_v2` | 10,000 | Most natural, but most articles are longer |
-| `eleven_v3` | 5,000 | |
+| `eleven_multilingual_v2` | 10,000 | Most natural |
+| `eleven_v3` | 5,000 | Most expressive |
 
-The count is in bytes, so accented letters and curly quotes count more than
-once. Text over the limit, or no text at all, fails the publish with the
-reason. A long article takes several minutes to generate; the request allows
-15 minutes.
+Longer text is split by `chunkText` into pieces of at most 95% of that (some
+headroom in case ElevenLabs counts characters differently), breaking between
+paragraphs, then sentences, then words. Each piece is one request, written as
+`narration-<distribution id>-part-<n>.mp3`; `asset.concat` then joins them
+frame by frame into `narration-<distribution id>.mp3` (overwriting it, so the
+asset keeps its id) and deletes the parts. Text that fits in one request is
+written straight to the narration, as before.
+
+- **Joins**: each request also gets the text before and after its piece
+  (`previous_text`/`next_text`), so the voice carries on naturally across a
+  join. `eleven_v3` supports neither that nor ElevenLabs' request stitching,
+  so its pieces are read on their own; a join on v3 can sound like a fresh
+  start.
+- **Failures**: the published MP3 is only replaced after every piece has
+  been read and joined. A run that fails partway leaves it as it was, and can
+  leave part assets behind; the next successful publish overwrites and
+  deletes them.
+- **Cost**: ElevenLabs bills the text of every request. `characters_billed`
+  adds up the requests' `character-cost` headers.
+- **Time**: requests run one after another; each allows 15 minutes.
+
+`max_characters` (0 by default, no limit) caps the length of article a
+publish will read, to cap what one article can cost. The count is in bytes,
+so accented letters and curly quotes count more than once. Text over it, or
+no text at all, fails the publish with the reason.
 
 ## Inputs
 
@@ -179,9 +201,10 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `model_id` | `eleven_flash_v2_5` | See Length |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |
-| `skip_selectors` | Media, figures, tables, code, navigation, `.no-audio`, WordPress chrome | Comma-separated CSS selectors not to read |
+| `skip_parts` | Media, figures, tables, code, navigation, `.no-audio`, WordPress chrome | Comma-separated CSS selectors not to read. Was `skip_selectors`, which only listed what `htmlText` didn't already skip; renamed so a reinstall doesn't keep an old value |
 | `pronunciations` | none | Term → Say as replacements (see Pronunciations) |
 | `text_cleanup` | on | Rewrite numbers, symbols and abbreviations (see Numbers and symbols) |
+| `max_characters` | 0 (no limit) | Longest text a publish will read (see Length) |
 | `listen` | — (runtime) | Set by the editor for a Listen preview; not configured |
 
 ## Recorded on the distribution (`context`)
@@ -191,22 +214,24 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `asset_id` | The MP3 asset. The admin plays it under the distribution |
 | `text_hash` | sha256 of the text, voice and model; decides whether a republish regenerates |
 | `characters` | Length of the text sent |
-| `characters_billed` | ElevenLabs' `character-cost` header for the request |
+| `characters_billed` | ElevenLabs' `character-cost` headers, summed across the requests |
+| `requests` | How many requests read it (more than 1 for a long article; see Length) |
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
 | `channel_error` | Cleared on a successful publish (older versions recorded stops here; failures are now the publish's own error) |
 | `body_edited` | Set by the admin when the body was edited for narration |
 
 The asset's `metadata.narration` carries the distribution, article, audience,
-voice, model and text hash too, and its duration is read from the MP3.
+voice, model, text hash and number of requests too, and its duration is read
+from the MP3 (the joined one, for a long article).
 
 ## Requirements
 
 - Secret `ELEVENLABS_API_KEY`: a restricted key with **Text to Speech**
   access. Give it a credit limit in ElevenLabs to cap spending.
 - `api.elevenlabs.io` on the instance's HTTP allowlist.
-- Atomic with `http.*` `response_asset`, `asset.delete`, `htmlText`, `sha256`,
-  `replaceEach`, `workflow.fail`, `distribution.render` `as_audience`/`body`,
+- Atomic with `http.*` `response_asset`, `asset.delete`, `asset.concat`,
+  `htmlText`, `sha256`, `replaceEach`, `chunkText`, `workflow.fail`, `distribution.render` `as_audience`/`body`,
   distribution-trigger `preview`/`ui`, and template-less distributions
   rendering their own body.
 

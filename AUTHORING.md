@@ -20,7 +20,7 @@ Reference implementations worth copying:
 
 | Blueprint | Shows |
 |---|---|
-| `elevenlabs/narrate-article` | A custom channel with publish / republish / delete / preview, per-audience rendering, a file output (`response_asset`), change detection (`sha256`), text processing (`htmlText`, `replaceEach`), `workflow.fail`, admin editor hints (`ui`) |
+| `elevenlabs/narrate-article` | A custom channel with publish / republish / delete / preview, per-audience rendering, a file output (`response_asset`), change detection (`sha256`), text processing (`htmlText`, `replaceEach`), long text in several requests joined into one file (`chunkText`, `foreach`, `asset.concat`), `workflow.fail`, admin editor hints (`ui`) |
 | `spotify/create-episode` + `spotify/episode-status` | A podcast-shaped, application-pinned channel; recording the destination id; a status companion |
 | `fb/page-post`, `x/post` | Minimal text channels |
 | `cm/*` (Campaign Monitor package) | A vendor integration as a package of event workflows with shared settings |
@@ -116,7 +116,7 @@ Full inputs and outputs: [BUILTINS.md](BUILTINS.md).
 | Audiences, templates, jobs | `audience.view`, `audience.get`, `application.get`, `template.render`, `transmute`, `instance.cache.flush`, `job.get`, `job.create` |
 | Commerce | `plan.get`, `option.get`, `subscription.get`, `credit.get`, `credit.invite.create`, `entitlement.get` / `.create` / `.update` / `.delete` |
 | Content | `article.get`, `feed.item.create`, `distribution.get`, `distribution.render` (`as_audience`, `body`), `distribution.create`, `distribution.update` |
-| Files | `asset.get` (`link`), `asset.create`, `asset.update`, `asset.delete` |
+| Files | `asset.get` (`link`), `asset.create`, `asset.update`, `asset.delete`, `asset.concat` (join parts into one file; MP3-aware) |
 | HTTP | `http.get` / `.post` / `.put` / `.patch` / `.delete` (`response_asset` saves a file response as an asset) |
 | Flow | `log`, `sleep`, `set-output`, `vars.set`, `event.emit`, `workflow.run`, `workflow.exit`, `workflow.fail`, `wait` |
 
@@ -129,6 +129,7 @@ for content work:
 |---|---|
 | `htmlText(html, selectors…)` | HTML → readable paragraphs; always drops non-content markup and `data-text="skip"`, pass what else to drop |
 | `replaceEach(text, rules, opts)` | Apply a list of replacements (a settings table, a cleanup list): `literal`, `word`, `ignoreCase`, custom row keys |
+| `chunkText(text, max)` | Split text for an API with a per-request limit: pieces of at most `max` characters, broken between paragraphs, then sentences |
 | `regexReplace`, `regexMatch`, `regexFind`, `regexQuote` | RE2 regexes; `regexQuote` escapes text for a pattern |
 | `sha256(s)` | Detect that content changed since the last run |
 | `merge(a, b)` | Combine maps (the **first** argument wins): keep a distribution's other context keys |
@@ -164,6 +165,15 @@ the response as an asset, written only once complete; `overwrite` keeps the
 asset id and link across republishes. Record `context.asset_id` and the admin
 plays or opens it under the distribution. Remove it on `delete` with
 `asset.delete` (`continue-on-error: true`). Never put binary in `outputs`.
+
+When an API takes less text (or data) per request than a job needs, split it
+with `chunkText`, make one request per piece in a `foreach` (each piece's
+`response_asset` a part file), then `asset.concat` the parts into the final
+asset with `overwrite: true` and `delete_sources: true`. The final asset is
+only replaced once every part exists, so a failed run leaves the published
+file alone. Accumulate per-request numbers (e.g. billed characters) with
+`vars.set` inside the loop. The narration blueprint's `pieces`/`plan`/
+`generate`/`join` steps are the reference.
 
 ### Per-audience content
 
@@ -247,6 +257,11 @@ The preview button runs a preview without `inputs.listen` and shows outputs
 - **No binary in outputs or `body`**: use `response_asset`, or a base64 JSON API.
 - **`http.*` `retries` is total attempts**, and each paid attempt is billed.
 - **Side effects in previews**: gate them, or a preview publishes.
+- **Changing what an input means? Rename it.** A reinstall (update in place)
+  keeps each installed input's current value. If a new version changes what an
+  input means (e.g. a selector list that must now include what a builtin used
+  to skip), the old value silently keeps the old meaning. Give it a new key so
+  the reinstall starts from the new default.
 - **Don't put integration-specific logic in Go.** If a missing builtin blocks a
   pattern, ask for a generic one (a function, an action option) rather than an
   integration action.

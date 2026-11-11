@@ -14,7 +14,7 @@ Built-in **actions** and **expression functions** available to workflows.
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
   - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [HTTP](#http) — [`http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`](#httpget--httppost--httpput--httppatch--httpdelete)
   - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`workflow.fail`](#workflowfail) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
@@ -600,6 +600,56 @@ the workflow's call; a channel's `delete` run typically removes the file it made
 
 Add `continue-on-error: true` when a missing asset (already deleted by hand)
 mustn't fail the run.
+
+### `asset.concat`
+Join several assets, in order, into one asset. MP3s (`audio/mpeg`) are joined
+frame by frame: each part's ID3 tags and Xing/Info header frame are dropped, so
+the result plays, seeks and reports its duration as one file. Anything else is
+joined byte for byte. The joined file is written only after every part has been
+read, so a failure leaves an existing asset of that name as it was.
+
+| Input | Required | Description |
+|---|---|---|
+| `asset_ids` | one of | The parts by ID, in order |
+| `filenames` | one of | The parts by filename, in order |
+| `filename` | yes | The joined asset's filename |
+| `overwrite` | no | Replace an existing asset with this filename, keeping its ID (default `false`) |
+| `delete_sources` | no | Delete the parts once the joined asset is written (never the joined asset itself) |
+| `mime_type` | no | Defaults to the first part's |
+| `description`, `public`, `type`, `categories`, `metadata` | no | As for `asset.create` |
+| `max_size` | no | Fail if the joined file is larger (default 200 MiB) |
+
+| Output | Description |
+|---|---|
+| `asset` | The joined asset |
+| `asset_id` | Its ID |
+| `size` | Its size in bytes |
+| `parts` | How many parts were joined |
+| `deleted` | IDs of the parts deleted |
+
+At most 500 parts. MP3 parts should share a sample rate and channel layout,
+e.g. pieces of one text read by one voice in one output format:
+
+```yaml
+# Read a long text in pieces, then join them (see chunkText)
+- id: generate
+  foreach: ${{ steps.plan.outputs.parts }}   # [{text, filename}, ...]
+  as: part
+  steps:
+    - id: tts
+      action: http.post
+      with:
+        url: https://api.example.com/tts
+        body: { text: "${{ loop.part.text }}" }
+        response_asset: { filename: "${{ loop.part.filename }}", overwrite: true }
+- id: join
+  action: asset.concat
+  with:
+    filenames: ${{ map(steps.plan.outputs.parts, .filename) }}
+    filename: narration.mp3
+    overwrite: true
+    delete_sources: true
+```
 
 ### `article.get`
 Load an article by ID.
@@ -1228,6 +1278,30 @@ text: >-
 
 # Regex rules kept in a set-output step (patterns can't hold "}}" in ${{ }})
 text: ${{ replaceEach(steps.speech.outputs.text, steps.rules.outputs.cleanup) }}
+```
+
+### chunkText
+
+Split text into pieces of at most `max` characters, for an API that limits how
+much text one request may carry (e.g. a text-to-speech model). Pieces break
+between paragraphs (blank lines) where possible, then between sentences, then
+between words; a single word longer than `max` is cut. Paragraphs that fit are
+packed together, joined by a blank line, so there are as few pieces as the
+breaks allow. Each piece is trimmed; empty text gives an empty list.
+
+```
+chunkText(text, max) → list
+```
+
+`max` counts characters (Unicode code points), not bytes as `len` does. Leave
+some headroom under an API's limit if it may count differently.
+
+```yaml
+chunks: ${{ chunkText(steps.text.outputs.text, 4750) }}
+# one row per piece, with its index and a filename (map literal in parentheses)
+parts: >-
+  ${{ map(chunkText(steps.text.outputs.text, 4750),
+  ({"text": #, "filename": "part-" + toString(#index + 1) + ".mp3"})) }}
 ```
 
 ### htmlText

@@ -9,7 +9,8 @@ description: |
   the article editor. Publishing a narration distribution reads its body
   aloud as its audience sees it, with restricted sections the audience
   can't access replaced by a short spoken note, and stores the result as a
-  private MP3 asset. Republish regenerates it in place only when the spoken
+  private MP3 asset. An article longer than the model takes in one request
+  is read in several and the audio joined into one MP3. Republish regenerates it in place only when the spoken
   text changed; deleting the distribution deletes the MP3. Also installs
   List ElevenLabs Voices, a manual helper that lists your voice ids and the
   characters left this month. The narration editor shows the text that will
@@ -34,13 +35,15 @@ blueprints:
 
 settings:
   - title: Voice
-    description: The ElevenLabs voice and model that read every narration.
-    inputs: [voice_id, model_id]
+    description: >-
+      The ElevenLabs voice and model that read every narration, and the
+      longest article to read (to cap what one article can cost).
+    inputs: [voice_id, model_id, max_characters]
   - title: What is read
     description: >-
       Read around the article body, in place of restricted sections the
       audience can't access, and which page parts are skipped.
-    inputs: [template, fallback_text, skip_selectors]
+    inputs: [template, fallback_text, skip_parts]
   - title: Pronunciation and cleanup
     description: >-
       Names and terms the voice should say differently, and the built-in
