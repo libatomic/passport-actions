@@ -116,7 +116,6 @@ secret and `api.elevenlabs.io` on the HTTP allowlist.
 |-----------|---------|--------|
 | `blueprints/elevenlabs/narrate-article` | `narration` distribution channel | Read the body aloud as the distribution's audience sees it; store the MP3 as an asset |
 | `blueprints/elevenlabs/list-voices` | manual | List voice ids and the characters left this month |
-| `blueprints/elevenlabs/narration-preview` | manual (run by the admin's narration editor) | Return the text a narration would read, or read a short sample in the voice |
 
 #### Usage
 
@@ -329,6 +328,10 @@ npm run build
 Recipes don't need building — they're YAML files parsed directly by the workflow engine.
 
 ## Creating New Components
+
+> Start with [AUTHORING.md](AUTHORING.md): it lists every building block
+> (triggers, step kinds, actions, functions, admin contracts and editor hints),
+> reference blueprints to copy, the gotchas and a checklist.
 
 ### Creating a Blueprint
 

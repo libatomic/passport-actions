@@ -191,6 +191,24 @@ workflow what the platform wants done with the distribution on the channel:
 A missing channel workflow no longer blocks a delete; a disabled one does (enable it and
 retry). **spotify/create-episode** implements all three branches.
 
+**Failing a publish.** When the workflow decides it can't publish (nothing to send, content
+too long), end with **`workflow.fail`** and a reason: the publish fails with that reason,
+which the admin shows on the distribution, and it can be published again once fixed.
+
+**Previews (`preview: true`).** A channel can let the admin ask what a publish *would*
+produce, without publishing. Declare `preview: true` on the trigger; the admin then runs the
+workflow manually with `trigger.action: "preview"` (plus `trigger.distribution_id`, and e.g.
+`trigger.preview.body` for an unsaved body), and any `inputs` it needs (declare those
+`runtime: true`). The workflow computes the result, returns it as named `outputs`, and
+**changes nothing**: gate every side-effect step (`http.*` to the destination,
+`distribution.update`, asset writes) on `trigger.action != "preview"`, or exit before them.
+**elevenlabs/narrate-article** returns the spoken text, or a sample read aloud.
+
+**Editor hints (`ui:`).** A free-form map on the trigger the engine stores and ignores; the
+admin reads it to pick the distribution editor and its controls. The hints it understands are
+listed in [AUTHORING.md](AUTHORING.md#admin-editor-hints-ui), e.g. `body_editor: paragraphs`
+(edit an HTML body paragraph by paragraph).
+
 **Application audiences.** `application: <name | slug | client id>` pins the channel's
 audience picker to that application's audiences (the audiences created for it under
 Applications, i.e. those with its `application_id`). Use it when the destination only
@@ -609,6 +627,9 @@ Compare:
 
 - **Skip a step** → `if:` on the step. The rest continues.
 - **Stop everything on purpose** → `workflow.exit`. Recorded as success.
+- **Stop because the workflow can't do its job** → `workflow.fail` with a reason. Recorded as a
+  failure (a distribution publish fails with the reason); `on_error`/`continue-on-error` don't
+  catch it.
 - **Something broke** → an error. See below.
 
 ---

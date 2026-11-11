@@ -2,6 +2,11 @@
 
 Built-in **actions** and **expression functions** available to workflows.
 
+> Writing a workflow or blueprint (by hand or with an AI)? Start with
+> [AUTHORING.md](AUTHORING.md): it indexes every building block (triggers,
+> step kinds, actions, functions, admin contracts) and the patterns and
+> gotchas. The engine's full reference is `atomic/docs/WORKFLOW.md`.
+
 ## Contents
 
 - [Context Variables](#context-variables) · [Schema Definitions](#schema-definitions)
@@ -9,8 +14,9 @@ Built-in **actions** and **expression functions** available to workflows.
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
   - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
-  - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`wait`](#wait)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [HTTP](#http) — [`http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`](#httpget--httppost--httpput--httppatch--httpdelete)
+  - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`workflow.fail`](#workflowfail) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
   - [Strings](#strings) · [Math](#math) · [Collections](#collections) · [Encoding](#encoding) · [Type Conversion](#type-conversion) · [Logic](#logic) · [Date/Time](#datetime) · [URL](#url) · [Instance](#instance)
   - [Common Patterns](#common-patterns)
@@ -449,11 +455,18 @@ Render a distribution's template into its final title and body — the same rend
 |---|---|---|
 | `distribution_id` | yes | Usually `${{ trigger.distribution_id }}` |
 | `user_id` | no | Personalize the render for a recipient (unicast runs — `${{ trigger.user_id }}`) |
+| `as_audience` | no | Render **as a member of the distribution's audience**, with no user data: `hasAnyAudience` / `audiences` blocks resolve for that audience. For content made once per audience (narration audio, a per-tier summary). Can't be combined with `user_id` |
+| `body` | no | Render this body instead of the distribution's saved one (nothing is saved), e.g. a rewritten copy |
 
 | Output | Description |
 |---|---|
 | `title` | The rendered title |
 | `body` | The rendered body |
+
+A distribution **without a template** (the usual custom-channel case) renders its
+own body (or the `body` override) as the template, so its template actions and
+restricted-content blocks run with the article in context (`{{ .article.title }}`,
+`timeFormat`, …). To put text around the body, compose it into `body` first.
 
 ### `distribution.create`
 Create a distribution — publish an article to a channel, or seed a custom-channel distribution from workflow data.
@@ -491,7 +504,7 @@ Update an existing distribution — retitle, reschedule, change status, or soft-
 | `status` | no | `pending` or `scheduled` |
 | `scheduled_at` | no | New publish time (RFC3339) |
 | `settings` | no | Channel-specific settings object |
-| `context` | no | Context metadata |
+| `context` | no | Context metadata. **Replaces the whole map**: merge the existing keys back in, `${{ merge({"my_id": ...}, steps.load.outputs.distribution.context) }}` (the first argument wins). A context-only update is allowed while the distribution is publishing, so a channel workflow can record ids during its own publish |
 | `deleted` | no | `true` to soft-delete the distribution |
 
 | Output | Description |
@@ -572,6 +585,22 @@ defaults to the step's `application_id`, so a feed item published for an
 application signs its enclosure with that application's token without repeating
 it.
 
+### `asset.delete`
+Delete an asset and its stored file. Whether it is still referenced elsewhere is
+the workflow's call; a channel's `delete` run typically removes the file it made.
+
+| Input | Required | Description |
+|---|---|---|
+| `asset_id` | yes | Asset to delete |
+
+| Output | Description |
+|---|---|
+| `id` | The deleted asset's ID |
+| `deleted` | `true` |
+
+Add `continue-on-error: true` when a missing asset (already deleted by hand)
+mustn't fail the run.
+
 ### `article.get`
 Load an article by ID.
 
@@ -645,6 +674,37 @@ Revoke an entitlement.
 |---|---|
 | `deleted` | `true` on success |
 | `id` | The entitlement ID |
+
+## HTTP
+
+### `http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`
+Call an external HTTP API. The host must be on the instance's HTTP allowlist
+(**Workflows → Settings → Allowed HTTP hosts**; the package installer offers the
+hosts it finds). Prefer a recipe (`includes:`) for a vendor's calls.
+
+| Input | Required | Description |
+|---|---|---|
+| `url` | yes | Request URL |
+| `headers` | no | Header map, e.g. `{ Authorization: "Bearer ${{ secrets.TOKEN }}" }` |
+| `query` | no | Query parameter map |
+| `body` | no | Request body: an object is sent as JSON, a string as-is |
+| `timeout` | no | Go duration (default `30s`; longer values are honored, e.g. `15m`) |
+| `retries` | no | Total attempts for transport errors and 5xx (default `3`). Every attempt that reaches a paid API is billed |
+| `expect_status` | no | Extra status codes treated as success, e.g. `[404]` |
+| `response_asset` | no | Store a 2xx body as an **asset** instead of returning it (files: audio, images, PDFs). Keys: `filename` (required), `mime_type` (default: the response type), `public`, `type`, `description`, `categories`, `metadata`, `overwrite` (replace the asset with that filename, **keeping its id and link**), `max_size` (bytes, default 200 MiB). The asset is written only once the whole body has arrived; an MP3's duration is read into its metadata |
+
+| Output | Description |
+|---|---|
+| `status` | HTTP status code |
+| `headers` | Response headers (`headers["Character-Cost"]`) |
+| `body` | Parsed body: JSON as an object, anything else as a string. Not set with `response_asset` |
+| `ok` | `true` for a 2xx (or `expect_status`) response |
+| `asset`, `asset_id`, `size` | With `response_asset`: the stored asset, its ID and the body size |
+
+A 4xx/5xx response (not in `expect_status`) fails the step; the response body is
+in `steps.<id>.error.detail.body`. Binary bodies can't travel in `body` (they'd
+be read as text): use `response_asset`, or an API variant that returns the file
+as base64 inside JSON.
 
 ## Utility & Flow Control
 
@@ -762,6 +822,24 @@ Terminates the run cleanly — records a success and stops executing further ste
 | `reason` | no | Reason recorded on the run (default `workflow exited`) |
 
 Returns no outputs (the run ends).
+
+### `workflow.fail`
+Ends the run as **failed** with `reason` as its error. Unlike an action error,
+the step's `on_error:` and `continue-on-error` don't catch it (inside a recipe
+too). For a distribution trigger the publish fails with the reason, so the admin
+shows why and the distribution can be published again.
+
+| Input | Required | Description |
+|---|---|---|
+| `reason` | yes | Why the run can't continue (shown as the run's and the publish's error) |
+
+```yaml
+- id: empty
+  if: ${{ steps.measure.outputs.characters == 0 }}
+  action: workflow.fail
+  with:
+    reason: "There is no text to read for this audience."
+```
 
 ### `wait`
 **Pauses the workflow and resumes it later** — the basis for multi-day journeys (onboarding
@@ -1109,6 +1187,69 @@ with:
   clean: ${{ regexReplace("[^a-zA-Z0-9]", trigger.body.input, "") }}
 ```
 
+### regexQuote
+
+Escape a string so it matches literally inside a regex.
+
+```
+regexQuote(str) → string
+```
+
+```yaml
+with:
+  found: ${{ regexMatch("\\b" + regexQuote(inputs.term) + "\\b", steps.text.outputs.text) }}
+```
+
+### replaceEach
+
+Apply a list of replacement rows to a text, in order, each to the result of the
+ones before it. Rows are objects; `opts` (optional) sets the row keys and the
+matching mode.
+
+```
+replaceEach(text, rules, opts?) → string
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `find` / `replace` | `"find"` / `"replace"` | Row keys holding the pattern and its replacement |
+| `literal` | `false` | Match `find` as plain text and insert `replace` as-is (no regex, no `$` expansion) |
+| `word` | `false` | Whole words: a word boundary where `find` starts or ends with a letter, digit or `_` |
+| `ignoreCase` | `false` | Case-insensitive |
+
+Without `literal`, `find` is an RE2 pattern and `${1}` in `replace` is its first
+group. Rows with an empty `find` are skipped; an invalid pattern fails the step.
+
+```yaml
+# A Term → Say as list input, matched as written, whole words
+text: >-
+  ${{ replaceEach(steps.speech.outputs.text, inputs.pronunciations ?? [],
+  {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
+
+# Regex rules kept in a set-output step (patterns can't hold "}}" in ${{ }})
+text: ${{ replaceEach(steps.speech.outputs.text, steps.rules.outputs.cleanup) }}
+```
+
+### htmlText
+
+Turn HTML into readable plain text: one paragraph per block element (a blank
+line between), headings and list items end in a full stop, links reduced to
+their text.
+
+```
+htmlText(html, selectors...) → string
+```
+
+It always drops markup that isn't content (`head`, `script`, `style`,
+`noscript`, `template`, `svg`, `canvas`, form controls, `iframe`, `object`,
+`embed`) and anything marked `data-text="skip"`. Pass what else to drop as CSS
+selectors (one comma-separated string works):
+
+```yaml
+# What a text-to-speech reader reads
+text: ${{ trim(htmlText(steps.render.outputs.body, "img, figure, table, pre, code, nav, .no-audio")) }}
+```
+
 ### emailDomain
 
 Extract the domain part from an email address. Returns lowercase.
@@ -1391,6 +1532,19 @@ merge(dst, srcs...) → map
 ---
 
 ## Encoding
+
+### sha256
+
+Hex SHA-256 of a string. Use it to tell whether content changed since the last
+run (store the hash in a distribution's `context`).
+
+```
+sha256(str) → string
+```
+
+```yaml
+hash: ${{ sha256(steps.text.outputs.text + "|" + inputs.voice_id) }}
+```
 
 ### base64Encode / base64Decode
 

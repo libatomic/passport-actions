@@ -14,7 +14,13 @@ description: |
 
   LIFECYCLE: republish regenerates the audio in place (same asset id) only
   if the spoken text, voice or model changed; otherwise ElevenLabs isn't
-  called. Deleting the distribution deletes its MP3. After the article is
+  called. Deleting the distribution deletes its MP3. A narration with no
+  text for its audience, or too long for the model, fails the publish
+  with the reason.
+
+  PREVIEW: the admin's narration editor runs this workflow as a preview
+  (trigger.action "preview"): it returns the text that would be read, or
+  reads a short sample in the voice, and changes nothing. After the article is
   edited, use the distribution's "Update Distribution" button to copy the
   new body in, then Publish Now.
 
@@ -62,10 +68,12 @@ inputs:
     label: Page parts to skip
     description: >-
       CSS selectors for page parts that shouldn't be read, comma-separated.
-      Scripts, images, figures, tables, code, forms and anything marked
-      class="no-audio" or data-narration="skip" are always skipped.
+      The default skips images, media, figures, tables, code, navigation,
+      anything with class="no-audio" and WordPress chrome (buttons, post
+      title, date, categories, author, share and related blocks). Scripts,
+      forms and anything marked data-text="skip" are always skipped.
     type: string
-    default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+    default: 'img, picture, video, audio, figure, figcaption, aside, nav, pre, code, table, .no-audio, [data-narration="skip"], .wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts'
   pronunciations:
     label: Pronunciations
     description: >-
@@ -88,6 +96,14 @@ inputs:
       pronunciations, so a pronunciation for the same text wins.
     type: bool
     default: true
+  listen:
+    label: Sample to read
+    description: >-
+      Set by the admin's narration editor for a preview: read this text
+      (pronunciations and cleanup applied) in the voice and return the
+      audio, instead of previewing the distribution's text.
+    type: string
+    runtime: true
 definition:
   name: Audio Narration (ElevenLabs)
   description: >-
@@ -107,6 +123,23 @@ definition:
         content_type: html
         # The body is rendered as a member of this audience.
         requires_audience: true
+        # The admin can ask what a publish would read, or play a sample,
+        # with trigger.action "preview" (see the PREVIEW steps).
+        preview: true
+        # Hints for the admin's distribution editor (see AUTHORING.md).
+        ui:
+          body_editor: paragraphs
+          preview_label: Spoken text
+          skip_input: skip_selectors
+          section_line:
+            input: fallback_text
+            label: Read instead
+          sample: audio
+          term_list:
+            input: pronunciations
+            find: term
+            replace: say_as
+            label: Pronunciation
 
   inputs:
     voice_id:
@@ -143,10 +176,12 @@ definition:
       label: Page parts to skip
       description: >-
         CSS selectors for page parts that shouldn't be read, comma-separated.
-        Scripts, images, figures, tables, code, forms and anything marked
-        class="no-audio" or data-narration="skip" are always skipped.
+        The default skips images, media, figures, tables, code, navigation,
+        anything with class="no-audio" and WordPress chrome (buttons, post
+        title, date, categories, author, share and related blocks). Scripts,
+        forms and anything marked data-text="skip" are always skipped.
       type: string
-      default: ".wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts"
+      default: 'img, picture, video, audio, figure, figcaption, aside, nav, pre, code, table, .no-audio, [data-narration="skip"], .wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts'
     pronunciations:
       label: Pronunciations
       description: >-
@@ -169,8 +204,25 @@ definition:
         pronunciations, so a pronunciation for the same text wins.
       type: bool
       default: true
+    listen:
+      label: Sample to read
+      description: >-
+        Set by the admin's narration editor for a preview: read this text
+        (pronunciations and cleanup applied) in the voice and return the
+        audio, instead of previewing the distribution's text.
+      type: string
+      runtime: true
 
   steps:
+    # What this run does: "run" (publish, republish), or for an admin
+    # preview "text" (what would be read) or "listen" (read inputs.listen).
+    - id: mode
+      action: set-output
+      with:
+        mode: >-
+          ${{ trigger.action != "preview" ? "run"
+          : trim(inputs.listen ?? "") != "" ? "listen" : "text" }}
+
     - id: load
       action: distribution.get
       with:
@@ -196,11 +248,11 @@ definition:
           with:
             reason: "narration ${{ outputs.asset_id }} removed"
 
-    # PUBLISH / REPUBLISH.
+    # PUBLISH / REPUBLISH / PREVIEW.
     #
     # 1. Swap each restricted block's else branch for the spoken fallback,
-    #    unless an editor wrote that section's own spoken line.
-    #    The pattern and the pieces of the replacement are plain strings (no
+    #    unless an editor wrote that section's own line ("read instead").
+    #    The patterns and pieces of the replacement are plain strings (no
     #    ${{ }}), because an expression can't contain a literal "}}". The
     #    pattern matches an `if hasAnyAudience`/`if audiences` block with no
     #    template action nested inside it, with or without an else branch;
@@ -211,45 +263,48 @@ definition:
         pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
         open: "{{ else }}"
         close: "{{ end }}"
-        # An else branch that starts with an editor's own spoken line
-        # (<p data-narration="spoken">, written by the admin's narration
-        # editor) keeps it: its else tag is swapped for custom_open first,
-        # which the pattern above doesn't match, then swapped back.
-        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-narration="spoken")'
+        # An else branch that starts with an editor's own line
+        # (<p data-text="instead">, or the older data-narration="spoken")
+        # keeps it: its else tag is swapped for custom_open first, which
+        # the pattern above doesn't match, then swapped back.
+        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-(?:text="instead"|narration="spoken"))'
         custom_open: "{{ narration-else }}"
         # Where the body goes in the template input.
         body_pattern: '\{\{-?\s*\.distribution\.body\s*-?\}\}'
         # The body's own document wrapper (<html>, <head>…</head>, <body>),
         # removed so the template can go in front of it.
         doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
-        # Regex metacharacters, escaped in pronunciation terms.
-        meta: '([\\.+*?()|\[\]{}^$])'
-        # Built-in cleanup (the cleanup step), applied in order. Each find is
-        # an RE2 pattern, each say its replacement (${1} is the first group).
+        # Built-in cleanup (the cleanup step), applied in order by
+        # replaceEach: find is an RE2 pattern, ${1} its first group.
         cleanup:
-          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', say: '${1} million dollars' }
-          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', say: '${1} billion dollars' }
-          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', say: '${1} thousand dollars' }
-          - { find: '(\d)\s?%', say: '${1} percent' }
-          - { find: '\bNo\.\s?(\d)', say: 'number ${1}' }
-          - { find: '#(\d)', say: 'number ${1}' }
-          - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', say: '${1} foot ${2}' }
-          - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', say: '${1} ${2}' }
-          - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', say: '${1} to ${2}' }
-          - { find: '\bvs\.?(\s)', say: 'versus${1}' }
-          - { find: '\s&\s', say: ' and ' }
-          - { find: '\be\.g\.', say: 'for example' }
-          - { find: '\bi\.e\.', say: 'that is' }
-          - { find: '\betc\.', say: 'et cetera' }
-          - { find: '\bJr\.', say: 'Junior' }
-          - { find: '\bSr\.', say: 'Senior' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', replace: '${1} million dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', replace: '${1} billion dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', replace: '${1} thousand dollars' }
+          - { find: '(\d)\s?%', replace: '${1} percent' }
+          - { find: '\bNo\.\s?(\d)', replace: 'number ${1}' }
+          - { find: '#(\d)', replace: 'number ${1}' }
+          - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', replace: '${1} foot ${2}' }
+          - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', replace: '${1} ${2}' }
+          - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', replace: '${1} to ${2}' }
+          - { find: '\bvs\.?(\s)', replace: 'versus${1}' }
+          - { find: '\s&\s', replace: ' and ' }
+          - { find: '\be\.g\.', replace: 'for example' }
+          - { find: '\bi\.e\.', replace: 'that is' }
+          - { find: '\betc\.', replace: 'et cetera' }
+          - { find: '\bJr\.', replace: 'Junior' }
+          - { find: '\bSr\.', replace: 'Senior' }
 
+    # A preview reads the admin's unsaved body when it sends one.
     - id: source
+      if: ${{ steps.mode.outputs.mode != "listen" }}
       action: set-output
       with:
-        body: ${{ steps.load.outputs.distribution.body ?? "" }}
+        body: >-
+          ${{ trim(trigger.preview?.body ?? "") != "" ? trigger.preview.body
+          : steps.load.outputs.distribution.body ?? "" }}
 
     - id: rewrite
+      if: ${{ steps.mode.outputs.mode != "listen" }}
       action: set-output
       with:
         # "$" is special in a regexReplace replacement, so it is doubled in
@@ -268,6 +323,7 @@ definition:
     #    the raw body, restricted-block tags and all). A template without the
     #    placeholder is followed by the body; an empty one is just the body.
     - id: compose
+      if: ${{ steps.mode.outputs.mode != "listen" }}
       action: set-output
       with:
         body: >-
@@ -280,6 +336,7 @@ definition:
     # 3. Render it as a member of the distribution's audience: blocks it can
     #    see render their content, the others render the fallback.
     - id: render
+      if: ${{ steps.mode.outputs.mode != "listen" }}
       action: distribution.render
       with:
         distribution_id: ${{ trigger.distribution_id }}
@@ -287,21 +344,24 @@ definition:
         body: ${{ steps.compose.outputs.body }}
 
     # 4. Several hidden blocks would repeat the fallback; keep the first and
-    #    mark the rest skip (htmlText drops data-narration="skip"). Then turn
-    #    the HTML into the text that is read, and hash it with the voice and
-    #    model to tell whether anything audible changed.
+    #    mark the rest data-text="skip" (htmlText always drops it). Then turn
+    #    the HTML into the text that is read. A listen preview reads its
+    #    sample instead.
     - id: text
+      if: ${{ steps.mode.outputs.mode != "listen" }}
       action: set-output
       with:
         html: >-
           ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
           len(parts) < 3 ? steps.render.outputs.body
-          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-narration=\"skip\"") }}
+          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
 
     - id: speech
       action: set-output
       with:
-        text: ${{ trim(htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
+        text: >-
+          ${{ steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
+          : trim(htmlText(steps.text.outputs.html, inputs.skip_selectors ?? "")) }}
 
     # Future: an AI normalization step ("rewrite this as a broadcaster would
     # read it": numbers, symbols, abbreviations, the long tail the built-in
@@ -312,32 +372,24 @@ definition:
     # because the AI's wording varies; cache its output in the
     # distribution's context keyed by that hash.
 
-    # 5. Pronunciations: replace each term with its "say as" text. A term
-    #    matches with the same capitalization, as a whole word when it starts
-    #    or ends with a letter or digit; regex characters in it are escaped.
-    #    "$" is doubled in the replacement.
+    # 5. Pronunciations: replace each term with its "say as" text, as
+    #    written (same capitalization), whole words.
     - id: pronounce
       action: set-output
       with:
         text: >-
-          ${{ reduce(inputs.pronunciations ?? [],
-          let term = trim(toString(#.term ?? ""));
-          term == "" ? #acc
-          : regexReplace((regexMatch("^\\w", term) ? "\\b" : "")
-          + regexReplace(steps.blocks.outputs.meta, term, "\\${1}")
-          + (regexMatch("\\w$", term) ? "\\b" : ""),
-          #acc, replace(toString(#.say_as ?? ""), "$", "$$")),
-          steps.speech.outputs.text) }}
+          ${{ replaceEach(steps.speech.outputs.text, inputs.pronunciations ?? [],
+          {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
 
-    # 6. Built-in cleanup of numbers, symbols and abbreviations (the
-    #    blocks step's cleanup list), after the pronunciations so an
-    #    editor's rule for the same text wins.
+    # 6. Built-in cleanup of numbers, symbols and abbreviations (the blocks
+    #    step's cleanup list), after the pronunciations so an editor's rule
+    #    for the same text wins.
     - id: cleanup
       action: set-output
       with:
         text: >-
           ${{ toBool(inputs.text_cleanup ?? true)
-          ? reduce(steps.blocks.outputs.cleanup ?? [], regexReplace(#.find, #acc, #.say), steps.pronounce.outputs.text)
+          ? replaceEach(steps.pronounce.outputs.text, steps.blocks.outputs.cleanup)
           : steps.pronounce.outputs.text }}
 
     - id: measure
@@ -353,41 +405,76 @@ definition:
           "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
         hash: ${{ sha256(steps.cleanup.outputs.text + "|" + inputs.voice_id + "|" + inputs.model_id) }}
 
-    # The run stops without audio in the two cases below. The reason is
-    # recorded as context.channel_error, which the admin shows under the
-    # distribution (the run itself ends cleanly; there is no generic way to
-    # fail it from YAML yet).
-    - id: empty
-      if: ${{ steps.measure.outputs.characters == 0 }}
+    # PREVIEW (text): return what a publish would read. Changes nothing.
+    - id: preview-text
+      if: ${{ steps.mode.outputs.mode == "text" }}
       then:
-        - id: record-empty
-          action: distribution.update
+        - id: previewed
+          action: set-output
           with:
-            distribution_id: ${{ trigger.distribution_id }}
-            context: >-
-              ${{ merge({"channel_error": "There is no text to read for this audience. Check the body, the skipped paragraphs and the audience."},
-              steps.load.outputs.distribution.context) }}
-        - id: nothing-to-read
+            done: true
+          outputs:
+            text: ${{ steps.cleanup.outputs.text }}
+            characters: ${{ steps.measure.outputs.characters }}
+            limit: ${{ steps.measure.outputs.limit }}
+            model_id: ${{ inputs.model_id }}
+        - id: preview-text-done
           action: workflow.exit
           with:
-            reason: "distribution ${{ trigger.distribution_id }} has no text to read for its audience"
+            reason: "previewed ${{ steps.measure.outputs.characters }} characters"
+
+    # PREVIEW (listen): read the sample in the voice and return the MP3 as
+    # base64 (the with-timestamps variant answers in JSON), at a bitrate
+    # that is enough to judge pronunciation. Nothing is saved; billed.
+    - id: preview-listen
+      if: ${{ steps.mode.outputs.mode == "listen" }}
+      then:
+        - id: sample-too-long
+          if: ${{ steps.measure.outputs.characters > 2000 }}
+          action: workflow.fail
+          with:
+            reason: "A sample is at most 2,000 characters; this one is ${{ steps.measure.outputs.characters }}."
+        - id: sample
+          action: http.post
+          with:
+            url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}/with-timestamps"
+            query:
+              output_format: mp3_22050_32
+            headers:
+              xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+              Content-Type: application/json
+              Accept: application/json
+            body:
+              text: ${{ steps.cleanup.outputs.text }}
+              model_id: ${{ inputs.model_id }}
+            timeout: 2m
+            retries: 1
+            expect_status: [200]
+          outputs:
+            audio: ${{ steps.sample.outputs.body.audio_base64 }}
+            audio_type: audio/mpeg
+            text: ${{ steps.cleanup.outputs.text }}
+        - id: preview-listen-done
+          action: workflow.exit
+          with:
+            reason: "read a ${{ steps.measure.outputs.characters }}-character sample"
+
+    # A publish fails, with the reason shown on the distribution, when there
+    # is nothing to read or the text is too long for the model.
+    - id: empty
+      if: ${{ steps.measure.outputs.characters == 0 }}
+      action: workflow.fail
+      with:
+        reason: "There is no text to read for this audience. Check the body, the skipped paragraphs and the audience."
 
     - id: too-long
       if: ${{ steps.measure.outputs.characters > steps.measure.outputs.limit }}
-      then:
-        - id: record-too-long
-          action: distribution.update
-          with:
-            distribution_id: ${{ trigger.distribution_id }}
-            context: >-
-              ${{ merge({"channel_error": "The text is " + toString(steps.measure.outputs.characters)
-              + " characters; " + inputs.model_id + " reads at most " + toString(steps.measure.outputs.limit)
-              + (inputs.model_id == "eleven_flash_v2_5" ? ". Shorten the body." : ". Shorten the body or choose eleven_flash_v2_5.")},
-              steps.load.outputs.distribution.context) }}
-        - id: stop-too-long
-          action: workflow.exit
-          with:
-            reason: "narration text is ${{ steps.measure.outputs.characters }} characters; ${{ inputs.model_id }} reads at most ${{ steps.measure.outputs.limit }}"
+      action: workflow.fail
+      with:
+        reason: >-
+          ${{ "The text is " + toString(steps.measure.outputs.characters)
+          + " characters; " + inputs.model_id + " reads at most " + toString(steps.measure.outputs.limit)
+          + (inputs.model_id == "eleven_flash_v2_5" ? ". Shorten the body." : ". Shorten the body or choose eleven_flash_v2_5.") }}
 
     # Nothing audible changed since the last publish and the MP3 is still
     # there: keep it. continue-on-error: a missing asset just means it is
@@ -411,8 +498,10 @@ definition:
     #    the run output. overwrite keeps the asset's id across republishes,
     #    and the asset is only written once the whole file has arrived. A
     #    long article takes several minutes; retries counts attempts, and
-    #    every attempt that reaches ElevenLabs is billed.
+    #    every attempt that reaches ElevenLabs is billed. (Previews exited
+    #    above; the mode check keeps it that way.)
     - id: tts
+      if: ${{ steps.mode.outputs.mode == "run" }}
       action: http.post
       with:
         url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}"
@@ -444,8 +533,11 @@ definition:
 
     # 8. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
-    #    channel_error is cleared.
+    #    distribution.update replaces context, so the existing keys are
+    #    merged back in (merge's first argument wins). channel_error, which
+    #    older versions used, is cleared.
     - id: record
+      if: ${{ steps.mode.outputs.mode == "run" }}
       action: distribution.update
       with:
         distribution_id: ${{ trigger.distribution_id }}

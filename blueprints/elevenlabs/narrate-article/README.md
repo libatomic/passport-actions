@@ -15,10 +15,15 @@ WordPress player is a later step.
 | `publish` | first **Publish Now** / scheduled publish | Renders the body for the audience, generates the MP3, records it in the distribution's `context` |
 | `republish` | **Publish Now** on an already-published distribution | Same as publish, but if the spoken text, voice and model are unchanged and the MP3 still exists, ElevenLabs isn't called. Otherwise the MP3 is replaced in place: the asset keeps its id |
 | `delete` | **Delete** on the distribution | Deletes the MP3 (a missing MP3 doesn't block the delete) |
+| `preview` | the admin's narration editor (**Spoken text**, **Listen**) | Returns the text that would be read, or reads a short sample; changes nothing (see Preview) |
 
 After the article is edited, the admin shows the usual *"The article has been
 updated since this distribution was last published"* warning. Press **Update
 Distribution** to copy the new body in, then **Publish Now**.
+
+A publish **fails**, with the reason shown on the distribution, when there is
+nothing to read for the audience or the text is longer than the model allows
+(`workflow.fail`). Fix the body or the model and publish again.
 
 ### One version per audience
 
@@ -30,31 +35,33 @@ branch is replaced by `fallback_text`, read in the same voice. If several
 blocks are hidden, the fallback is read once. An empty `fallback_text` skips
 hidden blocks silently.
 
-A section can have its own spoken line instead of `fallback_text`: in the
-admin's narration editor, edit the section's **Read instead** line. It is
-stored as `<p data-narration="spoken">…</p>` right after the section's
-`{{ else }}` (the editor adds an else branch if there is none), and the rest
-of the else branch is marked skip. The workflow keeps such a section as it
-is, so audiences without access hear that line; sections without one still
-get `fallback_text`, read once. Emptying the line (or the reset button) goes
-back to `fallback_text`.
+A section can have its own line instead of `fallback_text`: in the admin's
+narration editor, edit the section's **Read instead** line. It is stored as
+`<p data-text="instead">…</p>` right after the section's `{{ else }}` (the
+editor adds an else branch if there is none), and the rest of the else branch
+is marked `data-text="skip"`. The workflow keeps such a section as it is, so
+audiences without access hear that line; sections without one still get
+`fallback_text`, read once. Emptying the line (or the reset button) goes back
+to `fallback_text`. The older `data-narration="spoken"` marker still works.
 
 Add one narration distribution per audience that should get its own version,
 for example one for free readers and one for paid subscribers.
 
 ### What is read
 
-`htmlText` turns the rendered HTML into paragraphs. It always skips scripts,
-images, figures, captions, tables, code, forms, navigation, anything with
-`class="no-audio"` and anything marked `data-narration="skip"`. The
-`skip_selectors` input adds more; its default skips WordPress buttons, the
-post title, date, categories, author and share/related blocks.
+`htmlText` turns the rendered HTML into paragraphs. It always skips markup
+that isn't content (scripts, styles, forms, embeds) and anything marked
+`data-text="skip"`. The `skip_selectors` input says what else isn't read; its
+default skips images, media, figures, tables, code, navigation, anything with
+`class="no-audio"` or `data-narration="skip"`, and WordPress chrome (buttons,
+post title, date, categories, author, share and related blocks).
 
 ### The template input
 
 What is read is set by the workflow's `template` input, not a template record.
-It is filled in at install and can be changed by editing the workflow. The
-default reads the title and publish date, then the body:
+It is filled in at install and can be changed under **Settings → Workflows →
+ElevenLabs Narration**. The default reads the title and publish date, then the
+body:
 
 ```
 <p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}
@@ -69,29 +76,34 @@ each `<p>` becomes its own paragraph.
 
 ### Editing what is read
 
-The admin shows a narration distribution's body as the list of paragraphs that
+The channel's `ui:` hints (`body_editor: paragraphs` and the rest) make the
+admin show a narration distribution's body as the list of paragraphs that
 will be read. Each can be edited (as plain text) or switched off, which marks
-it `data-narration="skip"`. Restricted-content tags appear as markers that
-can't be edited, and each paragraph says whether it is read for the
-distribution's audience or replaced by the spoken fallback. "Edit HTML" opens
-the source. None of this changes the article.
+it `data-text="skip"`. Restricted-content tags appear as markers that can't be
+edited, and each paragraph says whether it is read for the distribution's
+audience or replaced. "Edit HTML" opens the source. None of this changes the
+article.
 
 An edited body is flagged as `context.body_edited`. **Update Distribution**
 (after the article changes) then asks before replacing the edits with the
 article's current text.
 
-With **Narration Preview** installed (it comes with the package), the editor
-also offers:
+### Preview
 
-- **Spoken text**: exactly what will be read for the distribution's audience,
-  using the unsaved body: template, spoken fallback, skipped paragraphs and
-  pronunciations applied, with the character count against the model's
-  limit. Nothing is sent to ElevenLabs.
-- **Listen** (the play button on a paragraph): reads that paragraph in the
-  voice, with the pronunciations and cleanup applied. Each sample uses
-  ElevenLabs characters (about the paragraph's length). The audio comes back
-  in the preview run itself, at a lower bitrate; no asset is saved. Samples
-  are capped at 2,000 characters.
+The trigger declares `preview: true`, so the editor can run this workflow as a
+preview (`trigger.action: "preview"`, no side effects):
+
+- **Spoken text**: exactly what would be read for the distribution's audience,
+  using the unsaved body (`trigger.preview.body`): template, fallback, skipped
+  paragraphs, pronunciations and cleanup applied, with the character count
+  against the model's limit. Outputs `text`, `characters`, `limit`,
+  `model_id`. Nothing is sent to ElevenLabs.
+- **Listen** (the play button on a paragraph, and in the pronunciation
+  dialog): reads the `listen` input in the voice, with pronunciations and
+  cleanup applied (the dialog passes its unsaved list as `pronunciations`).
+  The `with-timestamps` request returns the MP3 as base64 at 32 kbps, as the
+  `audio` output; no asset is saved. Each sample uses ElevenLabs characters
+  and is capped at 2,000 characters.
 
 ### Pronunciations
 
@@ -100,13 +112,19 @@ paragraph and choose **Add pronunciation** to add it to this list without
 leaving the distribution; the dialog plays the sentence with the new Say as
 before saving. Rules that apply to a paragraph show as chips under it (click
 one to edit or remove it). Shift + right-click keeps the browser's own menu.
+This is the channel's `ui.term_list` hint.
 
 The `pronunciations` input is a list of **Term** → **Say as** pairs, applied
-to the text just before it is read: `Wemby` → `Wem-bee`, `NBA` → `N B A`,
-`Dr.` → `Doctor`, `$5M` → `5 million dollars`. A term matches with the same
-capitalization, as a whole word (so `US` → `U S` leaves "us" and "USA"
-alone), and characters such as `.`, `+` and `$` are matched literally. Rules
-apply in order, each to the result of the ones before it.
+to the text just before it is read (`replaceEach` with `literal` and `word`):
+`Wemby` → `Wem-bee`, `NBA` → `N B A`, `Dr.` → `Doctor`, `$5M` →
+`5 million dollars`. A term matches with the same capitalization, as a whole
+word (so `US` → `U S` leaves "us" and "USA" alone), and characters such as
+`.`, `+` and `$` are matched literally. Rules apply in order, each to the
+result of the ones before it.
+
+Changing the list changes the text, so the next **Publish Now** of an
+affected article regenerates its audio; articles the change doesn't touch
+are skipped as unchanged.
 
 ### Numbers and symbols
 
@@ -127,17 +145,12 @@ the same text wins):
 
 `21-year-old`, `3-pointer`, `6-foot-9` and `AT&T` are left alone. A date
 written `11-10-2026` would be misread ("11 to 10-2026"); write dates out.
-The rules are the `cleanup` list in the `blocks` step. An AI rewrite for the
-long tail is planned; the blueprint marks where it goes.
+The rules are the `cleanup` list in the `blocks` step, applied with
+`replaceEach`. An AI rewrite for the long tail is planned; the blueprint
+marks where it goes.
 
 Turning the cleanup on or off, or changing a rule, changes the text of the
 articles it touches, so their next **Publish Now** regenerates the audio.
-
-Changing the list changes the text, so the next **Publish Now** of an
-affected article regenerates its audio; articles the change doesn't touch
-are skipped as unchanged. Narration Preview has its own copy of the
-inputs; change them under **Settings → Workflows → ElevenLabs Narration**,
-which updates both workflows together.
 
 ### Length
 
@@ -152,18 +165,13 @@ Each model has a per-request limit, checked before ElevenLabs is called
 | `eleven_v3` | 5,000 | |
 
 The count is in bytes, so accented letters and curly quotes count more than
-once. Text over the limit stops the run and records the reason on the
-distribution as `context.channel_error`, which the admin shows under the
-distribution. An empty text (nothing readable for the audience) is recorded the
-same way.
-
-> The run *exits* rather than *fails* in these cases, so the distribution
-> still shows as published; the error under it says why there is no audio.
-
-A long article takes several minutes to generate; the request allows 15
-minutes.
+once. Text over the limit, or no text at all, fails the publish with the
+reason. A long article takes several minutes to generate; the request allows
+15 minutes.
 
 ## Inputs
+
+All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 
 | Input | Default | Description |
 |---|---|---|
@@ -171,9 +179,10 @@ minutes.
 | `model_id` | `eleven_flash_v2_5` | See Length |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |
-| `skip_selectors` | WordPress chrome (see above) | Comma-separated CSS selectors not to read |
+| `skip_selectors` | Media, figures, tables, code, navigation, `.no-audio`, WordPress chrome | Comma-separated CSS selectors not to read |
 | `pronunciations` | none | Term → Say as replacements (see Pronunciations) |
 | `text_cleanup` | on | Rewrite numbers, symbols and abbreviations (see Numbers and symbols) |
+| `listen` | — (runtime) | Set by the editor for a Listen preview; not configured |
 
 ## Recorded on the distribution (`context`)
 
@@ -185,7 +194,7 @@ minutes.
 | `characters_billed` | ElevenLabs' `character-cost` header for the request |
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
-| `channel_error` | Why the last run stopped without audio; empty after a successful run. The admin shows it under the distribution |
+| `channel_error` | Cleared on a successful publish (older versions recorded stops here; failures are now the publish's own error) |
 | `body_edited` | Set by the admin when the body was edited for narration |
 
 The asset's `metadata.narration` carries the distribution, article, audience,
@@ -197,8 +206,9 @@ voice, model and text hash too, and its duration is read from the MP3.
   access. Give it a credit limit in ElevenLabs to cap spending.
 - `api.elevenlabs.io` on the instance's HTTP allowlist.
 - Atomic with `http.*` `response_asset`, `asset.delete`, `htmlText`, `sha256`,
-  `distribution.render` `as_audience`/`body`, and template-less distributions
-  rendering their own body (earlier builds panic on them).
+  `replaceEach`, `workflow.fail`, `distribution.render` `as_audience`/`body`,
+  distribution-trigger `preview`/`ui`, and template-less distributions
+  rendering their own body.
 
 ## Restricted-block rewrite
 
@@ -206,10 +216,10 @@ The rewrite is a `regexReplace` in the `blocks`/`rewrite` steps. It matches an
 `if hasAnyAudience` or `if audiences` block with no other template action
 nested inside it, with or without an `{{ else }}`, and replaces the else
 branch. A section whose else tag is followed (past closing tags and
-whitespace) by `<p data-narration="spoken">` is protected first: its else tag
-is swapped for `custom_open`, which the pattern doesn't match, and swapped
-back afterwards. Other blocks (e.g. legacy `isChannel`) are left alone. A block that
-nests another template action keeps its original else branch, so its web
-call to action would be read. The expressions (and the pronunciation and cleanup steps)
-are pinned by `pkg/atomic/workflow_expr_narration_test.go` in atomic and
-copied into `elevenlabs/narration-preview`; keep all three in sync.
+whitespace) by `<p data-text="instead">` (or `data-narration="spoken"`) is
+protected first: its else tag is swapped for `custom_open`, which the pattern
+doesn't match, and swapped back afterwards. Other blocks (e.g. legacy
+`isChannel`) are left alone. A block that nests another template action keeps
+its original else branch, so its web call to action would be read. The
+expressions are pinned by `pkg/atomic/workflow_expr_narration_test.go` in
+atomic; keep the two in sync.
