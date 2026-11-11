@@ -107,6 +107,16 @@ user/subscription/plan ids, interval, renewal state) where relevant.
 | `blueprints/cm/subscription-canceled` | `user.subscription.deleted` | Clear subscription fields, stamp `SubscriptionExpiredAt` |
 | `blueprints/cm/user-deleted` | `user.deleted` | Delete from a list (erasure) |
 
+#### ElevenLabs
+
+The `elevenlabs` package (`packages/elevenlabs`). Needs the `ELEVENLABS_API_KEY`
+secret and `api.elevenlabs.io` on the HTTP allowlist.
+
+| Blueprint | Trigger | Action |
+|-----------|---------|--------|
+| `blueprints/elevenlabs/narrate-article` | `narration` distribution channel | Read the body aloud as the distribution's audience sees it; store the MP3 as an asset |
+| `blueprints/elevenlabs/list-voices` | manual | List voice ids and the characters left this month |
+
 #### Usage
 
 Each blueprint contains a `definition` block that is a complete workflow YAML document. The
@@ -318,6 +328,10 @@ npm run build
 Recipes don't need building — they're YAML files parsed directly by the workflow engine.
 
 ## Creating New Components
+
+> Start with [AUTHORING.md](AUTHORING.md): it lists every building block
+> (triggers, step kinds, actions, functions, admin contracts and editor hints),
+> reference blueprints to copy, the gotchas and a checklist.
 
 ### Creating a Blueprint
 

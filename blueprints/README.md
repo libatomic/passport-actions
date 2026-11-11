@@ -215,6 +215,9 @@ on:
       content_type: html
       requires_audience: true
       application: spotify    # only this application's audiences can be selected
+      preview: true           # optional: answers trigger.action "preview" (no side effects)
+      ui:                     # optional: hints for the admin's distribution editor
+        body_editor: paragraphs
 ```
 
 Saving the workflow **registers the channel**: it then appears in an article's
@@ -242,6 +245,13 @@ Record the destination's id in the distribution's `context` with
   when the destination only knows entitlements provisioned through that
   application, as Spotify Open Access does through the Spotify OIDC
   application. A UI hint; not enforced by the API.
+- **`preview: true`** lets the admin run the workflow as a preview
+  (`trigger.action: "preview"`): it returns what a publish would produce as
+  run `outputs` and changes nothing. **`ui:`** carries editor hints the engine
+  ignores. See [AUTHORING.md](../AUTHORING.md#admin-editor-hints-ui);
+  `elevenlabs/narrate-article` uses both.
+- End with **`workflow.fail`** (and a reason) when the workflow can't publish:
+  the publish fails with the reason, shown on the distribution.
 - A separate manual blueprint can declare a top-level **`channel: <name>`**
   to attach itself as that channel's status check (`spotify/episode-status`
   does). Together with `context.channel_link` written on publish, that gives

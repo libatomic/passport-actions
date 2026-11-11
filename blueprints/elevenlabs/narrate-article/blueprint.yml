@@ -1,0 +1,821 @@
+name: Audio Narration (ElevenLabs)
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+description: |
+  Defines a custom "narration" distribution channel. Publishing a narration
+  distribution reads its body aloud with an ElevenLabs voice and stores the
+  result as a private MP3 asset (narration-<distribution id>.mp3).
+
+  AUDIENCE: each narration distribution has one audience, and the body is
+  rendered as a member of that audience. Restricted-content blocks the
+  audience can see are read; blocks it can't see are replaced by a short
+  spoken note (the fallback_text input) instead of the web call to action.
+  Add one narration distribution per audience that should get its own
+  version.
+
+  LIFECYCLE: republish regenerates the audio in place (same asset id) only
+  if the spoken text, voice or model changed; otherwise ElevenLabs isn't
+  called. Deleting the distribution deletes its MP3. A narration with no
+  text for its audience, or longer than the max_characters input, fails
+  the publish with the reason.
+
+  VOICE: the voice_id input is the default voice. List others in the
+  voices input and the distribution editor offers a Voice menu; the pick
+  is saved on the distribution (context.voice).
+
+  VOICE TAGS: editors can type tags into the body to direct the delivery:
+  [pause], [short pause], [long pause] and [pause 1.5s] on every model
+  (sent as SSML breaks, except on eleven_v3), and on eleven_v3 also
+  [whispers], [sighs], [laughs], emotions such as [excited] and a few
+  sounds. With another model the eleven_v3-only tags are left out. The
+  editor lists them for the channel's model (the Voice tags button).
+
+  LONG ARTICLES: each model takes a limited amount of text per request
+  (5,000 characters on eleven_v3). Longer text is split between
+  paragraphs, then sentences, read one piece per request (each piece
+  given the text around it, except on eleven_v3, so the joins sound
+  continuous), and the pieces' audio joined into the one MP3. The
+  published MP3 is only replaced once every piece has been read.
+
+  PREVIEW: the admin's narration editor runs this workflow as a preview
+  (trigger.action "preview"): it returns the text that would be read, or
+  reads a short sample in the voice, and changes nothing. After the article is
+  edited, use the distribution's "Update Distribution" button to copy the
+  new body in, then Publish Now.
+
+  The template input sets what is read around the body, e.g. a line with
+  the title and publish date; it is part of the workflow, not a template
+  record. Edit the distribution's body to change what is read without
+  touching the article.
+
+  Requires the ELEVENLABS_API_KEY secret and a voice id (run "List
+  ElevenLabs Voices" to find one). api.elevenlabs.io must be on the
+  instance's HTTP allowlist (Workflows → Settings → Allowed HTTP hosts).
+category: content
+inputs:
+  voice_id:
+    label: Voice
+    description: >-
+      The default voice: an ElevenLabs voice id, a premade voice or your own
+      clone (see List ElevenLabs Voices)
+    type: string
+    required: true
+    default: ""
+  voice_name:
+    label: Default voice name
+    description: >-
+      What the distribution editor's Voice menu calls the default voice,
+      e.g. the narrator's name.
+    type: string
+    default: ""
+  voices:
+    label: Other voices
+    description: >-
+      Voices a narration distribution can use instead of the default: the
+      distribution editor offers them in a Voice menu. Leave empty to read
+      every narration in the default voice.
+    hint: "e.g. Name: Jon, Voice id: from List ElevenLabs Voices"
+    type: list
+    items:
+      - { name: label, label: Name }
+      - { name: voice_id, label: Voice id }
+    default: []
+  model_id:
+    label: Model
+    description: >-
+      ElevenLabs model. Each request carries at most 40,000 characters on
+      eleven_flash_v2_5 and eleven_turbo_v2_5, 10,000 on
+      eleven_multilingual_v2 and 5,000 on eleven_v3; a longer article is
+      read in several requests and the audio joined into one MP3.
+    type: string
+    default: eleven_flash_v2_5
+    enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+  fallback_text:
+    label: Spoken note for restricted sections
+    description: >-
+      Read in place of a restricted section the audience can't access. Leave
+      empty to skip those sections silently.
+    type: string
+    default: "The rest of this section is for subscribers. Subscribe to hear the full article."
+  template:
+    label: What is read
+    description: >-
+      What is read, as a template. {{ .distribution.body }} is the
+      distribution's body, rendered for its audience; the rest can use the
+      usual template data and functions, e.g. {{ .article.title }} and
+      timeFormat. Without {{ .distribution.body }} the body is read after it.
+    type: string
+    default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}'
+  skip_parts:
+    label: Page parts to skip
+    description: >-
+      CSS selectors for page parts that shouldn't be read, comma-separated.
+      The default skips images, media, figures, tables, code, navigation,
+      anything with class="no-audio" and WordPress chrome (buttons, post
+      title, date, categories, author, share and related blocks). Scripts,
+      forms and anything marked data-text="skip" are always skipped.
+    type: string
+    default: 'img, picture, video, audio, figure, figcaption, aside, nav, pre, code, table, .no-audio, [data-narration="skip"], .wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts'
+  pronunciations:
+    label: Pronunciations
+    description: >-
+      Words the voice should say differently, e.g. a name it gets wrong.
+      Each Term is replaced by its Say as text before the text is read.
+      Terms match whole words with the same capitalization (Dr. and C++
+      work too).
+    hint: "e.g. Term: Wemby, Say as: Wem-bee"
+    type: list
+    items:
+      - { name: term, label: Term }
+      - { name: say_as, label: Say as }
+    default: []
+  text_cleanup:
+    label: Clean up numbers and symbols
+    description: >-
+      Rewrite money, percentages, scores, heights and common abbreviations
+      the way a broadcaster reads them ($5M → 5 million dollars, 112-108 →
+      112 to 108, No. 1 → number 1, vs. → versus). Runs after the
+      pronunciations, so a pronunciation for the same text wins.
+    type: bool
+    default: true
+  max_characters:
+    label: Longest article to read
+    description: >-
+      A publish fails when the text to read is longer than this many
+      characters, to cap what one article can cost. 0 reads any length.
+    type: integer
+    default: 0
+  listen:
+    label: Sample to read
+    description: >-
+      Set by the admin's narration editor for a preview: read this text
+      (pronunciations and cleanup applied) in the voice and return the
+      audio, instead of previewing the distribution's text.
+    type: string
+    runtime: true
+definition:
+  name: Audio Narration (ElevenLabs)
+  description: >-
+    Reads a narration distribution's body aloud with ElevenLabs, as its
+    audience sees it, and stores the MP3 as an asset. Republish regenerates
+    it in place; delete removes it.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+  version: 1
+
+  on:
+    - distribution:
+        channel: narration
+        label: Audio Narration
+        mode: broadcast
+        # html, not text: creating a distribution copies the article's HTML
+        # body in, and text channels reject HTML.
+        content_type: html
+        # The body is rendered as a member of this audience.
+        requires_audience: true
+        # The admin can ask what a publish would read, or play a sample,
+        # with trigger.action "preview" (see the PREVIEW steps).
+        preview: true
+        # Hints for the admin's distribution editor (see AUTHORING.md).
+        ui:
+          body_editor: paragraphs
+          preview_label: Spoken text
+          skip_input: skip_parts
+          section_line:
+            input: fallback_text
+            label: Read instead
+          sample: audio
+          term_list:
+            input: pronunciations
+            find: term
+            replace: say_as
+            label: Pronunciation
+          # A Voice menu on the distribution, from the voices input; the
+          # pick is saved in the distribution's context as `voice`.
+          choice:
+            key: voice
+            title: Voice
+            input: voices
+            value: voice_id
+            label: label
+            default_input: voice_id
+            default_label_input: voice_name
+            help: >-
+              The voice that reads this narration. Changing it regenerates
+              the audio on the next Publish Now.
+          # Tags editors can type into the body to direct the delivery, by
+          # model (the model_id input); "default" covers the other models.
+          # The tags step turns them into what each model understands.
+          tags:
+            input: model_id
+            title: Voice tags
+            sets:
+              eleven_v3:
+                note: >-
+                  Type a tag in square brackets just before the words it
+                  changes. Tags are suggestions, not commands: not every
+                  voice responds to every tag (a serious narrator may ignore
+                  playful ones), and sounds such as [applause] are the least
+                  reliable. Try a paragraph with Listen before publishing.
+                groups:
+                  - label: Pauses
+                    tags:
+                      - { tag: "[short pause]" }
+                      - { tag: "[pause]" }
+                      - { tag: "[long pause]" }
+                  - label: Voice
+                    tags:
+                      - { tag: "[whispers]" }
+                      - { tag: "[sighs]" }
+                      - { tag: "[exhales]" }
+                      - { tag: "[inhales deeply]" }
+                      - { tag: "[clears throat]" }
+                      - { tag: "[laughs]" }
+                      - { tag: "[chuckles]" }
+                      - { tag: "[giggles]" }
+                      - { tag: "[crying]" }
+                      - { tag: "[muttering]" }
+                  - label: Emotion and delivery
+                    tags:
+                      - { tag: "[excited]" }
+                      - { tag: "[happy]" }
+                      - { tag: "[sad]" }
+                      - { tag: "[angry]" }
+                      - { tag: "[annoyed]" }
+                      - { tag: "[curious]" }
+                      - { tag: "[surprised]" }
+                      - { tag: "[thoughtful]" }
+                      - { tag: "[sarcastic]" }
+                      - { tag: "[mischievously]" }
+                      - { tag: "[sympathetic]" }
+                      - { tag: "[reassuring]" }
+                      - { tag: "[professional]" }
+                      - { tag: "[deadpan]" }
+                      - { tag: "[dramatically]" }
+                  - label: Sounds
+                    tags:
+                      - { tag: "[applause]" }
+                      - { tag: "[clapping]" }
+                      - { tag: "[gulps]" }
+                  - label: Experimental
+                    tags:
+                      - { tag: "[strong British accent]", hint: "any accent: [strong Irish accent]" }
+                      - { tag: "[sings]" }
+              default:
+                note: >-
+                  This model takes pauses only: [pause] is about a second,
+                  [pause 2.5s] sets the length (up to 3 seconds). Too many
+                  in one article can make the voice speed up. The other
+                  tags (whispers, emotions, sounds) need eleven_v3; with
+                  this model they are left out. Even on eleven_v3, not every
+                  voice responds to every tag.
+                groups:
+                  - label: Pauses
+                    tags:
+                      - { tag: "[short pause]", hint: "half a second" }
+                      - { tag: "[pause]", hint: "1 second" }
+                      - { tag: "[long pause]", hint: "2 seconds" }
+                      - { tag: "[pause 1.5s]", hint: "a set length, up to 3s" }
+
+  inputs:
+    voice_id:
+      label: Voice
+      description: >-
+        The default voice: an ElevenLabs voice id, a premade voice or your own
+        clone (see List ElevenLabs Voices)
+      type: string
+      required: true
+      default: ""
+    voice_name:
+      label: Default voice name
+      description: >-
+        What the distribution editor's Voice menu calls the default voice,
+        e.g. the narrator's name.
+      type: string
+      default: ""
+    voices:
+      label: Other voices
+      description: >-
+        Voices a narration distribution can use instead of the default: the
+        distribution editor offers them in a Voice menu. Leave empty to read
+        every narration in the default voice.
+      hint: "e.g. Name: Jon, Voice id: from List ElevenLabs Voices"
+      type: list
+      items:
+        - { name: label, label: Name }
+        - { name: voice_id, label: Voice id }
+      default: []
+    model_id:
+      label: Model
+      description: >-
+        ElevenLabs model. Each request carries at most 40,000 characters on
+        eleven_flash_v2_5 and eleven_turbo_v2_5, 10,000 on
+        eleven_multilingual_v2 and 5,000 on eleven_v3; a longer article is
+        read in several requests and the audio joined into one MP3.
+      type: string
+      default: eleven_flash_v2_5
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+    fallback_text:
+      label: Spoken note for restricted sections
+      description: >-
+        Read in place of a restricted section the audience can't access. Leave
+        empty to skip those sections silently.
+      type: string
+      default: "The rest of this section is for subscribers. Subscribe to hear the full article."
+    template:
+      label: What is read
+      description: >-
+        What is read, as a template. {{ .distribution.body }} is the
+        distribution's body, rendered for its audience; the rest can use the
+        usual template data and functions, e.g. {{ .article.title }} and
+        timeFormat. Without {{ .distribution.body }} the body is read after it.
+      type: string
+      default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}'
+    skip_parts:
+      label: Page parts to skip
+      description: >-
+        CSS selectors for page parts that shouldn't be read, comma-separated.
+        The default skips images, media, figures, tables, code, navigation,
+        anything with class="no-audio" and WordPress chrome (buttons, post
+        title, date, categories, author, share and related blocks). Scripts,
+        forms and anything marked data-text="skip" are always skipped.
+      type: string
+      default: 'img, picture, video, audio, figure, figcaption, aside, nav, pre, code, table, .no-audio, [data-narration="skip"], .wp-block-buttons, .wp-block-post-title, .wp-block-post-date, .wp-block-post-terms, .wp-block-post-author, .wp-block-social-links, .sharedaddy, .jp-relatedposts'
+    pronunciations:
+      label: Pronunciations
+      description: >-
+        Words the voice should say differently, e.g. a name it gets wrong.
+        Each Term is replaced by its Say as text before the text is read.
+        Terms match whole words with the same capitalization (Dr. and C++
+        work too).
+      hint: "e.g. Term: Wemby, Say as: Wem-bee"
+      type: list
+      items:
+        - { name: term, label: Term }
+        - { name: say_as, label: Say as }
+      default: []
+    text_cleanup:
+      label: Clean up numbers and symbols
+      description: >-
+        Rewrite money, percentages, scores, heights and common abbreviations
+        the way a broadcaster reads them ($5M → 5 million dollars, 112-108 →
+        112 to 108, No. 1 → number 1, vs. → versus). Runs after the
+        pronunciations, so a pronunciation for the same text wins.
+      type: bool
+      default: true
+    max_characters:
+      label: Longest article to read
+      description: >-
+        A publish fails when the text to read is longer than this many
+        characters, to cap what one article can cost. 0 reads any length.
+      type: integer
+      default: 0
+    listen:
+      label: Sample to read
+      description: >-
+        Set by the admin's narration editor for a preview: read this text
+        (pronunciations and cleanup applied) in the voice and return the
+        audio, instead of previewing the distribution's text.
+      type: string
+      runtime: true
+
+  steps:
+    # What this run does: "run" (publish, republish), or for an admin
+    # preview "text" (what would be read) or "listen" (read inputs.listen).
+    - id: mode
+      action: set-output
+      with:
+        mode: >-
+          ${{ trigger.action != "preview" ? "run"
+          : trim(inputs.listen ?? "") != "" ? "listen" : "text" }}
+
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+      outputs:
+        asset_id: ${{ steps.load.outputs.distribution.context?.asset_id ?? "" }}
+        text_hash: ${{ steps.load.outputs.distribution.context?.text_hash ?? "" }}
+
+    # The voice: the distribution's pick (context.voice, or the editor's
+    # unsaved pick for a preview) when it is still one of the voices,
+    # otherwise the default.
+    - id: voice
+      action: set-output
+      with:
+        id: >-
+          ${{ let picked = trim(toString(trigger.preview?.context?.voice
+          ?? steps.load.outputs.distribution.context?.voice ?? ""));
+          picked != "" && (picked == inputs.voice_id || picked in map(inputs.voices ?? [], toString(.voice_id)))
+          ? picked : inputs.voice_id }}
+
+    # DELETE: runs before the distribution row is removed. The MP3 belongs
+    # to this distribution alone, so it goes too. continue-on-error: an
+    # asset someone already deleted by hand mustn't block the delete.
+    - id: teardown
+      if: ${{ trigger.action == "delete" }}
+      then:
+        - id: remove
+          if: ${{ outputs.asset_id != "" }}
+          action: asset.delete
+          continue-on-error: true
+          with:
+            asset_id: ${{ outputs.asset_id }}
+        - id: deleted
+          action: workflow.exit
+          with:
+            reason: "narration ${{ outputs.asset_id }} removed"
+
+    # PUBLISH / REPUBLISH / PREVIEW.
+    #
+    # 1. Swap each restricted block's else branch for the spoken fallback,
+    #    unless an editor wrote that section's own line ("read instead").
+    #    The patterns and pieces of the replacement are plain strings (no
+    #    ${{ }}), because an expression can't contain a literal "}}". The
+    #    pattern matches an `if hasAnyAudience`/`if audiences` block with no
+    #    template action nested inside it, with or without an else branch;
+    #    other blocks (e.g. isChannel) are left as they are.
+    - id: blocks
+      action: set-output
+      with:
+        pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        open: "{{ else }}"
+        close: "{{ end }}"
+        # An else branch that starts with an editor's own line
+        # (<p data-text="instead">, or the older data-narration="spoken")
+        # keeps it: its else tag is swapped for custom_open first, which
+        # the pattern above doesn't match, then swapped back.
+        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-(?:text="instead"|narration="spoken"))'
+        custom_open: "{{ narration-else }}"
+        # Where the body goes in the template input.
+        body_pattern: '\{\{-?\s*\.distribution\.body\s*-?\}\}'
+        # The body's own document wrapper (<html>, <head>…</head>, <body>),
+        # removed so the template can go in front of it.
+        doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
+        # Built-in cleanup (the cleanup step), applied in order by
+        # replaceEach: find is an RE2 pattern, ${1} its first group.
+        cleanup:
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', replace: '${1} million dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', replace: '${1} billion dollars' }
+          - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', replace: '${1} thousand dollars' }
+          - { find: '(\d)\s?%', replace: '${1} percent' }
+          - { find: '\bNo\.\s?(\d)', replace: 'number ${1}' }
+          - { find: '#(\d)', replace: 'number ${1}' }
+          - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', replace: '${1} foot ${2}' }
+          - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', replace: '${1} ${2}' }
+          - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', replace: '${1} to ${2}' }
+          - { find: '\bvs\.?(\s)', replace: 'versus${1}' }
+          - { find: '\s&\s', replace: ' and ' }
+          - { find: '\be\.g\.', replace: 'for example' }
+          - { find: '\bi\.e\.', replace: 'that is' }
+          - { find: '\betc\.', replace: 'et cetera' }
+          - { find: '\bJr\.', replace: 'Junior' }
+          - { find: '\bSr\.', replace: 'Senior' }
+        # Voice tags typed into the body (the ui tags hint lists them),
+        # applied by the tags step. eleven_v3 reads square-bracket tags
+        # itself; a set-length pause becomes a plain one.
+        tags_v3:
+          - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '[pause]' }
+        # The other models take SSML breaks (at most 3s) and nothing else:
+        # pauses become breaks, the v3-only tags are left out (only these
+        # words, so other bracketed text in an article is still read).
+        tags_other:
+          - { find: '\[short pause\]', replace: '<break time="0.5s" />' }
+          - { find: '\[long pause\]', replace: '<break time="2s" />' }
+          - { find: '\[pauses?\]', replace: '<break time="1s" />' }
+          - { find: '\[pause\s+([0-2](?:\.\d+)?|3(?:\.0+)?)\s*s\]', replace: '<break time="${1}s" />' }
+          - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '<break time="3s" />' }
+          - { find: '\s*\[(?:whispers?|whispering|sighs?|exhales(?: sharply)?|inhales deeply|clears throat|laughs(?: harder)?|laughing|starts laughing|chuckles|giggles|crying|muttering|excited(?:ly)?|happy|sad|angry|annoyed|curious|surprised|thoughtful|sarcastic|mischievously|sympathetic|reassuring|professional|deadpan|dramatically|applause|clapping|gulps|swallows|sings|singing|strong [a-z -]+ accent)\]', replace: '' }
+
+    # A preview reads the admin's unsaved body when it sends one.
+    - id: source
+      if: ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        body: >-
+          ${{ trim(trigger.preview?.body ?? "") != "" ? trigger.preview.body
+          : steps.load.outputs.distribution.body ?? "" }}
+
+    - id: rewrite
+      if: ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        # "$" is special in a regexReplace replacement, so it is doubled in
+        # the admin's text.
+        body: >-
+          ${{ let kept = regexReplace(steps.blocks.outputs.custom_pattern,
+          steps.source.outputs.body, steps.blocks.outputs.custom_open + "${1}");
+          let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
+          "${1}" + steps.blocks.outputs.open
+          + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")
+          + steps.blocks.outputs.close);
+          replace(rewritten, steps.blocks.outputs.custom_open, steps.blocks.outputs.open) }}
+
+    # 2. Put the body into the template input, so the two render in one pass
+    #    (a template's {{ .distribution.body }} would otherwise come out as
+    #    the raw body, restricted-block tags and all). A template without the
+    #    placeholder is followed by the body; an empty one is just the body.
+    - id: compose
+      if: ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        body: >-
+          ${{ let body = regexReplace(steps.blocks.outputs.doc_pattern, steps.rewrite.outputs.body, "");
+          trim(inputs.template ?? "") == "" ? body
+          : regexMatch(steps.blocks.outputs.body_pattern, inputs.template)
+          ? regexReplace(steps.blocks.outputs.body_pattern, inputs.template, replace(body, "$", "$$"))
+          : inputs.template + body }}
+
+    # 3. Render it as a member of the distribution's audience: blocks it can
+    #    see render their content, the others render the fallback.
+    - id: render
+      if: ${{ steps.mode.outputs.mode != "listen" }}
+      action: distribution.render
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+        as_audience: true
+        body: ${{ steps.compose.outputs.body }}
+
+    # 4. Several hidden blocks would repeat the fallback; keep the first and
+    #    mark the rest data-text="skip" (htmlText always drops it). Then turn
+    #    the HTML into the text that is read. A listen preview reads its
+    #    sample instead.
+    - id: text
+      if: ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        html: >-
+          ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
+          len(parts) < 3 ? steps.render.outputs.body
+          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
+
+    - id: speech
+      action: set-output
+      with:
+        text: >-
+          ${{ steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
+          : trim(htmlText(steps.text.outputs.html, inputs.skip_parts ?? "")) }}
+
+    # Future: an AI normalization step ("rewrite this as a broadcaster would
+    # read it": numbers, symbols, abbreviations, the long tail the built-in
+    # cleanup misses) goes here, between speech and pronounce, so the
+    # editors' pronunciations still apply after it. When it is on, skip the
+    # cleanup step. Hash the text from *before* the AI step (plus the model
+    # and prompt) in measure, or every republish would regenerate the audio
+    # because the AI's wording varies; cache its output in the
+    # distribution's context keyed by that hash.
+
+    # 5. Pronunciations: replace each term with its "say as" text, as
+    #    written (same capitalization), whole words.
+    - id: pronounce
+      action: set-output
+      with:
+        text: >-
+          ${{ replaceEach(steps.speech.outputs.text, inputs.pronunciations ?? [],
+          {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
+
+    # 6. Built-in cleanup of numbers, symbols and abbreviations (the blocks
+    #    step's cleanup list), after the pronunciations so an editor's rule
+    #    for the same text wins.
+    - id: cleanup
+      action: set-output
+      with:
+        text: >-
+          ${{ toBool(inputs.text_cleanup ?? true)
+          ? replaceEach(steps.pronounce.outputs.text, steps.blocks.outputs.cleanup)
+          : steps.pronounce.outputs.text }}
+
+    # 7. Voice tags typed into the body ([pause], [whispers], …): kept for
+    #    eleven_v3, turned into breaks or left out for the other models.
+    - id: tags
+      action: set-output
+      with:
+        text: >-
+          ${{ trim(replaceEach(steps.cleanup.outputs.text,
+          inputs.model_id == "eleven_v3" ? steps.blocks.outputs.tags_v3 : steps.blocks.outputs.tags_other,
+          {"ignoreCase": true})) }}
+
+    - id: measure
+      action: set-output
+      with:
+        # len() counts bytes, so accented letters and curly quotes count
+        # more than once: max_characters errs on the safe side.
+        characters: ${{ len(steps.tags.outputs.text) }}
+        # The most one request may carry, per ElevenLabs' /v1/models. Pieces
+        # are cut a little shorter, as ElevenLabs may count some characters
+        # differently.
+        request_limit: >-
+          ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
+          "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
+        hash: ${{ sha256(steps.tags.outputs.text + "|" + steps.voice.outputs.id + "|" + inputs.model_id) }}
+
+    # The text in pieces of at most one request each, broken between
+    # paragraphs, then sentences.
+    - id: pieces
+      action: set-output
+      with:
+        chunks: ${{ chunkText(steps.tags.outputs.text, toInt(steps.measure.outputs.request_limit * 95 / 100)) }}
+      outputs:
+        requests: ${{ len(steps.pieces.outputs.chunks) }}
+
+    # PREVIEW (text): return what a publish would read. Changes nothing.
+    - id: preview-text
+      if: ${{ steps.mode.outputs.mode == "text" }}
+      then:
+        - id: previewed
+          action: set-output
+          with:
+            done: true
+          outputs:
+            text: ${{ steps.tags.outputs.text }}
+            characters: ${{ steps.measure.outputs.characters }}
+            # the admin flags text over limit; 0 is no limit
+            limit: ${{ toInt(inputs.max_characters ?? 0) }}
+            requests: ${{ outputs.requests }}
+            note: >-
+              ${{ outputs.requests > 1 ? "Read in " + toString(outputs.requests)
+              + " requests to " + inputs.model_id + ", joined into one MP3" : "" }}
+        - id: preview-text-done
+          action: workflow.exit
+          with:
+            reason: "previewed ${{ steps.measure.outputs.characters }} characters"
+
+    # PREVIEW (listen): read the sample in the voice and return the MP3 as
+    # base64 (the with-timestamps variant answers in JSON), at a bitrate
+    # that is enough to judge pronunciation. Nothing is saved; billed.
+    - id: preview-listen
+      if: ${{ steps.mode.outputs.mode == "listen" }}
+      then:
+        - id: sample-too-long
+          if: ${{ steps.measure.outputs.characters > 2000 }}
+          action: workflow.fail
+          with:
+            reason: "A sample is at most 2,000 characters; this one is ${{ steps.measure.outputs.characters }}."
+        - id: sample
+          action: http.post
+          with:
+            url: "https://api.elevenlabs.io/v1/text-to-speech/${{ steps.voice.outputs.id }}/with-timestamps"
+            query:
+              output_format: mp3_22050_32
+            headers:
+              xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+              Content-Type: application/json
+              Accept: application/json
+            body:
+              text: ${{ steps.tags.outputs.text }}
+              model_id: ${{ inputs.model_id }}
+            timeout: 2m
+            retries: 1
+            expect_status: [200]
+          outputs:
+            audio: ${{ steps.sample.outputs.body.audio_base64 }}
+            audio_type: audio/mpeg
+            text: ${{ steps.tags.outputs.text }}
+        - id: preview-listen-done
+          action: workflow.exit
+          with:
+            reason: "read a ${{ steps.measure.outputs.characters }}-character sample"
+
+    # A publish fails, with the reason shown on the distribution, when there
+    # is nothing to read or the text is longer than max_characters.
+    - id: empty
+      if: ${{ steps.measure.outputs.characters == 0 }}
+      action: workflow.fail
+      with:
+        reason: "There is no text to read for this audience. Check the body, the skipped paragraphs and the audience."
+
+    - id: too-long
+      if: ${{ toInt(inputs.max_characters ?? 0) > 0 && steps.measure.outputs.characters > toInt(inputs.max_characters) }}
+      action: workflow.fail
+      with:
+        reason: >-
+          ${{ "The text is " + toString(steps.measure.outputs.characters)
+          + " characters, over the channel's limit of " + toString(toInt(inputs.max_characters))
+          + " (Longest article to read). Shorten the body or raise the limit." }}
+
+    # Nothing audible changed since the last publish and the MP3 is still
+    # there: keep it. continue-on-error: a missing asset just means it is
+    # generated again.
+    - id: current
+      if: ${{ outputs.asset_id != "" && outputs.text_hash == steps.measure.outputs.hash }}
+      action: asset.get
+      continue-on-error: true
+      with:
+        asset_id: ${{ outputs.asset_id }}
+
+    - id: unchanged
+      if: ${{ steps.current?.outputs?.asset != nil }}
+      then:
+        - id: reuse
+          action: workflow.exit
+          with:
+            reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
+
+    # 8. Generate, one request per piece. Each piece's MP3 goes straight
+    #    into the asset store, never into the run output. A single piece is
+    #    written as the narration itself; several are written as
+    #    narration-<id>-part-<n>.mp3 and joined below. overwrite keeps the
+    #    asset's id across republishes, and an asset is only written once
+    #    its whole file has arrived, so a run that fails partway leaves the
+    #    published MP3 as it was. Every request that reaches ElevenLabs is
+    #    billed; retries counts attempts. (Previews exited above; the mode
+    #    check keeps it that way.)
+    #
+    #    previous_text/next_text give the voice the text around a piece so
+    #    the joins sound continuous. eleven_v3 doesn't support them (nor
+    #    request stitching), so its pieces are read on their own.
+    - id: plan
+      if: ${{ steps.mode.outputs.mode == "run" }}
+      action: set-output
+      with:
+        parts: >-
+          ${{ let chunks = steps.pieces.outputs.chunks; let n = len(chunks);
+          let base = "narration-" + toString(trigger.distribution_id);
+          map(chunks, ({"text": #, "index": #index + 1,
+          "filename": n == 1 ? base + ".mp3" : base + "-part-" + toString(#index + 1) + ".mp3",
+          "previous": #index > 0 ? chunks[#index - 1] : nil,
+          "next": #index < n - 1 ? chunks[#index + 1] : nil})) }}
+        metadata:
+          narration:
+            distribution_id: ${{ trigger.distribution_id }}
+            article_id: ${{ steps.load.outputs.distribution.article_id ?? "" }}
+            audience_id: ${{ steps.load.outputs.distribution.audience_id ?? "" }}
+            voice_id: ${{ steps.voice.outputs.id }}
+            model_id: ${{ inputs.model_id }}
+            text_hash: ${{ steps.measure.outputs.hash }}
+            requests: ${{ outputs.requests }}
+
+    - id: generate
+      if: ${{ steps.mode.outputs.mode == "run" }}
+      foreach: ${{ steps.plan.outputs.parts }}
+      as: part
+      max: 100
+      steps:
+        - id: tts
+          action: http.post
+          with:
+            url: "https://api.elevenlabs.io/v1/text-to-speech/${{ steps.voice.outputs.id }}"
+            query:
+              output_format: mp3_44100_128
+            headers:
+              xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+              Content-Type: application/json
+              Accept: audio/mpeg
+            body: >-
+              ${{ inputs.model_id == "eleven_v3"
+              ? {"text": loop.part.text, "model_id": inputs.model_id}
+              : {"text": loop.part.text, "model_id": inputs.model_id,
+              "previous_text": loop.part.previous, "next_text": loop.part.next} }}
+            timeout: 15m
+            retries: 2
+            expect_status: [200]
+            response_asset:
+              filename: ${{ loop.part.filename }}
+              overwrite: true
+              mime_type: audio/mpeg
+              description: >-
+                ${{ "Narration of " + toString(steps.render.outputs.title ?? trigger.distribution_id)
+                + (outputs.requests > 1 ? ", part " + toString(loop.part.index) + " of " + toString(outputs.requests) : "") }}
+              metadata: ${{ steps.plan.outputs.metadata }}
+        # what ElevenLabs billed, summed across the requests, and the last
+        # asset written (the narration itself when there is one piece)
+        - id: tally
+          action: vars.set
+          with:
+            narration_billed: >-
+              ${{ toInt(vars.narration_billed ?? 0)
+              + toInt(steps.tts.outputs.headers?.["Character-Cost"] ?? 0) }}
+            narration_asset: ${{ steps.tts.outputs.asset_id }}
+
+    # Several pieces: join them into the narration and delete the pieces.
+    - id: join
+      if: ${{ steps.mode.outputs.mode == "run" && outputs.requests > 1 }}
+      action: asset.concat
+      with:
+        filenames: ${{ map(steps.plan.outputs.parts, .filename) }}
+        filename: "narration-${{ trigger.distribution_id }}.mp3"
+        overwrite: true
+        delete_sources: true
+        mime_type: audio/mpeg
+        description: "Narration of ${{ steps.render.outputs.title ?? trigger.distribution_id }}"
+        metadata: ${{ steps.plan.outputs.metadata }}
+
+    # 9. Record what was published, for the next republish and for delete.
+    #    Context-only, so it is allowed while the distribution is publishing.
+    #    distribution.update replaces context, so the existing keys are
+    #    merged back in (merge's first argument wins). channel_error, which
+    #    older versions used, is cleared.
+    - id: record
+      if: ${{ steps.mode.outputs.mode == "run" }}
+      action: distribution.update
+      with:
+        distribution_id: ${{ trigger.distribution_id }}
+        context: >-
+          ${{ merge({"asset_id": outputs.requests > 1 ? steps.join.outputs.asset_id : vars.narration_asset,
+          "text_hash": steps.measure.outputs.hash,
+          "characters": steps.measure.outputs.characters,
+          "characters_billed": vars.narration_billed ?? 0,
+          "requests": outputs.requests,
+          "voice_id": steps.voice.outputs.id,
+          "model_id": inputs.model_id,
+          "channel_error": "",
+          "generated_at": now()},
+          steps.load.outputs.distribution.context) }}
