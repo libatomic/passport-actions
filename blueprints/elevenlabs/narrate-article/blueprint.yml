@@ -710,7 +710,7 @@ definition:
       with:
         parts: >-
           ${{ let chunks = steps.pieces.outputs.chunks; let n = len(chunks);
-          let base = "narration-" + trigger.distribution_id;
+          let base = "narration-" + toString(trigger.distribution_id);
           map(chunks, ({"text": #, "index": #index + 1,
           "filename": n == 1 ? base + ".mp3" : base + "-part-" + toString(#index + 1) + ".mp3",
           "previous": #index > 0 ? chunks[#index - 1] : nil,
@@ -754,7 +754,7 @@ definition:
               overwrite: true
               mime_type: audio/mpeg
               description: >-
-                ${{ "Narration of " + (steps.render.outputs.title ?? trigger.distribution_id)
+                ${{ "Narration of " + toString(steps.render.outputs.title ?? trigger.distribution_id)
                 + (outputs.requests > 1 ? ", part " + toString(loop.part.index) + " of " + toString(outputs.requests) : "") }}
               metadata: ${{ steps.plan.outputs.metadata }}
         # what ElevenLabs billed, summed across the requests, and the last
