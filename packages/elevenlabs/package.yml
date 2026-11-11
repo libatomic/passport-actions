@@ -17,6 +17,12 @@ description: |
   be read and plays short samples in the voice (the narration workflow's own
   preview).
 
+  Each distribution can use the default voice or one of the other voices
+  you list (a Voice menu on the distribution), and editors can type voice
+  tags into the text ([pause] on every model; [whispers], [laughs],
+  emotions and more on eleven_v3), listed in the editor's Voice tags
+  button.
+
   Pronunciations (a Term → Say as list) fix names and terms the voice gets
   wrong, and a built-in cleanup reads money, percentages, scores, heights
   and common abbreviations the way a broadcaster would. After installing,
@@ -36,9 +42,9 @@ blueprints:
 settings:
   - title: Voice
     description: >-
-      The ElevenLabs voice and model that read every narration, and the
-      longest article to read (to cap what one article can cost).
-    inputs: [voice_id, model_id, max_characters]
+      The default voice, other voices a distribution can pick, the model,
+      and the longest article to read (to cap what one article can cost).
+    inputs: [voice_id, voices, model_id, max_characters]
   - title: What is read
     description: >-
       Read around the article body, in place of restricted sections the

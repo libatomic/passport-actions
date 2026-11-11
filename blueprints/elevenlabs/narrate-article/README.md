@@ -95,7 +95,8 @@ preview (`trigger.action: "preview"`, no side effects):
 
 - **Spoken text**: exactly what would be read for the distribution's audience,
   using the unsaved body (`trigger.preview.body`): template, fallback, skipped
-  paragraphs, pronunciations and cleanup applied, with the character count
+  paragraphs, pronunciations, cleanup and voice tags applied (as sent: breaks on
+  models other than eleven_v3), with the character count
   (against `max_characters` when it is set) and, for a long article, how many
   requests it takes. Outputs `text`, `characters`, `limit` (`max_characters`,
   0 for none), `requests` and `note`. Nothing is sent to ElevenLabs.
@@ -153,6 +154,37 @@ marks where it goes.
 Turning the cleanup on or off, or changing a rule, changes the text of the
 articles it touches, so their next **Publish Now** regenerates the audio.
 
+### Voices
+
+`voice_id` is the default voice. List others in `voices` (Name, Voice id) and
+the distribution form shows a **Voice** menu: the default first, then the list.
+The pick is saved on the distribution (`context.voice`); a pick that is no
+longer listed falls back to the default. The voice is part of the change
+hash, so a new pick regenerates the audio on the next **Publish Now**. Listen
+and the pronunciation dialog's sample use the pick, even before it is saved.
+With no other voices there is no menu.
+
+### Voice tags
+
+Editors type tags into the body's text (the **Voice tags** button in the
+editor lists them for the channel's model and inserts one at the cursor):
+
+| Tag | `eleven_v3` | Other models |
+|---|---|---|
+| `[short pause]`, `[pause]`, `[long pause]` | Read as tags | `<break time="0.5s" />`, `1s`, `2s` |
+| `[pause 1.5s]` | `[pause]` | `<break time="1.5s" />` (at most 3s) |
+| `[whispers]`, `[sighs]`, `[laughs]`, `[chuckles]`, `[clears throat]`, … | Read as tags | Left out |
+| Emotions: `[excited]`, `[sad]`, `[curious]`, `[sarcastic]`, `[deadpan]`, … | Read as tags | Left out |
+| Sounds: `[applause]`, `[clapping]`, `[gulps]` | Read as tags | Left out |
+| `[strong British accent]` (any accent), `[sings]` | Experimental | Left out |
+
+The `tags` step applies the blocks step's `tags_v3` / `tags_other` rules after
+the cleanup. Only the listed tag words are left out on other models, so other
+bracketed text in an article (`[sic]`, an editor's insertion) is still read.
+ElevenLabs notes that tags work best when they suit the voice, that many
+breaks in one request can make the voice speed up or add noise, and that
+professional voice clones aren't fully tuned for `eleven_v3`.
+
 ### Length
 
 Each model takes a limited amount of text per request (per ElevenLabs'
@@ -197,7 +229,8 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 
 | Input | Default | Description |
 |---|---|---|
-| `voice_id` | — (required) | ElevenLabs voice id. Run **List ElevenLabs Voices** to find it |
+| `voice_id` | — (required) | The default voice: an ElevenLabs voice id. Run **List ElevenLabs Voices** to find it |
+| `voices` | none | Other voices a distribution can pick (Name, Voice id); see Voices |
 | `model_id` | `eleven_flash_v2_5` | See Length |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |
@@ -216,6 +249,7 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `characters` | Length of the text sent |
 | `characters_billed` | ElevenLabs' `character-cost` headers, summed across the requests |
 | `requests` | How many requests read it (more than 1 for a long article; see Length) |
+| `voice` | The distribution's Voice pick, set by the admin (see Voices) |
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
 | `channel_error` | Cleared on a successful publish (older versions recorded stops here; failures are now the publish's own error) |

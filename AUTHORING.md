@@ -235,10 +235,12 @@ from the channel's workflow.
 | `section_line: {input, label}` | The workflow replaces each restricted section's `{{ else }}` branch with a line: the editor shows an editable line per section, defaulting to the value of `input` (e.g. a shared fallback), labelled `label`. A section's own line is saved as `<p data-text="instead">` right after its `{{ else }}`; the workflow must keep such sections |
 | `sample: audio` | A play button per paragraph: a preview run with `inputs.listen` set to the paragraph, expecting an `audio` output (base64, `audio_type` optional); needs `preview: true` |
 | `term_list: {input, find, replace, label}` | Right-click a word to add or edit a row in that list input (e.g. pronunciations), saved across the package; chips show the rows that match a paragraph; the dialog's sample passes the unsaved list as that input |
+| `choice: {key, title, input, value, label, default_input, help}` | A menu on the distribution of the rows of the list input `input` (each row's `value` key, shown as its `label` key), first the value of `default_input` marked "(default)". Shown only when the list has a row. The pick is saved in the distribution's `context.<key>`; a preview passes an unsaved pick as `trigger.preview.context.<key>`. The workflow decides what a pick that is no longer listed means (fall back to the default) |
+| `tags: {input, title, sets}` | A button listing tags editors can type into the text, by the value of `input`: `sets.<value>` (or `sets.default`) is `{note, groups: [{label, tags: ["[tag]" or {tag, hint}]}]}`. Clicking a tag inserts it at the cursor. The tags are plain text in the body; the workflow turns them into what its API understands (e.g. with `replaceEach` rules) |
 
 The preview button runs a preview without `inputs.listen` and shows outputs
-`text` (paragraphs separated by blank lines), and `characters`, `limit`,
-`model_id` when present.
+`text` (paragraphs separated by blank lines), and `characters`, `limit` (0 for
+none), and a short `note` when present.
 
 ## Gotchas
 
