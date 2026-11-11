@@ -1,0 +1,57 @@
+name: elevenlabs
+label: ElevenLabs Narration
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+category: integrations
+description: |
+  Narrates articles with an ElevenLabs voice: a premade voice, or a clone
+  of your own writer or host created (and consent-verified) in the
+  ElevenLabs dashboard. Adds an "Audio Narration" distribution channel to
+  the article editor. Publishing a narration distribution reads its body
+  aloud as its audience sees it, with restricted sections the audience
+  can't access replaced by a short spoken note, and stores the result as a
+  private MP3 asset. An article longer than the model takes in one request
+  is read in several and the audio joined into one MP3. Republish regenerates it in place only when the spoken
+  text changed; deleting the distribution deletes the MP3. Also installs
+  List ElevenLabs Voices, a manual helper that lists your voice ids and the
+  characters left this month. The narration editor shows the text that will
+  be read and plays short samples in the voice (the narration workflow's own
+  preview).
+
+  Each distribution can use the default voice or one of the other voices
+  you list (a Voice menu on the distribution), and editors can type voice
+  tags into the text ([pause] on every model; [whispers], [laughs],
+  emotions and more on eleven_v3), listed in the editor's Voice tags
+  button.
+
+  Pronunciations (a Term → Say as list) fix names and terms the voice gets
+  wrong, and a built-in cleanup reads money, percentages, scores, heights
+  and common abbreviations the way a broadcaster would. After installing,
+  change the voice, model, template and pronunciations under Settings →
+  Workflows → ElevenLabs Narration.
+
+  Shared prerequisites: an ELEVENLABS_API_KEY workflow secret (a restricted
+  key with Text to Speech access, Voices read and User read) and a voice id
+  (run List ElevenLabs Voices after installing to find it).
+  api.elevenlabs.io must be on the instance's http allowlist (the installer
+  offers it).
+
+blueprints:
+  - elevenlabs/narrate-article
+  - elevenlabs/list-voices
+
+settings:
+  - title: Voice
+    description: >-
+      The default voice, other voices a distribution can pick, the model,
+      and the longest article to read (to cap what one article can cost).
+    inputs: [voice_id, voice_name, voices, model_id, max_characters]
+  - title: What is read
+    description: >-
+      Read around the article body, in place of restricted sections the
+      audience can't access, and which page parts are skipped.
+    inputs: [template, fallback_text, skip_parts]
+  - title: Pronunciation and cleanup
+    description: >-
+      Names and terms the voice should say differently, and the built-in
+      rewrite of numbers, symbols and abbreviations.
+    inputs: [pronunciations, text_cleanup]

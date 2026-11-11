@@ -1,0 +1,51 @@
+name: List ElevenLabs Voices
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+description: |
+  Lists the voices on your ElevenLabs account, with the id to paste into the
+  Audio Narration workflow's voice_id input, and shows how many characters
+  of this month's quota are left. Run it manually from the Workflows page.
+
+  A professional voice clone shows no models until ElevenLabs has finished
+  training it; it can't be used for narration before then.
+
+  Requires the ELEVENLABS_API_KEY secret (permissions: Voices read, User
+  read). api.elevenlabs.io must be on the instance's HTTP allowlist.
+category: content
+definition:
+  name: List ElevenLabs Voices
+  description: Lists the ElevenLabs voices available for narration and the characters left this month.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  steps:
+    - id: voices
+      action: http.get
+      with:
+        url: https://api.elevenlabs.io/v1/voices
+        headers:
+          xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+        expect_status: [200]
+      outputs:
+        # models lists the models the voice is ready on; empty for a
+        # professional clone that is still training. The map literal is in
+        # parentheses so expr doesn't read its braces as a closure.
+        voices: >-
+          ${{ map(steps.voices.outputs.body.voices ?? [], ({"voice_id": #.voice_id,
+          "name": #.name, "category": #.category,
+          "models": #.high_quality_base_model_ids ?? []})) }}
+
+    - id: usage
+      action: http.get
+      with:
+        url: https://api.elevenlabs.io/v1/user/subscription
+        headers:
+          xi-api-key: ${{ secrets.ELEVENLABS_API_KEY }}
+        expect_status: [200]
+      outputs:
+        tier: ${{ steps.usage.outputs.body.tier ?? "" }}
+        characters_used: ${{ steps.usage.outputs.body.character_count ?? 0 }}
+        characters_limit: ${{ steps.usage.outputs.body.character_limit ?? 0 }}
+        characters_reset_at: ${{ date("2006-01-02T15:04:05Z07:00", steps.usage.outputs.body.next_character_count_reset_unix ?? 0) }}
