@@ -97,7 +97,7 @@ inputs:
       usual template data and functions, e.g. {{ .article.title }} and
       timeFormat. Without {{ .distribution.body }} the body is read after it.
     type: string
-    default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
+    default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}'
   skip_parts:
     label: Page parts to skip
     description: >-
@@ -310,7 +310,7 @@ definition:
         usual template data and functions, e.g. {{ .article.title }} and
         timeFormat. Without {{ .distribution.body }} the body is read after it.
       type: string
-      default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}.</p>{{ .distribution.body }}'
+      default: '<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}'
     skip_parts:
       label: Page parts to skip
       description: >-
