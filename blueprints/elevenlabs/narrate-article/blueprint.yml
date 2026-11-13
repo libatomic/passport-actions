@@ -24,15 +24,16 @@ description: |
 
   VOICE TAGS: editors can type tags into the body to direct the delivery:
   [pause], [short pause], [long pause] and [pause 1.5s] on every model
-  (sent as SSML breaks, except on eleven_v3), and on eleven_v3 also
-  [whispers], [sighs], [laughs], emotions such as [excited] and a few
-  sounds. With another model the eleven_v3-only tags are left out. The
+  (sent as SSML breaks, except on eleven_v3 and eleven_v4), and on
+  eleven_v3 and eleven_v4 also [whispers], [sighs], [laughs], emotions
+  such as [excited] and a few sounds. With another model those tags are
+  left out. The
   editor lists them for the channel's model (the Voice tags button).
 
   LONG ARTICLES: each model takes a limited amount of text per request
   (5,000 characters on eleven_v3). Longer text is split between
   paragraphs, then sentences, read one piece per request (each piece
-  given the text around it, except on eleven_v3, so the joins sound
+  given the text around it, except on eleven_v3 and eleven_v4, so the joins sound
   continuous), and the pieces' audio joined into the one MP3. The
   published MP3 is only replaced once every piece has been read.
 
@@ -84,32 +85,13 @@ inputs:
     description: >-
       ElevenLabs model. Each request carries at most 40,000 characters on
       eleven_flash_v2_5 and eleven_turbo_v2_5, 10,000 on
-      eleven_multilingual_v2 and 5,000 on eleven_v3; a longer article is
-      read in several requests and the audio joined into one MP3.
+      eleven_multilingual_v2 and eleven_v4, and 5,000 on eleven_v3; a
+      longer article is read in several requests and the audio joined into
+      one MP3. eleven_v3 and eleven_v4 read voice tags such as [whispers];
+      a voice cloned before eleven_v4 needs retraining for it in ElevenLabs.
     type: string
     default: eleven_flash_v2_5
-    enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
-  paragraph_pause:
-    label: Pause between paragraphs
-    description: >-
-      A pause added between paragraphs: brief (a quarter of a second),
-      short (half a second), normal (a second) or long (two seconds). A
-      narration distribution can choose its own. ElevenLabs may speed the
-      voice up when a request has very many pauses, so listen to a long
-      article after changing it.
-    type: string
-    default: brief
-    enum: [none, brief, short, normal, long]
-  heading_pause:
-    label: Pause around headings
-    description: >-
-      A pause added before and after each heading, in place of the paragraph
-      pause there: brief (a quarter of a second), short (half a second),
-      normal (a second) or long (two seconds). A narration distribution can
-      choose its own.
-    type: string
-    default: normal
-    enum: [none, brief, short, normal, long]
+    enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
   fallback_text:
     label: Spoken note for restricted sections
     description: >-
@@ -226,34 +208,6 @@ definition:
             help: >-
               The voice that reads this narration. Changing it regenerates
               the audio on the next Publish Now.
-          # More menus on the distribution, with fixed options; the default
-          # is the value of default_input. Saved in context.<key>.
-          choices:
-            - key: paragraph_pause
-              title: Pause between paragraphs
-              default_input: paragraph_pause
-              options:
-                - { value: none, label: None }
-                - { value: brief, label: Brief (a quarter of a second) }
-                - { value: short, label: Short (half a second) }
-                - { value: normal, label: Normal (a second) }
-                - { value: long, label: Long (two seconds) }
-              help: >-
-                The pause added between paragraphs. Changing it regenerates
-                the audio on the next Publish Now.
-            - key: heading_pause
-              title: Pause around headings
-              default_input: heading_pause
-              options:
-                - { value: none, label: None }
-                - { value: brief, label: Brief (a quarter of a second) }
-                - { value: short, label: Short (half a second) }
-                - { value: normal, label: Normal (a second) }
-                - { value: long, label: Long (two seconds) }
-              help: >-
-                The pause added before and after each heading, in place of
-                the paragraph pause there. Changing it regenerates the audio
-                on the next Publish Now.
           # Tags editors can type into the body to direct the delivery, by
           # model (the model_id input); "default" covers the other models.
           # The tags step turns them into what each model understands.
@@ -261,7 +215,7 @@ definition:
             input: model_id
             title: Voice tags
             sets:
-              eleven_v3:
+              eleven_v3: &expressive_tags
                 note: >-
                   Type a tag in square brackets just before the words it
                   changes. Tags are suggestions, not commands: not every
@@ -312,14 +266,15 @@ definition:
                     tags:
                       - { tag: "[strong British accent]", hint: "any accent: [strong Irish accent]" }
                       - { tag: "[sings]" }
+              eleven_v4: *expressive_tags
               default:
                 note: >-
                   This model takes pauses only: [pause] is about a second,
                   [pause 2.5s] sets the length (up to 3 seconds). Too many
                   in one article can make the voice speed up. The other
-                  tags (whispers, emotions, sounds) need eleven_v3; with
-                  this model they are left out. Even on eleven_v3, not every
-                  voice responds to every tag.
+                  tags (whispers, emotions, sounds) need eleven_v3 or
+                  eleven_v4; with this model they are left out. Even there,
+                  not every voice responds to every tag.
                 groups:
                   - label: Pauses
                     tags:
@@ -361,32 +316,13 @@ definition:
       description: >-
         ElevenLabs model. Each request carries at most 40,000 characters on
         eleven_flash_v2_5 and eleven_turbo_v2_5, 10,000 on
-        eleven_multilingual_v2 and 5,000 on eleven_v3; a longer article is
-        read in several requests and the audio joined into one MP3.
+        eleven_multilingual_v2 and eleven_v4, and 5,000 on eleven_v3; a
+        longer article is read in several requests and the audio joined into
+        one MP3. eleven_v3 and eleven_v4 read voice tags such as [whispers];
+        a voice cloned before eleven_v4 needs retraining for it in ElevenLabs.
       type: string
       default: eleven_flash_v2_5
-      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
-    paragraph_pause:
-      label: Pause between paragraphs
-      description: >-
-        A pause added between paragraphs: brief (a quarter of a second),
-        short (half a second), normal (a second) or long (two seconds). A
-        narration distribution can choose its own. ElevenLabs may speed the
-        voice up when a request has very many pauses, so listen to a long
-        article after changing it.
-      type: string
-      default: brief
-      enum: [none, brief, short, normal, long]
-    heading_pause:
-      label: Pause around headings
-      description: >-
-        A pause added before and after each heading, in place of the paragraph
-        pause there: brief (a quarter of a second), short (half a second),
-        normal (a second) or long (two seconds). A narration distribution can
-        choose its own.
-      type: string
-      default: normal
-      enum: [none, brief, short, normal, long]
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
     fallback_text:
       label: Spoken note for restricted sections
       description: >-
@@ -481,24 +417,6 @@ definition:
           picked != "" && (picked == inputs.voice_id || picked in map(inputs.voices ?? [], toString(.voice_id)))
           ? picked : inputs.voice_id }}
 
-    # The pauses: the distribution's picks (context.paragraph_pause,
-    # context.heading_pause, or the editor's unsaved picks for a preview)
-    # when they are known lengths, otherwise the inputs. Each becomes the
-    # pause tag it reads as ("" for none).
-    - id: pace
-      action: set-output
-      with:
-        paragraph: >-
-          ${{ let tags = {"none": "", "brief": "[pause 0.25s]", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
-          let picked = trim(toString(trigger.preview?.context?.paragraph_pause
-          ?? steps.load.outputs.distribution.context?.paragraph_pause ?? ""));
-          picked in tags ? tags[picked] : (tags[inputs.paragraph_pause ?? "brief"] ?? "") }}
-        heading: >-
-          ${{ let tags = {"none": "", "brief": "[pause 0.25s]", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
-          let picked = trim(toString(trigger.preview?.context?.heading_pause
-          ?? steps.load.outputs.distribution.context?.heading_pause ?? ""));
-          picked in tags ? tags[picked] : (tags[inputs.heading_pause ?? "normal"] ?? "") }}
-
     # DELETE: runs before the distribution row is removed. The MP3 belongs
     # to this distribution alone, so it goes too. continue-on-error: an
     # asset someone already deleted by hand mustn't block the delete.
@@ -552,31 +470,6 @@ definition:
         # The body's own document wrapper (<html>, <head>…</head>, <body>),
         # removed so the template can go in front of it.
         doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
-        # Pauses (the pace and speech steps). Each heading is marked at both
-        # ends in the HTML, so the marks survive into the text, then the
-        # text's marks and paragraph breaks become pause tags, which the
-        # tags step turns into what the model understands.
-        heading_marks:
-          - { find: '(?i)(<h[1-6]\b[^>]*>)', replace: '${1}[[heading-pause]]' }
-          - { find: '(?i)(</h[1-6]\s*>)', replace: '[[heading-end]]${1}' }
-        # A heading ends a sentence: a full stop before its end mark when it
-        # has no punctuation of its own (htmlText takes the "]" for one).
-        heading_end: '([^\p{P}\s])\s*\[\[heading-end\]\]'
-        heading_end_stop: '${1}.[[heading-pause]]'
-        heading_end_mark: '\[\[heading-end\]\]'
-        # The marks between two paragraphs, with the break around them,
-        # become one; none at the very start or end.
-        heading_run: '\s*(?:\[\[heading-pause\]\]\s*)+'
-        heading_edge: '^\[\[H\]\]|\[\[H\]\]$'
-        heading_mark: '\[\[H\]\]'
-        # A paragraph that already ends with a pause tag typed by an editor
-        # gets no automatic pause after it.
-        typed_before_heading: '(?i)(\[(?:short |long )?pause(?:\s+\d+(?:\.\d+)?\s*s)?\])\[\[H\]\]'
-        typed_before_break: '(?i)(\[(?:short |long )?pause(?:\s+\d+(?:\.\d+)?\s*s)?\])\n\n'
-        typed_heading_keep: "${1}\n\n"
-        typed_break_keep: '${1}[[T]]'
-        typed_mark: '\[\[T\]\]'
-        paragraph_break: '\n\n'
         # Built-in cleanup (the cleanup step), applied in order by
         # replaceEach: find is an RE2 pattern, ${1} its first group.
         cleanup:
@@ -597,10 +490,10 @@ definition:
           - { find: '\bJr\.', replace: 'Junior' }
           - { find: '\bSr\.', replace: 'Senior' }
         # Voice tags typed into the body (the ui tags hint lists them),
-        # applied by the tags step. eleven_v3 reads square-bracket tags
-        # itself; a set-length pause becomes a plain one.
+        # applied by the tags step. eleven_v3 and eleven_v4 read
+        # square-bracket tags themselves (no SSML); a set-length pause
+        # becomes a plain one.
         tags_v3:
-          - { find: '\[pause\s+0?\.[0-6]\d*\s*s\]', replace: '[short pause]' }
           - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '[pause]' }
         # The other models take SSML breaks (at most 3s) and nothing else:
         # pauses become breaks, the v3-only tags are left out (only these
@@ -674,26 +567,15 @@ definition:
       with:
         html: >-
           ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
-          let html = len(parts) < 3 ? steps.render.outputs.body
-          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"");
-          replaceEach(html, steps.blocks.outputs.heading_marks) }}
+          len(parts) < 3 ? steps.render.outputs.body
+          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
 
     - id: speech
       action: set-output
       with:
         text: >-
-          ${{ let b = steps.blocks?.outputs; let p = steps.pace?.outputs;
-          steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
-          : trim(replaceEach(htmlText(steps.text.outputs.html, inputs.skip_parts ?? ""), [
-          {"find": b.heading_end, "replace": b.heading_end_stop},
-          {"find": b.heading_end_mark, "replace": "[[heading-pause]]"},
-          {"find": b.heading_run, "replace": "[[H]]"},
-          {"find": b.heading_edge, "replace": ""},
-          {"find": b.typed_before_heading, "replace": b.typed_heading_keep},
-          {"find": b.typed_before_break, "replace": b.typed_break_keep},
-          {"find": b.paragraph_break, "replace": "\n\n" + p.paragraph + (p.paragraph != "" ? " " : "")},
-          {"find": b.heading_mark, "replace": "\n\n" + p.heading + (p.heading != "" ? " " : "")},
-          {"find": b.typed_mark, "replace": "\n\n"}])) }}
+          ${{ steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
+          : trim(htmlText(steps.text.outputs.html, inputs.skip_parts ?? "")) }}
 
     # Future: an AI normalization step ("rewrite this as a broadcaster would
     # read it": numbers, symbols, abbreviations, the long tail the built-in
@@ -725,13 +607,14 @@ definition:
           : steps.pronounce.outputs.text }}
 
     # 7. Voice tags typed into the body ([pause], [whispers], …): kept for
-    #    eleven_v3, turned into breaks or left out for the other models.
+    #    eleven_v3 and eleven_v4, turned into breaks or left out for the
+    #    other models.
     - id: tags
       action: set-output
       with:
         text: >-
           ${{ trim(replaceEach(steps.cleanup.outputs.text,
-          inputs.model_id == "eleven_v3" ? steps.blocks.outputs.tags_v3 : steps.blocks.outputs.tags_other,
+          inputs.model_id in ["eleven_v3", "eleven_v4"] ? steps.blocks.outputs.tags_v3 : steps.blocks.outputs.tags_other,
           {"ignoreCase": true})) }}
 
     - id: measure
@@ -745,7 +628,7 @@ definition:
         # differently.
         request_limit: >-
           ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
-          "eleven_multilingual_v2": 10000, "eleven_v3": 5000}[inputs.model_id] ?? 10000 }}
+          "eleven_multilingual_v2": 10000, "eleven_v3": 5000, "eleven_v4": 10000}[inputs.model_id] ?? 10000 }}
         hash: ${{ sha256(steps.tags.outputs.text + "|" + steps.voice.outputs.id + "|" + inputs.model_id) }}
 
     # The text in pieces of at most one request each, broken between
@@ -862,7 +745,8 @@ definition:
     #
     #    previous_text/next_text give the voice the text around a piece so
     #    the joins sound continuous. eleven_v3 doesn't support them (nor
-    #    request stitching), so its pieces are read on their own.
+    #    request stitching), so its pieces are read on their own; ElevenLabs
+    #    doesn't say whether eleven_v4 does, so it is treated the same way.
     - id: plan
       if: ${{ steps.mode.outputs.mode == "run" }}
       action: set-output
@@ -901,7 +785,7 @@ definition:
               Content-Type: application/json
               Accept: audio/mpeg
             body: >-
-              ${{ inputs.model_id == "eleven_v3"
+              ${{ inputs.model_id in ["eleven_v3", "eleven_v4"]
               ? {"text": loop.part.text, "model_id": inputs.model_id}
               : {"text": loop.part.text, "model_id": inputs.model_id,
               "previous_text": loop.part.previous, "next_text": loop.part.next} }}

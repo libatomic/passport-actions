@@ -20,8 +20,8 @@ description: |
   Each distribution can use the default voice or one of the other voices
   you list (a Voice menu on the distribution), and editors can type voice
   tags into the text ([pause] on every model; [whispers], [laughs],
-  emotions and more on eleven_v3), listed in the editor's Voice tags
-  button.
+  emotions and more on eleven_v3 and eleven_v4), listed in the editor's
+  Voice tags button.
 
   Pronunciations (a Term → Say as list) fix names and terms the voice gets
   wrong, and a built-in cleanup reads money, percentages, scores, heights
@@ -55,8 +55,3 @@ settings:
       Names and terms the voice should say differently, and the built-in
       rewrite of numbers, symbols and abbreviations.
     inputs: [pronunciations, text_cleanup]
-  - title: Pacing
-    description: >-
-      The pause between paragraphs and around headings. A narration
-      distribution can choose its own.
-    inputs: [paragraph_pause, heading_pause]
