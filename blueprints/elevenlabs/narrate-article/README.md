@@ -182,6 +182,37 @@ hash, so a new pick regenerates the audio on the next **Publish Now**. Listen
 and the pronunciation dialog's sample use the pick, even before it is saved.
 With no other voices there is no menu.
 
+### Pauses
+
+Narration adds a pause between paragraphs and around headings, so the voice
+doesn't run one into the next:
+
+| Input | Default | Where |
+|---|---|---|
+| `paragraph_pause` | `short` | Between two paragraphs |
+| `heading_pause` | `normal` | Before and after each heading, in place of the paragraph pause there |
+
+Each is `none`, `short` (half a second), `normal` (a second) or `long` (two
+seconds), and becomes the matching voice tag (`[short pause]`, `[pause]`,
+`[long pause]`), so it reads as an SSML break on the v2 models and as a tag on
+`eleven_v3` (see Voice tags). A narration distribution can choose its own in
+the **Pause between paragraphs** and **Pause around headings** menus (saved as
+`context.paragraph_pause` / `context.heading_pause`; an unknown value falls
+back to the input). The pauses are part of the text, so changing one
+regenerates the audio on the next **Publish Now**.
+
+- There is no pause at the very start or end, and none after a paragraph
+  that already ends with a pause tag an editor typed (e.g. the template's
+  `[long pause]` after the title line).
+- A heading that isn't read (skipped, or in a section the audience can't
+  see) gets no pause; one with no punctuation of its own gets a full stop.
+- The text step marks each heading in the HTML (`heading_marks`), and the
+  speech step turns the marks and paragraph breaks into the tags; the
+  patterns are in the blocks step.
+- ElevenLabs warns that very many breaks in one request can make the voice
+  speed up or add noise. If a long article sounds rushed or glitchy, try
+  `none` for paragraphs and keep the heading pauses.
+
 ### Voice tags
 
 Editors type tags into the body's text (the **Voice tags** button in the
@@ -251,6 +282,8 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `voice_name` | none | What the Voice menu calls the default voice (e.g. the narrator's name) |
 | `voices` | none | Other voices a distribution can pick (Name, Voice id); see Voices |
 | `model_id` | `eleven_flash_v2_5` | See Length |
+| `paragraph_pause` | `short` | Pause between paragraphs (see Pauses) |
+| `heading_pause` | `normal` | Pause before and after headings (see Pauses) |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |
 | `skip_parts` | Media, figures, tables, code, navigation, `.no-audio`, WordPress chrome | Comma-separated CSS selectors not to read. Was `skip_selectors`, which only listed what `htmlText` didn't already skip; renamed so a reinstall doesn't keep an old value |
@@ -269,6 +302,7 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `characters_billed` | ElevenLabs' `character-cost` headers, summed across the requests |
 | `requests` | How many requests read it (more than 1 for a long article; see Length) |
 | `voice` | The distribution's Voice pick, set by the admin (see Voices) |
+| `paragraph_pause`, `heading_pause` | The distribution's pause picks, set by the admin (see Pauses) |
 | `voice_id`, `model_id` | What generated the audio |
 | `generated_at` | When |
 | `channel_error` | Cleared on a successful publish (older versions recorded stops here; failures are now the publish's own error) |

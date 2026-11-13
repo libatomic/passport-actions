@@ -55,3 +55,8 @@ settings:
       Names and terms the voice should say differently, and the built-in
       rewrite of numbers, symbols and abbreviations.
     inputs: [pronunciations, text_cleanup]
+  - title: Pacing
+    description: >-
+      The pause between paragraphs and around headings. A narration
+      distribution can choose its own.
+    inputs: [paragraph_pause, heading_pause]

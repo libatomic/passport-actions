@@ -89,6 +89,25 @@ inputs:
     type: string
     default: eleven_flash_v2_5
     enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+  paragraph_pause:
+    label: Pause between paragraphs
+    description: >-
+      A pause added between paragraphs: short (half a second), normal (a
+      second) or long (two seconds). A narration distribution can choose its
+      own. ElevenLabs may speed the voice up when a request has very many
+      pauses, so listen to a long article after changing it.
+    type: string
+    default: short
+    enum: [none, short, normal, long]
+  heading_pause:
+    label: Pause around headings
+    description: >-
+      A pause added before and after each heading, in place of the paragraph
+      pause there: short (half a second), normal (a second) or long (two
+      seconds). A narration distribution can choose its own.
+    type: string
+    default: normal
+    enum: [none, short, normal, long]
   fallback_text:
     label: Spoken note for restricted sections
     description: >-
@@ -205,6 +224,32 @@ definition:
             help: >-
               The voice that reads this narration. Changing it regenerates
               the audio on the next Publish Now.
+          # More menus on the distribution, with fixed options; the default
+          # is the value of default_input. Saved in context.<key>.
+          choices:
+            - key: paragraph_pause
+              title: Pause between paragraphs
+              default_input: paragraph_pause
+              options:
+                - { value: none, label: None }
+                - { value: short, label: Short (half a second) }
+                - { value: normal, label: Normal (a second) }
+                - { value: long, label: Long (two seconds) }
+              help: >-
+                The pause added between paragraphs. Changing it regenerates
+                the audio on the next Publish Now.
+            - key: heading_pause
+              title: Pause around headings
+              default_input: heading_pause
+              options:
+                - { value: none, label: None }
+                - { value: short, label: Short (half a second) }
+                - { value: normal, label: Normal (a second) }
+                - { value: long, label: Long (two seconds) }
+              help: >-
+                The pause added before and after each heading, in place of
+                the paragraph pause there. Changing it regenerates the audio
+                on the next Publish Now.
           # Tags editors can type into the body to direct the delivery, by
           # model (the model_id input); "default" covers the other models.
           # The tags step turns them into what each model understands.
@@ -317,6 +362,25 @@ definition:
       type: string
       default: eleven_flash_v2_5
       enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3]
+    paragraph_pause:
+      label: Pause between paragraphs
+      description: >-
+        A pause added between paragraphs: short (half a second), normal (a
+        second) or long (two seconds). A narration distribution can choose its
+        own. ElevenLabs may speed the voice up when a request has very many
+        pauses, so listen to a long article after changing it.
+      type: string
+      default: short
+      enum: [none, short, normal, long]
+    heading_pause:
+      label: Pause around headings
+      description: >-
+        A pause added before and after each heading, in place of the paragraph
+        pause there: short (half a second), normal (a second) or long (two
+        seconds). A narration distribution can choose its own.
+      type: string
+      default: normal
+      enum: [none, short, normal, long]
     fallback_text:
       label: Spoken note for restricted sections
       description: >-
@@ -411,6 +475,24 @@ definition:
           picked != "" && (picked == inputs.voice_id || picked in map(inputs.voices ?? [], toString(.voice_id)))
           ? picked : inputs.voice_id }}
 
+    # The pauses: the distribution's picks (context.paragraph_pause,
+    # context.heading_pause, or the editor's unsaved picks for a preview)
+    # when they are known lengths, otherwise the inputs. Each becomes the
+    # pause tag it reads as ("" for none).
+    - id: pace
+      action: set-output
+      with:
+        paragraph: >-
+          ${{ let tags = {"none": "", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
+          let picked = trim(toString(trigger.preview?.context?.paragraph_pause
+          ?? steps.load.outputs.distribution.context?.paragraph_pause ?? ""));
+          picked in tags ? tags[picked] : (tags[inputs.paragraph_pause ?? "short"] ?? "") }}
+        heading: >-
+          ${{ let tags = {"none": "", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
+          let picked = trim(toString(trigger.preview?.context?.heading_pause
+          ?? steps.load.outputs.distribution.context?.heading_pause ?? ""));
+          picked in tags ? tags[picked] : (tags[inputs.heading_pause ?? "normal"] ?? "") }}
+
     # DELETE: runs before the distribution row is removed. The MP3 belongs
     # to this distribution alone, so it goes too. continue-on-error: an
     # asset someone already deleted by hand mustn't block the delete.
@@ -464,6 +546,31 @@ definition:
         # The body's own document wrapper (<html>, <head>…</head>, <body>),
         # removed so the template can go in front of it.
         doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
+        # Pauses (the pace and speech steps). Each heading is marked at both
+        # ends in the HTML, so the marks survive into the text, then the
+        # text's marks and paragraph breaks become pause tags, which the
+        # tags step turns into what the model understands.
+        heading_marks:
+          - { find: '(?i)(<h[1-6]\b[^>]*>)', replace: '${1}[[heading-pause]]' }
+          - { find: '(?i)(</h[1-6]\s*>)', replace: '[[heading-end]]${1}' }
+        # A heading ends a sentence: a full stop before its end mark when it
+        # has no punctuation of its own (htmlText takes the "]" for one).
+        heading_end: '([^\p{P}\s])\s*\[\[heading-end\]\]'
+        heading_end_stop: '${1}.[[heading-pause]]'
+        heading_end_mark: '\[\[heading-end\]\]'
+        # The marks between two paragraphs, with the break around them,
+        # become one; none at the very start or end.
+        heading_run: '\s*(?:\[\[heading-pause\]\]\s*)+'
+        heading_edge: '^\[\[H\]\]|\[\[H\]\]$'
+        heading_mark: '\[\[H\]\]'
+        # A paragraph that already ends with a pause tag typed by an editor
+        # gets no automatic pause after it.
+        typed_before_heading: '(?i)(\[(?:short |long )?pause(?:\s+\d+(?:\.\d+)?\s*s)?\])\[\[H\]\]'
+        typed_before_break: '(?i)(\[(?:short |long )?pause(?:\s+\d+(?:\.\d+)?\s*s)?\])\n\n'
+        typed_heading_keep: "${1}\n\n"
+        typed_break_keep: '${1}[[T]]'
+        typed_mark: '\[\[T\]\]'
+        paragraph_break: '\n\n'
         # Built-in cleanup (the cleanup step), applied in order by
         # replaceEach: find is an RE2 pattern, ${1} its first group.
         cleanup:
@@ -560,15 +667,26 @@ definition:
       with:
         html: >-
           ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
-          len(parts) < 3 ? steps.render.outputs.body
-          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
+          let html = len(parts) < 3 ? steps.render.outputs.body
+          : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"");
+          replaceEach(html, steps.blocks.outputs.heading_marks) }}
 
     - id: speech
       action: set-output
       with:
         text: >-
-          ${{ steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
-          : trim(htmlText(steps.text.outputs.html, inputs.skip_parts ?? "")) }}
+          ${{ let b = steps.blocks?.outputs; let p = steps.pace?.outputs;
+          steps.mode.outputs.mode == "listen" ? trim(inputs.listen)
+          : trim(replaceEach(htmlText(steps.text.outputs.html, inputs.skip_parts ?? ""), [
+          {"find": b.heading_end, "replace": b.heading_end_stop},
+          {"find": b.heading_end_mark, "replace": "[[heading-pause]]"},
+          {"find": b.heading_run, "replace": "[[H]]"},
+          {"find": b.heading_edge, "replace": ""},
+          {"find": b.typed_before_heading, "replace": b.typed_heading_keep},
+          {"find": b.typed_before_break, "replace": b.typed_break_keep},
+          {"find": b.paragraph_break, "replace": "\n\n" + p.paragraph + (p.paragraph != "" ? " " : "")},
+          {"find": b.heading_mark, "replace": "\n\n" + p.heading + (p.heading != "" ? " " : "")},
+          {"find": b.typed_mark, "replace": "\n\n"}])) }}
 
     # Future: an AI normalization step ("rewrite this as a broadcaster would
     # read it": numbers, symbols, abbreviations, the long tail the built-in
