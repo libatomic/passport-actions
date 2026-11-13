@@ -76,13 +76,14 @@ post title, date, categories, author, share and related blocks).
 
 What is read is set by the workflow's `template` input, not a template record.
 It is filled in at install and can be changed under **Settings → Workflows →
-ElevenLabs Narration**. The default reads the title and publish date, then a
-long pause (a voice tag: a 2-second break, or `[long pause]` on `eleven_v3` and
-`eleven_v4`;
+ElevenLabs Narration**. The default starts with a short pause (so a player
+that takes a moment to start doesn't clip the first words), reads the title
+and publish date, then a long pause (voice tags: half-second and 2-second
+breaks, or `[short pause]` and `[long pause]` on `eleven_v3` and `eleven_v4`;
 see Voice tags), then the body:
 
 ```
-<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}
+<p>[short pause] {{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}
 ```
 
 `{{ .distribution.body }}` marks where the body goes. The workflow puts the
