@@ -35,10 +35,12 @@ branch is replaced by `fallback_text`, read in the same voice. If several
 blocks are hidden, the fallback is read once. An empty `fallback_text` skips
 hidden blocks silently.
 
-When a restricted block has a distribution view, passport-wp syncs its
-subscriber branch as `{{ if isChannel "web" }}` web view `{{ else }}`
-distribution view `{{ end }}`. Narration reads the **web view**: the full
-text, not the shorter email version. The admin's paragraph editor
+When a restricted block has both a web view and a distribution view,
+passport-wp syncs that branch (subscriber or guest) as
+`{{ if isChannel "web" }}` web view `{{ else }}` distribution view
+`{{ end }}`. Narration reads the **web view**: the full text, not the shorter
+email version. For the guest branch this only changes what the editor shows,
+since listeners without access hear the fallback line instead. The admin's paragraph editor
 (`ui.channel_view: web`) reduces each such block to its web view when the body
 is copied from the article or opened, so you edit the web paragraphs, and a
 restricted block nested inside the web view stays one. The workflow also
