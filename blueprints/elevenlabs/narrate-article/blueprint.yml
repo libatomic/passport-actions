@@ -177,6 +177,10 @@ definition:
         # Hints for the admin's distribution editor (see AUTHORING.md).
         ui:
           body_editor: paragraphs
+          # The admin keeps the body as the web shows it: each
+          # isChannel "web" block (passport-wp's full web view next to the
+          # shorter distribution view) is reduced to its web branch.
+          channel_view: web
           preview_label: Spoken text
           skip_input: skip_parts
           section_line:
@@ -432,10 +436,20 @@ definition:
     #    ${{ }}), because an expression can't contain a literal "}}". The
     #    pattern matches an `if hasAnyAudience`/`if audiences` block with no
     #    template action nested inside it, with or without an else branch;
-    #    other blocks (e.g. isChannel) are left as they are.
+    #    other blocks (e.g. isChannel "email") are left as they are.
+    #
+    #    First, each `if isChannel "web"` block is collapsed to its web
+    #    branch. passport-wp puts one inside a restricted block's subscriber
+    #    branch when the block has a distribution view (web view, else the
+    #    shorter distribution view). Narration reads the full web view, and
+    #    with the nested block gone the restricted block matches the
+    #    pattern again.
     - id: blocks
       action: set-output
       with:
+        # An `if isChannel "web"` block, with the <template-content> wrapper
+        # passport-wp puts around its opening tag; ${1} is the web branch.
+        web_pattern: '(?:<template-content>\s*)?\{\{-?\s*if\s+isChannel\s+(?:"|&#34;|&quot;)web(?:"|&#34;|&quot;)\s*-?\}\}(?:\s*</template-content>)?((?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
         pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
         open: "{{ else }}"
         close: "{{ end }}"
@@ -501,8 +515,10 @@ definition:
         # "$" is special in a regexReplace replacement, so it is doubled in
         # the admin's text.
         body: >-
-          ${{ let kept = regexReplace(steps.blocks.outputs.custom_pattern,
-          steps.source.outputs.body, steps.blocks.outputs.custom_open + "${1}");
+          ${{ let web = regexReplace(steps.blocks.outputs.web_pattern,
+          steps.source.outputs.body, "${1}");
+          let kept = regexReplace(steps.blocks.outputs.custom_pattern,
+          web, steps.blocks.outputs.custom_open + "${1}");
           let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
           "${1}" + steps.blocks.outputs.open
           + (trim(inputs.fallback_text) == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(inputs.fallback_text), "$", "$$") + "</p>")

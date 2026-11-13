@@ -35,6 +35,20 @@ branch is replaced by `fallback_text`, read in the same voice. If several
 blocks are hidden, the fallback is read once. An empty `fallback_text` skips
 hidden blocks silently.
 
+When a restricted block has a distribution view, passport-wp syncs its
+subscriber branch as `{{ if isChannel "web" }}` web view `{{ else }}`
+distribution view `{{ end }}`. Narration reads the **web view**: the full
+text, not the shorter email version. The admin's paragraph editor
+(`ui.channel_view: web`) reduces each such block to its web view when the body
+is copied from the article or opened, so you edit the web paragraphs, and a
+restricted block nested inside the web view stays one. The workflow also
+collapses any left in the body (a body that never went through the editor),
+but only when nothing is nested in the web view.
+
+A restricted block with another one nested inside it can't take
+`fallback_text`: audiences without access hear its own call to action, unless
+you give it its own line in the editor.
+
 A section can have its own line instead of `fallback_text`: in the admin's
 narration editor, edit the section's **Read instead** line. It is stored as
 `<p data-text="instead">…</p>` right after the section's `{{ else }}` (the
@@ -281,7 +295,13 @@ branch. A section whose else tag is followed (past closing tags and
 whitespace) by `<p data-text="instead">` (or `data-narration="spoken"`) is
 protected first: its else tag is swapped for `custom_open`, which the pattern
 doesn't match, and swapped back afterwards. Other blocks (e.g. legacy
-`isChannel`) are left alone. A block that nests another template action keeps
+`isChannel "email"`) are left alone. A block that nests another template action keeps
 its original else branch, so its web call to action would be read. The
+web view nested in a restricted block is handled first: `web_pattern` collapses
+each `if isChannel "web"` block (with the `<template-content>` wrapper
+passport-wp puts around its opening tag, and `"` or `&#34;` quotes) to its web
+branch, so the restricted block no longer nests an action and the rewrite
+above matches it. A web view that itself contains a template action isn't
+collapsed, and the distribution view is read instead. The
 expressions are pinned by `pkg/atomic/workflow_expr_narration_test.go` in
 atomic; keep the two in sync.
