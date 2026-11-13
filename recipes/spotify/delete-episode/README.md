@@ -5,6 +5,10 @@ Deletes an episode via the **Spotify Distribution API**
 **Api-Version 2026-04-01**. Succeeds with **204 No Content** — there is no
 response body.
 
+A **404** also succeeds: the episode is already gone from Spotify, which is the
+state the caller asked for, so a delete can be run again safely. To tell the two
+apart, read `steps.<id>.outputs.episode.outputs.status` (`204` or `404`).
+
 ## Reference
 
 ```

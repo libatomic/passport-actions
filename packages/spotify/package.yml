@@ -16,7 +16,8 @@ description: |
   Spotify via RSS under the API (after which Spotify stops polling its
   feed; the show id is unchanged), and Episode Status, which the admin's
   distribution panel runs to report Spotify's processing status and
-  failure reasons for a published episode.
+  failure reasons for a published episode. The channel workflow also runs
+  that check once on its own, ten minutes after each publish.
 
   Shared prerequisites: a SPOTIFY_CLIENT_SECRET workflow secret, plus your
   Spotify application client id and show id (workflow inputs);

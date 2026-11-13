@@ -18,7 +18,15 @@ description: |
   that episode in place (title, summary, media, entitlements) instead of
   creating a duplicate. Deleting the distribution in the admin runs it with
   action=delete first: the episode is deleted from Spotify, and only if that
-  succeeds is the distribution removed from Passport.
+  succeeds is the distribution removed from Passport. An episode that is
+  already gone from Spotify counts as deleted, and a republish of one is
+  published again as a new episode.
+
+  STATUS: Spotify processes the media after the publish returns. A while
+  after each publish ("Check status after", 10 minutes by default) the
+  workflow runs the Spotify Episode Status workflow for the distribution, so
+  a file Spotify rejected shows as an Error on the distribution without
+  anyone pressing Check status.
 
   AUDIENCE: this is a broadcast channel (published once), but it still requires
   an audience. Spotify Open Access gates playback by "entitlements", and this
@@ -57,6 +65,20 @@ inputs:
     description: Episode type — full, bonus, or trailer
     type: string
     default: full
+  status_check_after:
+    label: Check status after
+    description: >-
+      How long after a publish to check Spotify's processing status
+      automatically, e.g. 10m or 1h. Leave empty to check only by hand.
+    type: string
+    default: 10m
+  status_workflow:
+    label: Status workflow
+    description: >-
+      Slug or id of the Spotify Episode Status workflow that runs the check.
+      Change it only if that workflow was renamed.
+    type: string
+    default: spotify-episode-status
 definition:
   name: Spotify Episode (Distribution)
   description: >-
@@ -100,6 +122,20 @@ definition:
       description: Episode type — full, bonus, or trailer
       type: string
       default: full
+    status_check_after:
+      label: Check status after
+      description: >-
+        How long after a publish to check Spotify's processing status
+        automatically, e.g. 10m or 1h. Leave empty to check only by hand.
+      type: string
+      default: 10m
+    status_workflow:
+      label: Status workflow
+      description: >-
+        Slug or id of the Spotify Episode Status workflow that runs the check.
+        Change it only if that workflow was renamed.
+      type: string
+      default: spotify-episode-status
 
   steps:
     # The distribution carries the episode metadata the podcast editor collected:
@@ -122,7 +158,8 @@ definition:
     # episode from Spotify; a failure here fails the run and the platform
     # keeps the distribution (with the error) so nothing is orphaned on
     # Spotify. A distribution whose publish never got as far as creating an
-    # episode has nothing to remove.
+    # episode has nothing to remove, and an episode Spotify no longer has (the
+    # recipe accepts its 404) is already deleted.
     - id: teardown
       if: ${{ trigger.action == "delete" }}
       then:
@@ -145,6 +182,16 @@ definition:
           with:
             reason: "spotify episode ${{ steps.existing.outputs.id }} deleted"
 
+    # Nothing to publish without a media file: say so, instead of failing in
+    # asset.get with an error about a missing id.
+    - id: no-media
+      if: ${{ (steps.load.outputs.distribution.asset_id ?? "") == "" }}
+      action: workflow.fail
+      with:
+        reason: >-
+          Choose an audio or video file for this distribution before
+          publishing it to Spotify.
+
     # Render the selected template into the episode summary/show notes. Spotify
     # accepts plain text or HTML here.
     - id: render
@@ -161,6 +208,20 @@ definition:
         asset_id: ${{ steps.load.outputs.distribution.asset_id }}
         link: true
         application: spotify
+
+    # A file that is plainly not audio or video (an image, a PDF) would be
+    # accepted by the create call and rejected later, during processing. Only
+    # a known non-media type stops the publish; an asset with no type, or an
+    # unusual audio/video one, is left for Spotify to judge.
+    - id: unsupported-media
+      if: >-
+        ${{ let mime = lower(steps.media.outputs.asset.mime_type ?? "");
+        mime != "" && !hasPrefix(mime, "audio/") && !hasPrefix(mime, "video/") }}
+      action: workflow.fail
+      with:
+        reason: >-
+          Spotify needs an audio or video file (MP3, M4A, MP4 or MOV). The file
+          on this distribution is ${{ steps.media.outputs.asset.mime_type }}.
 
     # Setup: the instance's Spotify integration application, if it has one
     # (Applications → Spotify). Its audiences are the ones this channel offers
@@ -209,9 +270,49 @@ definition:
     # Includes are pinned @spotify so runs fetch the 2026-04-01 recipes.
     # Unpinned includes resolve to GitHub HEAD (master), which still has the
     # older recipes without the Api-Version header.
+    #
+    # Partial update — only the fields sent change. Entitlements are
+    # recomputed from the audience above and always sent (an empty list opens
+    # the episode), since this workflow owns the episode's gating.
+    # missing_ok: an episode that was deleted on Spotify answers 404 without
+    # failing the step, and is created again below.
+    - id: update
+      if: ${{ steps.existing.outputs.id != "" }}
+      includes: libatomic/passport-actions/recipes/spotify/update-episode@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        episode_id: ${{ steps.existing.outputs.id }}
+        title: ${{ steps.load.outputs.distribution.title }}
+        pubdate: ${{ steps.load.outputs.distribution.published_at }}
+        media_file_url: ${{ steps.media.outputs.asset.link }}
+        summary: ${{ steps.render.outputs.body }}
+        entitlements: ${{ steps.entitlements.outputs.entitlements }}
+        clear_entitlements: true
+        content_rating: ${{ inputs.content_rating }}
+        explicit: ${{ inputs.explicit }}
+        episode_type: ${{ inputs.episode_type }}
+        missing_ok: true
+
+    # Create when nothing was published yet, or when the recorded episode is
+    # gone from Spotify (the update above answered 404).
+    - id: target
+      action: set-output
+      with:
+        create: ${{ steps.existing.outputs.id == "" || steps.update?.outputs?.episode?.outputs?.status == 404 }}
+
     - id: publish
-      if: ${{ steps.existing.outputs.id == "" }}
+      if: ${{ steps.target.outputs.create }}
       then:
+        - id: gone
+          if: ${{ steps.existing.outputs.id != "" }}
+          action: log
+          with:
+            message: "spotify episode ${{ steps.existing.outputs.id }} no longer exists; publishing it again as a new episode"
+
+        # The recipe makes ONE attempt at the create (no automatic retry), so
+        # a failure that Spotify had in fact accepted can't become two
+        # episodes.
         - id: create
           includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
           with:
@@ -233,6 +334,13 @@ definition:
         # delete can remove it. merge() keeps any other context keys; the new
         # values win. This context-only update is allowed while the
         # distribution is mid-publish.
+        #
+        # on_error: an episode whose id was not recorded is invisible to
+        # Passport — the next publish would create a second one and nothing
+        # would ever delete the first. So take it down again and fail the
+        # publish; publishing again then starts clean. The removal is
+        # continue-on-error so the publish always fails with the reason
+        # below, which names the episode in case it has to be removed by hand.
         - id: remember
           action: distribution.update
           with:
@@ -246,22 +354,38 @@ definition:
               "spotify_show_id": inputs.spotify_show_id,
               "channel_link": "https://open.spotify.com/episode/" + steps.create.outputs.episode.outputs.body.episode_id},
               steps.load.outputs.distribution.context) }}
-      else:
-        # Partial update — only the fields sent change. Entitlements are
-        # recomputed from the audience above and always sent (an empty list
-        # opens the episode), since this workflow owns the episode's gating.
-        - id: update
-          includes: libatomic/passport-actions/recipes/spotify/update-episode@spotify
-          with:
-            client_id: ${{ inputs.spotify_client_id }}
-            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-            episode_id: ${{ steps.existing.outputs.id }}
-            title: ${{ steps.load.outputs.distribution.title }}
-            pubdate: ${{ steps.load.outputs.distribution.published_at }}
-            media_file_url: ${{ steps.media.outputs.asset.link }}
-            summary: ${{ steps.render.outputs.body }}
-            entitlements: ${{ steps.entitlements.outputs.entitlements }}
-            clear_entitlements: true
-            content_rating: ${{ inputs.content_rating }}
-            explicit: ${{ inputs.explicit }}
-            episode_type: ${{ inputs.episode_type }}
+          on_error:
+            - id: rollback
+              continue-on-error: true
+              includes: libatomic/passport-actions/recipes/spotify/delete-episode@spotify
+              with:
+                client_id: ${{ inputs.spotify_client_id }}
+                client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+                episode_id: ${{ steps.create.outputs.episode.outputs.body.episode_id }}
+            - id: not-recorded
+              action: workflow.fail
+              with:
+                reason: >-
+                  The episode was created on Spotify but could not be saved on
+                  this distribution, so it was removed from Spotify again.
+                  Publish again. (If episode
+                  ${{ steps.create.outputs.episode.outputs.body.episode_id }}
+                  is still on Spotify, delete it there first.)
+
+    # STATUS. Spotify fetches and processes the media after the calls above
+    # return, so a rejected file is only known later. Schedule the status
+    # workflow (spotify/episode-status, installed with the package) to look
+    # once, a while from now; it writes channel_status and any failures to
+    # the distribution's context, which the admin shows. Fire-and-forget and
+    # continue-on-error: a missing, renamed or disabled status workflow never
+    # fails a publish that worked. Empty "Check status after" turns it off.
+    - id: schedule-status
+      if: ${{ (inputs.status_check_after ?? "") != "" && (inputs.status_workflow ?? "") != "" }}
+      action: workflow.run
+      continue-on-error: true
+      with:
+        workflow: ${{ inputs.status_workflow }}
+        async: true
+        run_at: ${{ inputs.status_check_after }}
+        inputs:
+          distribution_id: ${{ trigger.distribution_id }}

@@ -23,15 +23,16 @@ running through `trigger.action`:
 | `trigger.action` | Triggered by | Result |
 |---|---|---|
 | `publish` | first **Publish Now** / scheduled publish | `POST /shows/{show_id}/episodes`; the new `episode_id` is stored on the distribution as `context.spotify_episode_id` (with `spotify_episode_uri`, `spotify_show_id`), plus `context.channel_link` — the episode's open.spotify.com URL, which the admin shows as *Open on Spotify* |
-| `republish` | **Publish Now** on an already-published distribution (after editing it or syncing it with the article) | `PUT /episodes/{episode_id}` — title, pubdate, summary, media, entitlements, rating/explicit/type updated in place; no duplicate episode |
-| `delete` | **Delete** on the distribution in the admin | `DELETE /episodes/{episode_id}`, run by the platform **before** the distribution row is removed. If Spotify refuses, the run fails, the delete is refused and the distribution stays with the error — the episode is never orphaned |
+| `republish` | **Publish Now** on an already-published distribution (after editing it or syncing it with the article) | `PUT /episodes/{episode_id}` — title, pubdate, summary, media, entitlements, rating/explicit/type updated in place; no duplicate episode. If Spotify no longer has the episode (404), it is created again and the new id recorded |
+| `delete` | **Delete** on the distribution in the admin | `DELETE /episodes/{episode_id}`, run by the platform **before** the distribution row is removed. If Spotify refuses, the run fails, the delete is refused and the distribution stays with the error — the episode is never orphaned. An episode already gone from Spotify (404) counts as deleted |
 
 Checking on an episode after publish is a separate manual workflow,
 [`spotify/episode-status`](../episode-status/), installed with the package. It
 attaches itself to this channel (`channel: spotify` in its blueprint), so the
 admin's distribution panel gets a *Check status* button that reports Spotify's
 processing status and failure reasons and marks a rejected episode as
-**Error**. This workflow does not need to know it exists.
+**Error**. This workflow also runs it once on its own, a while after every
+publish (see [Status after a publish](#status-after-a-publish)).
 
 Steps, in order:
 
@@ -40,12 +41,48 @@ Steps, in order:
 | `load` | `distribution.get` | Load the episode metadata the editor collected |
 | `existing` | `set-output` | `context.spotify_episode_id` from a previous publish, or `""` |
 | `teardown` | `if trigger.action == "delete"` | recipe `spotify/delete-episode` for the recorded episode (nothing to do if none), then `workflow.exit` |
+| `no-media` | `workflow.fail` | Stop with a plain reason when the distribution has no media file |
 | `render` | `distribution.render` | Render the template into the episode summary |
 | `media` | `asset.get` (`link: true`, `application: spotify`) | Resolve the enclosure asset to a URL signed with the Spotify app's feed token |
+| `unsupported-media` | `workflow.fail` | Stop when the file is plainly not audio or video (its type is set and is neither `audio/*` nor `video/*`) |
 | `app` | `application.get` | Load the Spotify application (if installed) for its open categories |
 | `audience` | `audience.get` | Read the audience's categories |
 | `entitlements` | `set-output` | Apply the podcast-feed rule: slugs, or `[]` if a category is open |
-| `publish` | `if existing == ""` | **then** recipe `spotify/create-episode` + `distribution.update` recording the episode in `context`; **else** recipe `spotify/update-episode` (`clear_entitlements: true`, so an episode can go from gated to open) |
+| `update` | `if existing != ""` | recipe `spotify/update-episode` (`clear_entitlements: true`, so an episode can go from gated to open; `missing_ok: true`, so a 404 falls through to a create) |
+| `target` | `set-output` | `create` is true when nothing was published yet or the update answered 404 |
+| `publish` | `if target.create` | recipe `spotify/create-episode` + `distribution.update` (`remember`) recording the episode in `context` |
+| `schedule-status` | `workflow.run` (async, `run_at`) | Run the status workflow for this distribution after `status_check_after` |
+
+## Failure handling
+
+- **No duplicate episodes.** The create call is made once, with no automatic
+  retry: Spotify's create is not idempotent on `guid`, and a retry of a request
+  Spotify had already accepted would publish the episode twice. If the create
+  fails, the publish fails and can be run again.
+- **No unrecorded episodes.** If the episode is created but its id can't be
+  saved on the distribution (`remember`), the workflow deletes the episode from
+  Spotify again and fails the publish with a reason that names it. Publishing
+  again starts clean.
+- **Episodes removed on Spotify.** A republish of an episode Spotify no longer
+  has creates it again; a delete of one succeeds.
+- **Missing or wrong media.** A distribution without a file, or with a file that
+  is not audio or video, fails the publish with a reason the admin shows on the
+  distribution, before anything is sent to Spotify.
+
+## Status after a publish
+
+Spotify fetches and processes the media after the publish call returns, so a
+file it rejects is only known later. After each publish or republish the
+workflow schedules one run of the status workflow (`status_workflow`, by default
+the package's **Spotify Episode Status**) for `status_check_after` later (10
+minutes by default). That run writes `channel_status` and any failures to the
+distribution, and the admin lists a rejected episode as **Error** without anyone
+pressing *Check status*.
+
+The scheduling never fails a publish: if the status workflow is missing,
+renamed or disabled, the step is skipped over. Clear `status_check_after` to
+turn it off. A long video may still be `pending` at the first check — press
+*Check status* later, or raise the delay.
 
 Spotify's create is not idempotent on `guid`, so the recorded `episode_id`, not
 the guid, is what keeps a republish from creating a second episode. A
@@ -119,6 +156,8 @@ entitlements and the listener's entitlements share one namespace.
 | `content_rating` | no | `unspecified` | `unspecified`, or `eighteen_plus` for 18+ video |
 | `explicit` | no | `no` | `no`, `yes`, or `clean` |
 | `episode_type` | no | `full` | `full`, `bonus`, or `trailer` |
+| `status_check_after` | no | `10m` | How long after a publish to check Spotify's processing status (`10m`, `1h`). Empty turns the automatic check off |
+| `status_workflow` | no | `spotify-episode-status` | Slug or id of the status workflow. Change it only if that workflow was renamed |
 
 **Allowed HTTP hosts** (Workflows → Settings → Allowed HTTP hosts)
 
@@ -127,8 +166,9 @@ accounts.spotify.com
 distribution.spotify.com
 ```
 
-**Media** — assets must be `audio/mpeg` or `video/mp4`; MP4/MOV are published as
-video. The asset URL must be publicly reachable by Spotify.
+**Media** — MP3, M4A, MP4 or MOV; MP4/MOV are published as video. The publish
+stops early if the distribution has no file or the file is not audio or video.
+The asset URL must be publicly reachable by Spotify.
 
 ## Setup
 
