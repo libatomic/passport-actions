@@ -189,13 +189,14 @@ doesn't run one into the next:
 
 | Input | Default | Where |
 |---|---|---|
-| `paragraph_pause` | `short` | Between two paragraphs |
+| `paragraph_pause` | `brief` | Between two paragraphs |
 | `heading_pause` | `normal` | Before and after each heading, in place of the paragraph pause there |
 
-Each is `none`, `short` (half a second), `normal` (a second) or `long` (two
-seconds), and becomes the matching voice tag (`[short pause]`, `[pause]`,
-`[long pause]`), so it reads as an SSML break on the v2 models and as a tag on
-`eleven_v3` (see Voice tags). A narration distribution can choose its own in
+Each is `none`, `brief` (a quarter of a second), `short` (half a second),
+`normal` (a second) or `long` (two seconds), and becomes the matching voice
+tag (`[pause 0.25s]`, `[short pause]`, `[pause]`, `[long pause]`), so it reads
+as an SSML break on the v2 models and as a tag on `eleven_v3` (see Voice
+tags). `eleven_v3` has no lengths, so `brief` is its short pause there. A narration distribution can choose its own in
 the **Pause between paragraphs** and **Pause around headings** menus (saved as
 `context.paragraph_pause` / `context.heading_pause`; an unknown value falls
 back to the input). The pauses are part of the text, so changing one
@@ -221,7 +222,7 @@ editor lists them for the channel's model and inserts one at the cursor):
 | Tag | `eleven_v3` | Other models |
 |---|---|---|
 | `[short pause]`, `[pause]`, `[long pause]` | Read as tags | `<break time="0.5s" />`, `1s`, `2s` |
-| `[pause 1.5s]` | `[pause]` | `<break time="1.5s" />` (at most 3s) |
+| `[pause 1.5s]` | `[short pause]` under 0.7s, else `[pause]` | `<break time="1.5s" />` (at most 3s) |
 | `[whispers]`, `[sighs]`, `[laughs]`, `[chuckles]`, `[clears throat]`, … | Read as tags | Left out |
 | Emotions: `[excited]`, `[sad]`, `[curious]`, `[sarcastic]`, `[deadpan]`, … | Read as tags | Left out |
 | Sounds: `[applause]`, `[clapping]`, `[gulps]` | Read as tags | Left out |
@@ -282,7 +283,7 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `voice_name` | none | What the Voice menu calls the default voice (e.g. the narrator's name) |
 | `voices` | none | Other voices a distribution can pick (Name, Voice id); see Voices |
 | `model_id` | `eleven_flash_v2_5` | See Length |
-| `paragraph_pause` | `short` | Pause between paragraphs (see Pauses) |
+| `paragraph_pause` | `brief` | Pause between paragraphs (see Pauses) |
 | `heading_pause` | `normal` | Pause before and after headings (see Pauses) |
 | `fallback_text` | "The rest of this section is for subscribers. Subscribe to hear the full article." | Read in place of hidden restricted sections |
 | `template` | Title and publish date, then the body (see above) | What is read around the body |

@@ -92,22 +92,24 @@ inputs:
   paragraph_pause:
     label: Pause between paragraphs
     description: >-
-      A pause added between paragraphs: short (half a second), normal (a
-      second) or long (two seconds). A narration distribution can choose its
-      own. ElevenLabs may speed the voice up when a request has very many
-      pauses, so listen to a long article after changing it.
+      A pause added between paragraphs: brief (a quarter of a second),
+      short (half a second), normal (a second) or long (two seconds). A
+      narration distribution can choose its own. ElevenLabs may speed the
+      voice up when a request has very many pauses, so listen to a long
+      article after changing it.
     type: string
-    default: short
-    enum: [none, short, normal, long]
+    default: brief
+    enum: [none, brief, short, normal, long]
   heading_pause:
     label: Pause around headings
     description: >-
       A pause added before and after each heading, in place of the paragraph
-      pause there: short (half a second), normal (a second) or long (two
-      seconds). A narration distribution can choose its own.
+      pause there: brief (a quarter of a second), short (half a second),
+      normal (a second) or long (two seconds). A narration distribution can
+      choose its own.
     type: string
     default: normal
-    enum: [none, short, normal, long]
+    enum: [none, brief, short, normal, long]
   fallback_text:
     label: Spoken note for restricted sections
     description: >-
@@ -232,6 +234,7 @@ definition:
               default_input: paragraph_pause
               options:
                 - { value: none, label: None }
+                - { value: brief, label: Brief (a quarter of a second) }
                 - { value: short, label: Short (half a second) }
                 - { value: normal, label: Normal (a second) }
                 - { value: long, label: Long (two seconds) }
@@ -243,6 +246,7 @@ definition:
               default_input: heading_pause
               options:
                 - { value: none, label: None }
+                - { value: brief, label: Brief (a quarter of a second) }
                 - { value: short, label: Short (half a second) }
                 - { value: normal, label: Normal (a second) }
                 - { value: long, label: Long (two seconds) }
@@ -365,22 +369,24 @@ definition:
     paragraph_pause:
       label: Pause between paragraphs
       description: >-
-        A pause added between paragraphs: short (half a second), normal (a
-        second) or long (two seconds). A narration distribution can choose its
-        own. ElevenLabs may speed the voice up when a request has very many
-        pauses, so listen to a long article after changing it.
+        A pause added between paragraphs: brief (a quarter of a second),
+        short (half a second), normal (a second) or long (two seconds). A
+        narration distribution can choose its own. ElevenLabs may speed the
+        voice up when a request has very many pauses, so listen to a long
+        article after changing it.
       type: string
-      default: short
-      enum: [none, short, normal, long]
+      default: brief
+      enum: [none, brief, short, normal, long]
     heading_pause:
       label: Pause around headings
       description: >-
         A pause added before and after each heading, in place of the paragraph
-        pause there: short (half a second), normal (a second) or long (two
-        seconds). A narration distribution can choose its own.
+        pause there: brief (a quarter of a second), short (half a second),
+        normal (a second) or long (two seconds). A narration distribution can
+        choose its own.
       type: string
       default: normal
-      enum: [none, short, normal, long]
+      enum: [none, brief, short, normal, long]
     fallback_text:
       label: Spoken note for restricted sections
       description: >-
@@ -483,12 +489,12 @@ definition:
       action: set-output
       with:
         paragraph: >-
-          ${{ let tags = {"none": "", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
+          ${{ let tags = {"none": "", "brief": "[pause 0.25s]", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
           let picked = trim(toString(trigger.preview?.context?.paragraph_pause
           ?? steps.load.outputs.distribution.context?.paragraph_pause ?? ""));
-          picked in tags ? tags[picked] : (tags[inputs.paragraph_pause ?? "short"] ?? "") }}
+          picked in tags ? tags[picked] : (tags[inputs.paragraph_pause ?? "brief"] ?? "") }}
         heading: >-
-          ${{ let tags = {"none": "", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
+          ${{ let tags = {"none": "", "brief": "[pause 0.25s]", "short": "[short pause]", "normal": "[pause]", "long": "[long pause]"};
           let picked = trim(toString(trigger.preview?.context?.heading_pause
           ?? steps.load.outputs.distribution.context?.heading_pause ?? ""));
           picked in tags ? tags[picked] : (tags[inputs.heading_pause ?? "normal"] ?? "") }}
@@ -594,6 +600,7 @@ definition:
         # applied by the tags step. eleven_v3 reads square-bracket tags
         # itself; a set-length pause becomes a plain one.
         tags_v3:
+          - { find: '\[pause\s+0?\.[0-6]\d*\s*s\]', replace: '[short pause]' }
           - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '[pause]' }
         # The other models take SSML breaks (at most 3s) and nothing else:
         # pauses become breaks, the v3-only tags are left out (only these
