@@ -76,14 +76,13 @@ post title, date, categories, author, share and related blocks).
 
 What is read is set by the workflow's `template` input, not a template record.
 It is filled in at install and can be changed under **Settings → Workflows →
-ElevenLabs Narration**. The default starts with a short pause (so a player
-that takes a moment to start doesn't clip the first words), reads the title
-and publish date, then a long pause (voice tags: half-second and 2-second
-breaks, or `[short pause]` and `[long pause]` on `eleven_v3` and `eleven_v4`;
+ElevenLabs Narration**. The default reads the title and publish date, then a
+long pause (a voice tag: a 2-second break, or `[long pause]` on `eleven_v3` and
+`eleven_v4`;
 see Voice tags), then the body:
 
 ```
-<p>[short pause] {{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}
+<p>{{ .article.title }} was published on {{ timeFormat .article.published_at "dddd, MMMM D, YYYY" "America/New_York" }}. [long pause]</p>{{ .distribution.body }}
 ```
 
 `{{ .distribution.body }}` marks where the body goes. The workflow puts the
@@ -227,8 +226,11 @@ paragraphs, then sentences, then words. Each piece is one request, written as
 `narration-<distribution id>-part-<n>.mp3`; `asset.concat` then joins them
 frame by frame into `narration-<distribution id>.mp3` (overwriting it, so the
 asset keeps its id) and deletes the parts. Text that fits in one request is
-written straight to the narration, unless there is a lead-in (see Silence
-before the first word).
+one part, joined the same way, because the join also puts half a second of
+silence (`lead_in: 0.5`) before the first word: ElevenLabs' MP3s start
+speaking within about a tenth of a second and the models drop a pause tag at
+the very start, so a player or Bluetooth headset that takes a moment to start
+would clip the first words.
 
 - **Joins**: each request also gets the text before and after its piece
   (`previous_text`/`next_text`), so the voice carries on naturally across a
@@ -250,31 +252,6 @@ publish will read, to cap what one article can cost. The count is in bytes,
 so accented letters and curly quotes count more than once. Text over it, or
 no text at all, fails the publish with the reason.
 
-### Silence before the first word
-
-ElevenLabs' MP3s start speaking within about a tenth of a second, and the
-models drop a pause tag at the very start of the text. A player or Bluetooth
-headset that takes a moment to start then clips the first words. So every
-publish copies the `lead_in_url` MP3 (by default `lead-in.mp3` in this folder:
-half a second of silence, 44.1 kHz mono at 128 kbps, the format the workflow
-asks ElevenLabs for) into the assets as `narration-<distribution id>-lead-in.mp3`
-(`asset.create` with `url`, which doesn't need the HTTP allowlist), and
-`asset.concat` joins it in front of the pieces, then deletes it. With a
-lead-in, even a single piece is written as a part and joined.
-
-- **Off**: clear `lead_in_url`. A single piece is then written straight to
-  the narration again.
-- **Can't be fetched**: the step continues on error and the narration is
-  published without it. The default points at the `master` branch, so a
-  branch that adds or changes the file needs `lead_in_url` pointed at that
-  branch (`…/passport-actions@<branch>/…`) to try it.
-- **Existing narrations**: the lead-in isn't part of the text hash, so a
-  republish with unchanged text keeps the old MP3. Change the text, or the
-  voice or model, to regenerate it (billed).
-- **Your own file**: it must be an MP3 at 44.1 kHz with the same channels
-  as the voice's audio (ElevenLabs' are mono), or the joined file may not
-  play.
-
 ## Inputs
 
 All of these are set under **Settings → Workflows → ElevenLabs Narration**.
@@ -290,7 +267,6 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `skip_parts` | Media, figures, tables, code, navigation, `.no-audio`, WordPress chrome | Comma-separated CSS selectors not to read. Was `skip_selectors`, which only listed what `htmlText` didn't already skip; renamed so a reinstall doesn't keep an old value |
 | `pronunciations` | none | Term → Say as replacements (see Pronunciations) |
 | `text_cleanup` | on | Rewrite numbers, symbols and abbreviations (see Numbers and symbols) |
-| `lead_in_url` | Half a second of silence (`lead-in.mp3`) | MP3 joined in front of every narration; empty for none (see Silence before the first word) |
 | `max_characters` | 0 (no limit) | Longest text a publish will read (see Length) |
 | `listen` | — (runtime) | Set by the editor for a Listen preview; not configured |
 
@@ -318,7 +294,7 @@ from the MP3 (the joined one, for a long article).
 - Secret `ELEVENLABS_API_KEY`: a restricted key with **Text to Speech**
   access. Give it a credit limit in ElevenLabs to cap spending.
 - `api.elevenlabs.io` on the instance's HTTP allowlist.
-- Atomic with `http.*` `response_asset`, `asset.delete`, `asset.concat`,
+- Atomic with `http.*` `response_asset`, `asset.delete`, `asset.concat` `lead_in`,
   `htmlText`, `sha256`, `replaceEach`, `chunkText`, `workflow.fail`, `distribution.render` `as_audience`/`body`,
   distribution-trigger `preview`/`ui`, and template-less distributions
   rendering their own body.

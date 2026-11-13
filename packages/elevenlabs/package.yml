@@ -48,9 +48,8 @@ settings:
   - title: What is read
     description: >-
       Read around the article body, in place of restricted sections the
-      audience can't access, which page parts are skipped, and the silence
-      before the first word.
-    inputs: [template, fallback_text, skip_parts, lead_in_url]
+      audience can't access, and which page parts are skipped.
+    inputs: [template, fallback_text, skip_parts]
   - title: Pronunciation and cleanup
     description: >-
       Names and terms the voice should say differently, and the built-in

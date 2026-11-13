@@ -606,7 +606,10 @@ Join several assets, in order, into one asset. MP3s (`audio/mpeg`) are joined
 frame by frame: each part's ID3 tags and Xing/Info header frame are dropped, so
 the result plays, seeks and reports its duration as one file. Anything else is
 joined byte for byte. The joined file is written only after every part has been
-read, so a failure leaves an existing asset of that name as it was.
+read, so a failure leaves an existing asset of that name as it was. `lead_in`
+puts silence before an MP3's first part (one part is fine), in the first audio
+frame's format, so a player or headset that takes a moment to start doesn't clip
+the first words.
 
 | Input | Required | Description |
 |---|---|---|
@@ -618,6 +621,7 @@ read, so a failure leaves an existing asset of that name as it was.
 | `mime_type` | no | Defaults to the first part's |
 | `description`, `public`, `type`, `categories`, `metadata` | no | As for `asset.create` |
 | `max_size` | no | Fail if the joined file is larger (default 200 MiB) |
+| `lead_in` | no | MP3 only: silence before the first part, in seconds (`0.5`) or as a duration (`"500ms"`), at most 10s; rounded up to whole frames |
 
 | Output | Description |
 |---|---|
