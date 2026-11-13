@@ -140,6 +140,16 @@ inputs:
       pronunciations, so a pronunciation for the same text wins.
     type: bool
     default: true
+  lead_in_url:
+    label: Silence before the first word
+    description: >-
+      An MP3 of silence joined in front of every narration, so a player or
+      headset that takes a moment to start doesn't clip the first words
+      (the models drop a pause tag at the very start). The default is half
+      a second, 44.1 kHz mono, matching ElevenLabs' MP3s. Leave empty for
+      none. If it can't be fetched, the narration is published without it.
+    type: string
+    default: https://cdn.jsdelivr.net/gh/libatomic/passport-actions@master/blueprints/elevenlabs/narrate-article/lead-in.mp3
   max_characters:
     label: Longest article to read
     description: >-
@@ -371,6 +381,16 @@ definition:
         pronunciations, so a pronunciation for the same text wins.
       type: bool
       default: true
+    lead_in_url:
+      label: Silence before the first word
+      description: >-
+        An MP3 of silence joined in front of every narration, so a player or
+        headset that takes a moment to start doesn't clip the first words
+        (the models drop a pause tag at the very start). The default is half
+        a second, 44.1 kHz mono, matching ElevenLabs' MP3s. Leave empty for
+        none. If it can't be fetched, the narration is published without it.
+      type: string
+      default: https://cdn.jsdelivr.net/gh/libatomic/passport-actions@master/blueprints/elevenlabs/narrate-article/lead-in.mp3
     max_characters:
       label: Longest article to read
       description: >-
@@ -733,10 +753,39 @@ definition:
           with:
             reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
 
-    # 8. Generate, one request per piece. Each piece's MP3 goes straight
-    #    into the asset store, never into the run output. A single piece is
-    #    written as the narration itself; several are written as
-    #    narration-<id>-part-<n>.mp3 and joined below. overwrite keeps the
+    # 8. Silence before the first word: the lead_in_url MP3, copied in as
+    #    narration-<id>-lead-in.mp3 and joined in front of the narration
+    #    below (the join deletes it). A copy left by a run that failed is
+    #    deleted first. If the file can't be fetched, the narration is
+    #    published without it.
+    - id: leftover
+      if: ${{ steps.mode.outputs.mode == "run" && trim(inputs.lead_in_url ?? "") != "" }}
+      action: asset.get
+      continue-on-error: true
+      with:
+        filename: "narration-${{ trigger.distribution_id }}-lead-in.mp3"
+
+    - id: clear
+      if: ${{ steps.leftover?.outputs?.asset?.id != nil }}
+      action: asset.delete
+      with:
+        asset_id: ${{ steps.leftover.outputs.asset.id }}
+
+    - id: leadin
+      if: ${{ steps.mode.outputs.mode == "run" && trim(inputs.lead_in_url ?? "") != "" }}
+      action: asset.create
+      continue-on-error: true
+      with:
+        url: ${{ trim(inputs.lead_in_url) }}
+        filename: "narration-${{ trigger.distribution_id }}-lead-in.mp3"
+        mime_type: audio/mpeg
+        description: "Silence before the narration of ${{ steps.render.outputs.title ?? trigger.distribution_id }}"
+
+    # 9. Generate, one request per piece. Each piece's MP3 goes straight
+    #    into the asset store, never into the run output. A single piece
+    #    with no lead-in is written as the narration itself; otherwise the
+    #    pieces are written as narration-<id>-part-<n>.mp3 and joined below,
+    #    after the lead-in. overwrite keeps the
     #    asset's id across republishes, and an asset is only written once
     #    its whole file has arrived, so a run that fails partway leaves the
     #    published MP3 as it was. Every request that reaches ElevenLabs is
@@ -754,8 +803,9 @@ definition:
         parts: >-
           ${{ let chunks = steps.pieces.outputs.chunks; let n = len(chunks);
           let base = "narration-" + toString(trigger.distribution_id);
+          let whole = n == 1 && steps.leadin?.outputs?.id == nil;
           map(chunks, ({"text": #, "index": #index + 1,
-          "filename": n == 1 ? base + ".mp3" : base + "-part-" + toString(#index + 1) + ".mp3",
+          "filename": whole ? base + ".mp3" : base + "-part-" + toString(#index + 1) + ".mp3",
           "previous": #index > 0 ? chunks[#index - 1] : nil,
           "next": #index < n - 1 ? chunks[#index + 1] : nil})) }}
         metadata:
@@ -810,12 +860,15 @@ definition:
               + toInt(steps.tts.outputs.headers?.["Character-Cost"] ?? 0) }}
             narration_asset: ${{ steps.tts.outputs.asset_id }}
 
-    # Several pieces: join them into the narration and delete the pieces.
+    # Join the lead-in and the pieces into the narration and delete them
+    # (a single piece with no lead-in is the narration already).
     - id: join
-      if: ${{ steps.mode.outputs.mode == "run" && outputs.requests > 1 }}
+      if: ${{ steps.mode.outputs.mode == "run" && (outputs.requests > 1 || steps.leadin?.outputs?.id != nil) }}
       action: asset.concat
       with:
-        filenames: ${{ map(steps.plan.outputs.parts, .filename) }}
+        filenames: >-
+          ${{ concat(steps.leadin?.outputs?.id != nil ? ["narration-" + toString(trigger.distribution_id) + "-lead-in.mp3"] : [],
+          map(steps.plan.outputs.parts, .filename)) }}
         filename: "narration-${{ trigger.distribution_id }}.mp3"
         overwrite: true
         delete_sources: true
@@ -823,7 +876,7 @@ definition:
         description: "Narration of ${{ steps.render.outputs.title ?? trigger.distribution_id }}"
         metadata: ${{ steps.plan.outputs.metadata }}
 
-    # 9. Record what was published, for the next republish and for delete.
+    # 10. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
     #    distribution.update replaces context, so the existing keys are
     #    merged back in (merge's first argument wins). channel_error, which
@@ -834,7 +887,7 @@ definition:
       with:
         distribution_id: ${{ trigger.distribution_id }}
         context: >-
-          ${{ merge({"asset_id": outputs.requests > 1 ? steps.join.outputs.asset_id : vars.narration_asset,
+          ${{ merge({"asset_id": steps.join?.outputs?.asset_id ?? vars.narration_asset,
           "text_hash": steps.measure.outputs.hash,
           "characters": steps.measure.outputs.characters,
           "characters_billed": vars.narration_billed ?? 0,
