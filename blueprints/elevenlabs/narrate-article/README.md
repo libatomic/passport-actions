@@ -2,8 +2,9 @@
 
 Defines a custom **`narration` distribution channel**. Publishing a narration
 distribution reads its body aloud with an ElevenLabs voice and stores the MP3
-as a private asset named `narration-<distribution id>.mp3`. Once installed and
-enabled, "Audio Narration" appears in an article's **Add Distribution** menu.
+as a private asset named from the article's title, e.g.
+`Fishing_the_Ozarks-887.mp3` (see File name). Once installed and enabled,
+"Audio Narration" appears in an article's **Add Distribution** menu.
 
 v1 stops at the MP3 asset. Publishing it to a podcast feed, Spotify or a
 WordPress player is a later step.
@@ -224,7 +225,7 @@ Longer text is split by `chunkText` into pieces of at most 95% of that (some
 headroom in case ElevenLabs counts characters differently), breaking between
 paragraphs, then sentences, then words. Each piece is one request, written as
 `narration-<distribution id>-part-<n>.mp3`; `asset.concat` then joins them
-frame by frame into `narration-<distribution id>.mp3` (overwriting it, so the
+frame by frame into the narration's file (see File name; overwriting it, so the
 asset keeps its id) and deletes the parts. Text that fits in one request is
 one part, joined the same way, because the join also puts half a second of
 silence (`lead_in: 0.5`) before the first word: ElevenLabs' MP3s start
@@ -270,11 +271,29 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `max_characters` | 0 (no limit) | Longest text a publish will read (see Length) |
 | `listen` | — (runtime) | Set by the editor for a Listen preview; not configured |
 
+### File name
+
+The narration's MP3 is named from the first three words of the title, joined
+with underscores, then the distribution's numeric `_id`:
+`Fishing_the_Ozarks-887.mp3` for "Fishing the Ozarks: Trout Streams…". Words
+are runs of letters and digits (apostrophes are dropped, so "Don't" is `Dont`;
+accented letters are kept); a title with none gives `Narration-887.mp3`. The
+`_id` keeps the name unique.
+
+The name is chosen at the first publish and saved as `context.filename`, then
+reused, so retitling the article later doesn't move the MP3's URL (feeds and
+links keep working). A narration published before names came from the title
+(`narration-<distribution id>.mp3`) gets its new name the next time its audio
+is regenerated, and the old MP3 is deleted then. The pieces of a long article
+are still written as `narration-<distribution id>-part-<n>.mp3` and deleted
+after the join.
+
 ## Recorded on the distribution (`context`)
 
 | Key | Meaning |
 |---|---|
 | `asset_id` | The MP3 asset. The admin plays it under the distribution |
+| `filename` | The MP3's name, chosen at the first publish and kept (see File name) |
 | `text_hash` | sha256 of the text, voice and model; decides whether a republish regenerates |
 | `characters` | Length of the text sent |
 | `characters_billed` | ElevenLabs' `character-cost` headers, summed across the requests |

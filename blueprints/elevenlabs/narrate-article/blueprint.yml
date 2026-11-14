@@ -3,7 +3,8 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
 description: |
   Defines a custom "narration" distribution channel. Publishing a narration
   distribution reads its body aloud with an ElevenLabs voice and stores the
-  result as a private MP3 asset (narration-<distribution id>.mp3).
+  result as a private MP3 asset named from the title and the distribution's
+  _id (Fishing_the_Ozarks-887.mp3).
 
   AUDIENCE: each narration distribution has one audience, and the body is
   rendered as a member of that audience. Restricted-content blocks the
@@ -489,6 +490,10 @@ definition:
           - { find: '\betc\.', replace: 'et cetera' }
           - { find: '\bJr\.', replace: 'Junior' }
           - { find: '\bSr\.', replace: 'Senior' }
+        # The narration's filename (the name step): apostrophes dropped,
+        # then the title split into words on anything but letters and digits.
+        name_drop: "['’]"
+        name_split: '[^\p{L}\p{N}]+'
         # Voice tags typed into the body (the ui tags hint lists them),
         # applied by the tags step. eleven_v3 and eleven_v4 read
         # square-bracket tags themselves (no SSML); a set-length pause
@@ -733,6 +738,22 @@ definition:
           with:
             reason: "narration unchanged; keeping asset ${{ outputs.asset_id }}"
 
+    # The narration's filename: the first three words of the title, joined
+    # with underscores, then the distribution's _id (Fishing_the_Ozarks-887.mp3).
+    # It is chosen at the first publish and kept (context.filename), so a
+    # later title change doesn't move the MP3's URL.
+    - id: name
+      if: ${{ steps.mode.outputs.mode == "run" }}
+      action: set-output
+      with:
+        filename: >-
+          ${{ let saved = trim(toString(steps.load.outputs.distribution.context?.filename ?? ""));
+          let heading = regexReplace(steps.blocks.outputs.name_drop, toString(steps.render.outputs.title ?? ""), "");
+          let spaced = trim(regexReplace(steps.blocks.outputs.name_split, heading, " "));
+          saved != "" ? saved
+          : (spaced != "" ? join(split(spaced, " ")[:3], "_") : "Narration")
+          + "-" + toString(steps.load.outputs.distribution["_id"]) + ".mp3" }}
+
     # 8. Generate, one request per piece. Each piece's MP3 goes straight
     #    into the asset store, never into the run output, as
     #    narration-<id>-part-<n>.mp3; the join below makes them (even one)
@@ -817,13 +838,24 @@ definition:
       action: asset.concat
       with:
         filenames: ${{ map(steps.plan.outputs.parts, .filename) }}
-        filename: "narration-${{ trigger.distribution_id }}.mp3"
+        filename: ${{ steps.name.outputs.filename }}
         lead_in: 0.5
         overwrite: true
         delete_sources: true
         mime_type: audio/mpeg
         description: "Narration of ${{ steps.render.outputs.title ?? trigger.distribution_id }}"
         metadata: ${{ steps.plan.outputs.metadata }}
+
+    # A narration published under another name (one from before names came
+    # from the title) leaves its old MP3 behind: delete it.
+    - id: replaced
+      if: >-
+        ${{ steps.mode.outputs.mode == "run" && outputs.asset_id != ""
+        && toString(outputs.asset_id) != toString(steps.join.outputs.asset_id) }}
+      action: asset.delete
+      continue-on-error: true
+      with:
+        asset_id: ${{ outputs.asset_id }}
 
     # 9. Record what was published, for the next republish and for delete.
     #    Context-only, so it is allowed while the distribution is publishing.
@@ -843,6 +875,7 @@ definition:
           "requests": outputs.requests,
           "voice_id": steps.voice.outputs.id,
           "model_id": inputs.model_id,
+          "filename": steps.name.outputs.filename,
           "channel_error": "",
           "generated_at": now()},
           steps.load.outputs.distribution.context) }}
