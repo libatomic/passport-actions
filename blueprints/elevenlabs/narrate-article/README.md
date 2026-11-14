@@ -2,8 +2,9 @@
 
 Defines a custom **`narration` distribution channel**. Publishing a narration
 distribution reads its body aloud with an ElevenLabs voice and stores the MP3
-as a private asset named `narration-<distribution id>.mp3`. Once installed and
-enabled, "Audio Narration" appears in an article's **Add Distribution** menu.
+as a private asset named from the article's title, e.g.
+`Fishing_the_Ozarks-887.mp3` (see File name). Once installed and enabled,
+"Audio Narration" appears in an article's **Add Distribution** menu.
 
 v1 stops at the MP3 asset. Publishing it to a podcast feed, Spotify or a
 WordPress player is a later step.
@@ -77,7 +78,8 @@ post title, date, categories, author, share and related blocks).
 What is read is set by the workflow's `template` input, not a template record.
 It is filled in at install and can be changed under **Settings → Workflows →
 ElevenLabs Narration**. The default reads the title and publish date, then a
-long pause (a voice tag: a 2-second break, or `[long pause]` on `eleven_v3`;
+long pause (a voice tag: a 2-second break, or `[long pause]` on `eleven_v3` and
+`eleven_v4`;
 see Voice tags), then the body:
 
 ```
@@ -113,7 +115,7 @@ preview (`trigger.action: "preview"`, no side effects):
 - **Spoken text**: exactly what would be read for the distribution's audience,
   using the unsaved body (`trigger.preview.body`): template, fallback, skipped
   paragraphs, pronunciations, cleanup and voice tags applied (as sent: breaks on
-  models other than eleven_v3), with the character count
+  models other than eleven_v3 and eleven_v4), with the character count
   (against `max_characters` when it is set) and, for a long article, how many
   requests it takes. Outputs `text`, `characters`, `limit` (`max_characters`,
   0 for none), `requests` and `note`. Nothing is sent to ElevenLabs.
@@ -187,7 +189,7 @@ With no other voices there is no menu.
 Editors type tags into the body's text (the **Voice tags** button in the
 editor lists them for the channel's model and inserts one at the cursor):
 
-| Tag | `eleven_v3` | Other models |
+| Tag | `eleven_v3`, `eleven_v4` | Other models |
 |---|---|---|
 | `[short pause]`, `[pause]`, `[long pause]` | Read as tags | `<break time="0.5s" />`, `1s`, `2s` |
 | `[pause 1.5s]` | `[pause]` | `<break time="1.5s" />` (at most 3s) |
@@ -201,7 +203,10 @@ the cleanup. Only the listed tag words are left out on other models, so other
 bracketed text in an article (`[sic]`, an editor's insertion) is still read.
 ElevenLabs notes that tags work best when they suit the voice, that many
 breaks in one request can make the voice speed up or add noise, and that
-professional voice clones aren't fully tuned for `eleven_v3`.
+professional voice clones aren't fully tuned for `eleven_v3`. `eleven_v4`
+follows tags more reliably and supports professional and instant clones, but a
+voice cloned before v4 launched has to be retrained for v4 in ElevenLabs (My
+Voices) before it sounds right on it.
 
 ### Length
 
@@ -213,21 +218,28 @@ Each model takes a limited amount of text per request (per ElevenLabs'
 | `eleven_flash_v2_5` (default) | 40,000 | Fast; one request covers nearly every article |
 | `eleven_turbo_v2_5` | 40,000 | |
 | `eleven_multilingual_v2` | 10,000 | Most natural |
-| `eleven_v3` | 5,000 | Most expressive |
+| `eleven_v3` | 5,000 | Expressive; voice tags |
+| `eleven_v4` | 10,000 | Most expressive; voice tags |
 
 Longer text is split by `chunkText` into pieces of at most 95% of that (some
 headroom in case ElevenLabs counts characters differently), breaking between
 paragraphs, then sentences, then words. Each piece is one request, written as
 `narration-<distribution id>-part-<n>.mp3`; `asset.concat` then joins them
-frame by frame into `narration-<distribution id>.mp3` (overwriting it, so the
+frame by frame into the narration's file (see File name; overwriting it, so the
 asset keeps its id) and deletes the parts. Text that fits in one request is
-written straight to the narration, as before.
+one part, joined the same way, because the join also puts half a second of
+silence (`lead_in: 0.5`) before the first word: ElevenLabs' MP3s start
+speaking within about a tenth of a second and the models drop a pause tag at
+the very start, so a player or Bluetooth headset that takes a moment to start
+would clip the first words.
 
 - **Joins**: each request also gets the text before and after its piece
   (`previous_text`/`next_text`), so the voice carries on naturally across a
   join. `eleven_v3` supports neither that nor ElevenLabs' request stitching,
   so its pieces are read on their own; a join on v3 can sound like a fresh
-  start.
+  start. ElevenLabs doesn't say whether `eleven_v4` takes them, so it is
+  treated like v3 (at 10,000 characters a request, few v4 articles have a
+  join).
 - **Failures**: the published MP3 is only replaced after every piece has
   been read and joined. A run that fails partway leaves it as it was, and can
   leave part assets behind; the next successful publish overwrites and
@@ -259,11 +271,29 @@ All of these are set under **Settings → Workflows → ElevenLabs Narration**.
 | `max_characters` | 0 (no limit) | Longest text a publish will read (see Length) |
 | `listen` | — (runtime) | Set by the editor for a Listen preview; not configured |
 
+### File name
+
+The narration's MP3 is named from the first three words of the title, joined
+with underscores, then the distribution's numeric `_id`:
+`Fishing_the_Ozarks-887.mp3` for "Fishing the Ozarks: Trout Streams…". Words
+are runs of letters and digits (apostrophes are dropped, so "Don't" is `Dont`;
+accented letters are kept); a title with none gives `Narration-887.mp3`. The
+`_id` keeps the name unique.
+
+The name is chosen at the first publish and saved as `context.filename`, then
+reused, so retitling the article later doesn't move the MP3's URL (feeds and
+links keep working). A narration published before names came from the title
+(`narration-<distribution id>.mp3`) gets its new name the next time its audio
+is regenerated, and the old MP3 is deleted then. The pieces of a long article
+are still written as `narration-<distribution id>-part-<n>.mp3` and deleted
+after the join.
+
 ## Recorded on the distribution (`context`)
 
 | Key | Meaning |
 |---|---|
 | `asset_id` | The MP3 asset. The admin plays it under the distribution |
+| `filename` | The MP3's name, chosen at the first publish and kept (see File name) |
 | `text_hash` | sha256 of the text, voice and model; decides whether a republish regenerates |
 | `characters` | Length of the text sent |
 | `characters_billed` | ElevenLabs' `character-cost` headers, summed across the requests |
@@ -283,7 +313,7 @@ from the MP3 (the joined one, for a long article).
 - Secret `ELEVENLABS_API_KEY`: a restricted key with **Text to Speech**
   access. Give it a credit limit in ElevenLabs to cap spending.
 - `api.elevenlabs.io` on the instance's HTTP allowlist.
-- Atomic with `http.*` `response_asset`, `asset.delete`, `asset.concat`,
+- Atomic with `http.*` `response_asset`, `asset.delete`, `asset.concat` `lead_in`,
   `htmlText`, `sha256`, `replaceEach`, `chunkText`, `workflow.fail`, `distribution.render` `as_audience`/`body`,
   distribution-trigger `preview`/`ui`, and template-less distributions
   rendering their own body.
