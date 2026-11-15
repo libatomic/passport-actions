@@ -74,8 +74,8 @@ cases:
 |---|---|
 | `name` | Shown in the Test panel and used by `--case` |
 | `settings`, `secrets` | The plugin's, for this case |
-| `automation.settings`, `automation.secrets` | The automation's own (automation tests) |
-| `channel.settings`, `channel.secrets` | The channel's own (channel tests) |
+| `automation.settings`, `automation.secrets`, `automation.label` | The automation's own (automation tests) |
+| `channel.settings`, `channel.secrets`, `channel.name`, `channel.label` | The channel's own (channel tests) |
 | `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id }` |
 | `inputs` | For a manual run or an action |
 | `fields`, `distribution`, `article` | For a channel: the distribution form's values, the distribution, and the article its followed defaults read |

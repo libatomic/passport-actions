@@ -84,9 +84,9 @@ behind), ask for base64:
     url: …
     response_encoding: base64      # 2.3.0
     max_response_size: 2000000
-outputs:
-  audio: "${{ steps.sample.outputs.body }}"
-  audio_type: "${{ steps.sample.outputs.headers['Content-Type'] }}"
+  outputs:
+    audio: "${{ steps.sample.outputs.body }}"
+    audio_type: "${{ steps.sample.outputs.headers['Content-Type'] }}"
 ```
 
 | Input | Meaning | Since |

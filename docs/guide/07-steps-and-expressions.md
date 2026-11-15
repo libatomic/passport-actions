@@ -99,7 +99,7 @@ the file, and their results are at `steps.<id>` like any other.
 
 | Key | Meaning |
 |---|---|
-| `foreach` | A list. The steps run once per element, in order |
+| `foreach` | An expression that yields a list (not a list written out in YAML). The steps run once per element, in order |
 | `as` | The element's name under `loop`. Default `item` |
 | `while` / `until` | Repeat while true (checked before each pass) / until true (checked after each pass) |
 | `max` | A limit on passes. Without it a `foreach` over more than 10,000 elements **fails before it starts**, and a `while`/`until` stops after 1,000 passes. With it, a `foreach` processes only the first `max` elements |

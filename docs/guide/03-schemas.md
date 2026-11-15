@@ -72,8 +72,9 @@ properties:
 `$ref` replaces the node it is on. `title`, `description`, `help`, `default`
 and `ui` written beside a `$ref` override the referenced schema's own, so the
 same shape can be labelled and presented differently where it is used.
-Validation keywords (`type`, `pattern`, `enum`, …) beside a `$ref` are an
-error: change what is valid in the schema, not at the reference.
+Anything else beside a `$ref` is an error, validation keywords (`type`,
+`pattern`, `enum`, …) and `secret` included: change what is valid in the
+schema, not at the reference.
 
 ```yaml
 billing_contact:
@@ -145,8 +146,8 @@ package: the server a plugin runs on supplies them.
 | Group | Names | In |
 |---|---|---|
 | Events | one per event type: `user.created`, `user.subscription.status.active`, `distribution.published`, … | [reference/EVENTS.md](../reference/EVENTS.md) |
-| Records | `user`, `subscription`, `plan`, `audience`, `article`, `distribution`, `asset`, `template`, `application`, `entitlement` | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
-| Stripe | the Stripe objects Passport relays in its own events | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
+| Records | `user`, `subscription`, `entitlement`, `application`, `instance`, `job`, `openid.profile`, `openid.address`. More record shapes (plan, audience, article, distribution, asset, template) are added as actions gain generated output schemas | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
+| Stripe | `stripe.<name>`: the Stripe objects Passport relays in its own events | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
 
 Built-in actions' inputs and outputs are generated from the server's code and
 are listed in [reference/BUILTINS.md](../reference/BUILTINS.md).

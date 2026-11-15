@@ -26,7 +26,7 @@ settings:
     resubscribe:
       type: boolean
       title: Resubscribe people who unsubscribed before
-      default: false
+      default: true
 on:
   - event: user.subscription.status.active
     schema: { $ref: passport/schemas/user.subscription.status.active@^1 }

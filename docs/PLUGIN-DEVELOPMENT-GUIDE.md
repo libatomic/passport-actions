@@ -15,7 +15,7 @@ reference Plugin Studio, the back office and the engine are built against.
 | [3. Schemas](guide/03-schemas.md) | Schema files, event schemas, the built-in `passport` schemas |
 | [4. Actions](guide/04-actions.md) | Built-in actions, effect classes, writing a plugin action |
 | [5. Automations](guide/05-automations.md) | Triggers, settings, inputs, outputs |
-| [6. Channels](guide/06-channels.md) | The channel block, settings, the distribution form, publish, republish, delete, preview |
+| [6. Channels](guide/06-channels.md) | The channel block, settings, the distribution form, and the five requests a channel answers |
 | [7. Steps and expressions](guide/07-steps-and-expressions.md) | Step kinds, errors, what a run can read, expression rules |
 | [8. Functions](guide/08-functions.md) | Every inline function |
 | [9. Files and binary data](guide/09-files-and-binary.md) | Assets, base64, `http.*` bodies |
@@ -33,14 +33,18 @@ accepts today.
 | Part | State on 14 November |
 |---|---|
 | Plugin packages, registry, review and release, sandbox and desktop testing | Built, in the 2.3 format this guide replaces (`plugin.yml`, `workflows/`, `recipes/`) |
+| The built-ins added in 2.1.4 (`asset.delete`, `asset.concat`, `workflow.fail`, `response_asset`, narration functions, previews) | Built and in 2.3 |
+| The 2.3.0 functions ([chapter 8](guide/08-functions.md)) | Built |
+| The signed-webhook check ([5.3](guide/05-automations.md#53-triggers)) | Built. Reads `secrets.<name>`; an automation's own secrets follow with added automations |
+| `requires` with `passport`, and `format: 2` | Built. A `format: 2` plugin is recognised and refused until the v2 loader lands |
+| The built-in `passport` schemas, resolver and validation | Built; not yet used by runs |
+| External Node.js actions (`uses:`) | Removed |
 | v2 files (`plugin.yaml`, `automations/`, `channels/`, `actions/`, `schemas/`) | Specified here, not built |
-| The field schema, validation, form layout | Specified here, not built |
+| The field schema checks, form layout | Being built |
 | Plugin actions with declared inputs and outputs | Specified here, not built (recipes are today's nearest thing) |
 | Adding automations and channels with their own settings | Specified here, not built |
 | The distribution form | Specified here, not built |
-| The built-ins added in 2.1.4 (`asset.delete`, `asset.concat`, `workflow.fail`, `response_asset`, narration functions, previews) | Built in 2.1.4, being merged into 2.3 |
-| New functions, binary in `http.*`, signed-webhook check | Specified here, not built |
-| External Node.js actions (`uses:`) | Removed in 2.3.0 |
+| Binary in `http.*`, choices loaded from an action | Specified here, not built |
 
 ## Concepts
 
@@ -58,7 +62,7 @@ A plugin is a folder of YAML files. There are five kinds of definition.
 
 An automation never defines a channel, and a channel is never started by a
 trigger: it runs when a distribution on it is published, republished, deleted
-or previewed.
+or previewed, or when its status is asked for.
 
 ### Definitions, and what a publisher adds
 
@@ -281,7 +285,7 @@ knowledge of how the engine happened to behave.
 | v1 | v2 | Why |
 |---|---|---|
 | **Blueprint** with event, manual, webhook or schedule triggers | **Automation** | Same thing with a clearer name; no more wrapper with two copies of `inputs` |
-| **Blueprint** with a `distribution:` trigger | **Channel**, with a `channel:` block | A channel is not triggered; it has its own settings, a distribution form, and four actions to answer. Hiding it inside a trigger hid all of that |
+| **Blueprint** with a `distribution:` trigger | **Channel**, with a `channel:` block | A channel is not triggered; it has its own settings, a distribution form, and five requests to answer. Hiding it inside a trigger hid all of that |
 | **Recipe** (`includes:`) | **Action** in a plugin | Recipes had no declared outputs, unvalidated inputs, and their step ids leaked into the caller. An action has a contract |
 | **Package** (`package.yml`) and **vendor plugin** (`plugins/<v>/plugin.yml`, `plugin.call`, `data_source`) | **Plugin** | Two half-overlapping ways to group and configure. One bundle, one settings model |
 | **Schema** files, referenced but never checked | **Schema**, resolved and validated | A reference that nothing reads is documentation that rots |

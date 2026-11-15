@@ -96,7 +96,8 @@ automation and channel) is written by you, as semver:
 | Anything that breaks an existing user | major, `1.3.0` to `2.0.0` | a **new file**, `<name>_2.yaml`; the old file stays |
 
 One file per major version. The file's `version` must agree with its name:
-`subscriber.add_2.yaml` holds `version: 2.x.y`.
+`subscriber.add_2.yaml` holds `version: 2.x.y`. A definition's first version
+is `1.0.0`; there is no major 0.
 
 What counts as breaking:
 

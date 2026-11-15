@@ -95,8 +95,7 @@ inputs:
     name:
       type: string
       title: Name
-      description: The subscriber's display name.
-      default: ""
+      description: The subscriber's display name. Left out, the name is sent empty, as v1 did.
     custom_fields:
       type: array
       title: Custom fields
@@ -138,7 +137,7 @@ steps:
         Content-Type: application/json
       body:
         EmailAddress: "${{ inputs.email }}"
-        Name: "${{ inputs.name }}"
+        Name: "${{ inputs.name ?? '' }}"
         CustomFields: "${{ inputs.custom_fields }}"
         Resubscribe: "${{ inputs.resubscribe }}"
         ConsentToTrack: "${{ inputs.consent_to_track }}"
@@ -173,7 +172,7 @@ steps:
   or `secrets`; take them as inputs ([1.6](01-project-and-manifest.md#16-depending-on-another-plugin)).
 - **Inputs are checked.** `with:` is validated against `inputs`. Literal
   values are checked when the plugin is built; values from expressions are
-  checked when the step runs ([rule 7](02-field-schema.md#211-rules-that-apply-to-every-form)).
+  checked when the step runs ([rule 10](02-field-schema.md#211-rules-that-apply-to-every-form)).
 - **Returns.** After the last step, each `returns` expression is evaluated
   and the result is checked against `outputs`. The caller gets exactly those
   values. An action with no `outputs` returns nothing.

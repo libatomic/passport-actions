@@ -5,7 +5,8 @@ built-in channels (web, email, SMS, RSS, podcast); a plugin adds more: a
 Facebook page, Spotify, an audio narration.
 
 A channel is not an automation. Nothing triggers it. It runs when a publisher
-publishes, republishes, deletes or previews a distribution on it, and it has
+publishes, republishes, deletes or previews a distribution on it, or asks for
+its status, and it has
 three things an automation does not: a `channel` block that says what kind of
 channel it is, a form filled in on every distribution, and a fixed set of
 requests it must answer.
@@ -182,7 +183,7 @@ What the expression may read:
 | Name | Fields |
 |---|---|
 | `article` | `id`, `title`, `slug`, `summary`, `body`, `author`, `image_uri`, `uri`, `published_at`, `metadata` |
-| `distribution` | `id`, `title`, `body`, `summary`, `audience_id`, `asset_id`, `scheduled_at` |
+| `distribution` | the distribution record, as in [6.5](#65-what-a-channel-must-answer): `title`, `body`, `summary`, `audience_id`, `asset_id`, `scheduled_at`, … |
 | `channel.settings` | this channel's settings (not its secrets) |
 | `settings` | the plugin's settings (not its secrets) |
 
@@ -318,7 +319,7 @@ ignores it; the admin reads it. The set is closed.
 | `section_line: { setting, label }` | Each restricted section gets an editable replacement line, defaulting to that setting's value. The setting is a string |
 | `sample: audio` | A play button per paragraph: a preview run with `trigger.preview.sample` set to the paragraph's text, expecting `audio` (base64) and `audio_type` back |
 | `term_list: { setting, find, replace, label }` | Right-click a word to add or edit a row in that list setting (pronunciations, say); saved to the channel's settings. The setting is an array of objects; `find` and `replace` name the two properties of a row. While a row is being edited, its play button runs a preview with the unsaved list |
-| `tags: { setting, title, sets }` | A menu of tags an editor can insert into the text. `setting` is a string setting (usually an `enum`); its value picks the set from `sets`, falling back to `sets.default` |
+| `tags: { setting, title, sets }` | A menu of tags an editor can insert into the text. `setting` is a string setting (usually an `enum`); its value picks the set from `sets`, falling back to `sets.default`. A set is `{ note, groups: [ { label, tags: [ "[tag]" or { tag, hint } ] } ] }` |
 
 A hint names a **channel setting**. In v1 they named workflow inputs, and v1
 `choice` / `choices` are replaced by fields of the distribution form with

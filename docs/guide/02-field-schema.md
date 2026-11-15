@@ -76,13 +76,12 @@ inputs:
       minimum: 1
       maximum: 5
       default: 3
-      ui: { level: advanced }
 ```
 
 What the publisher sees: a text box that only accepts four digits; a phone
 box; an address box; a dropdown with three named choices; a multiselect; a
-six-line paragraph box with a help popover; and, under "Advanced", a number
-box limited to 1 through 5.
+six-line paragraph box with a help popover; and a number box limited to 1
+through 5.
 
 ## 2.2 Text on every schema
 
@@ -116,6 +115,18 @@ want. `passport-plugin check` warns about a form field without a `title`.
 The root of a form schema is `type: object`. Unless you say otherwise,
 `additionalProperties` is `false` on a form: a value for a field that is not
 declared is refused.
+
+Further rules a form must meet:
+
+- Every field states its `type`. A list states its `items`, which may be
+  strings, integers, numbers, objects or a `$ref`; a list of booleans or of
+  lists has no control and is refused.
+- A nested object has `properties` (a group of fields) or
+  `additionalProperties` (a map); one with neither is refused.
+- A field of the form itself is named with letters, digits and underscores,
+  not starting with a digit, because it is read as `settings.<name>` or
+  `inputs.<name>`.
+- `required` may only name fields that are declared.
 
 An action input that only another step will ever fill in (a metadata map, a
 vendor payload) can be `type: object` with `additionalProperties: true`. It
@@ -179,6 +190,12 @@ the form picks a control from it. An unknown format is an error.
 | Passport records | `passport.user`, `passport.audience`, `passport.asset`, `passport.template`, `passport.plan`, `passport.category`, `passport.article`, `passport.application`, `passport.distribution` |
 | Passport ids | `passport.id` |
 
+What some of them accept, exactly: `uri` needs a scheme (`https://…`);
+`phone` is `+` and 7 to 15 digits; `time` is `HH:MM` or `HH:MM:SS` with no
+offset; `duration` is not negative; `byte` is padded standard base64; `json`
+and `yaml` must parse; `html`, `markdown`, `template` and `css` are text and
+are not checked.
+
 A `passport.<record>` value is that record's id. The form shows a picker for
 that kind of record, and the server checks the id exists on the site.
 
@@ -197,10 +214,15 @@ pattern that starts with `https`.
 api_key: { type: string, title: API key, secret: true }
 ```
 
-`secret: true` is allowed on strings in a `settings` schema. The value is
-kept in the secrets store, is never returned by any API (the form shows only
-whether one is set), has no `default`, and is masked in run logs. A blank
-submission keeps the stored value.
+`secret: true` is allowed on a string field of a `settings` schema: a field
+of the form itself, not one inside a list or a group. The value is kept in
+the secrets store, is never returned by any API (the form shows only whether
+one is set), has no `default`, and is masked in run logs. A blank submission
+keeps the stored value.
+
+It is also allowed on a string input of an action, where it only means "mask
+this value in the run log". It is not allowed in an automation's `inputs` or
+a channel's `distribution` form.
 
 Where a run reads it:
 
@@ -210,9 +232,8 @@ Where a run reads it:
 | an automation | `automation.settings.<name>` | `automation.secrets.<name>` |
 | a channel | `channel.settings.<name>` | `channel.secrets.<name>` |
 
-A secret is never an `inputs` or `distribution` field. Pass a secret into an
-action through `with:`; an action input that is to receive one is marked
-`secret: true` so its value is masked in the run log.
+Pass a secret into an action through `with:`, to an input the action marks
+`secret: true`.
 
 ## 2.6 `ui`
 
@@ -225,12 +246,12 @@ of keys is closed; an unknown key is an error.
 | `placeholder` | text, number | Greyed example in an empty box |
 | `prefix`, `suffix` | text, number | Fixed text beside the box, such as `$` or `seconds` |
 | `input_mode` | text | Phone keyboard hint: `numeric`, `tel`, `email`, `url` |
-| `rows` | textarea | Visible lines |
+| `rows` | textarea, code | Visible lines |
 | `language` | code | `html`, `markdown`, `template`, `json`, `yaml`, `css`; taken from `format` when omitted |
-| `labels` | a field with `enum` | Display text per value: `{ full: Full episode }`. A value without a label shows as itself |
+| `labels` | a field with `enum`, or a list whose `items` have one | Display text per value: `{ full: Full episode }`. A value without a label shows as itself |
 | `options` | string, array of strings | Choices loaded by running an action ([2.8](#28-choices-loaded-from-an-action)) |
 | `level` | settings fields | `basic` (default) or `advanced`. Advanced fields sit behind "Show advanced settings" |
-| `show_when` | any field | Shown only while every named field has the given value, or one of a list of values: `{ auth: basic }`, `{ operation: [add, remove] }` |
+| `show_when` | any field | Shown only while every named field has the given value, or one of a list of values: `{ auth: basic }`, `{ operation: [add, remove] }`. A named field must be a string, number or boolean field of the same form, and a value must be one of its `enum` when it has one |
 | `expression` | action inputs | Whether the step editor offers `${{ }}` for this field. Defaults to `true` for action inputs and is always `false` for settings |
 | `suggested_keys` | key/value editor | Keys offered in the editor |
 | `layout` | the root object of a form | Sections, rows and columns ([2.9](#29-form-layout)) |
@@ -306,6 +327,10 @@ voice:
       label: "${{ item.name }}"
 ```
 
+`items` and `value` are required; `label` defaults to the value. Each is
+exactly one expression. `options` goes on a string or a list of strings, and
+not together with `enum`.
+
 How the menu is shown:
 
 - When the field has a `default`, the choice equal to it is listed first and
@@ -361,11 +386,11 @@ settings:
 
 | Part | Keys | Meaning |
 |---|---|---|
-| section | `section` (heading), `description`, `level`, `show_when`, `rows` | A titled block. `level: advanced` puts the whole section behind the advanced switch |
+| section | `section` (heading, required), `description`, `level`, `show_when`, `rows` | A titled block. `level: advanced` (settings only) puts the whole section behind the advanced switch |
 | row | a list of items | Items sit side by side on a 12-column grid |
-| item | a field name, or `{ field, span, offset }` | A field. `span` is 1 to 12 columns; items without one share what is left equally. `offset` leaves that many empty columns before it |
+| item | a field name, or `{ field, span, offset }` | A field. `span` is 1 to 12 columns; items without one share what is left equally. `offset` (0 to 11) leaves that many empty columns before it |
 | item | `{ text, span, offset }` | A note, Markdown |
-| item | `{ divider: true }` | A rule across the row |
+| item | `{ divider: true }` | A rule across the row. Takes no `span` or `offset` |
 
 Rules:
 
@@ -376,7 +401,8 @@ Rules:
    up to more than 12, is an error.
 4. On a narrow screen every item takes the full width, in reading order.
 5. A section's `level` or `show_when` hides the fields in it. A field's own
-   `level` and `show_when` still apply.
+   `level` and `show_when` still apply. A field hidden either way is treated
+   as hidden everywhere: not required, not validated, not kept.
 
 ## 2.10 Defaults that follow another value
 
@@ -422,13 +448,14 @@ setting that holds a template is simply text.
 5. **No silent conversion.** `"5"` is not `5`. An expression that yields text
    where a number is declared is an error; `toInt`, `toFloat` and `toBool`
    exist for that.
-5a. **Nil means absent.** A `with:` value whose expression yields nil is
+6. **Nil means absent.** A `with:` value whose expression yields nil is
    treated as if the key were not written: the field's default applies, and
-   it is an error only if the field is required. This is about the top-level
-   keys of `with:`. A nil *inside* an object or list you pass is kept, and
-   reaches a vendor as JSON `null`. Reading an optional input
+   it is an error only if the field is required. The same holds for the
+   fields of a group (an object with declared `properties`). A nil inside a
+   list, a key/value map or an any-JSON object is kept, and reaches a vendor
+   as JSON `null`. Reading an optional input
    that was not given (`inputs.note`) yields nil, never an error.
-5b. **Empty text means absent, on a form.** A text box left empty is not
+7. **Empty text means absent, on a form.** A text box left empty is not
    sent as `""`; the field is absent. So do not write `default: ""` to mean
    "not set": leave the default off. An empty default on a field with a
    `format` or `pattern` would fail its own check.
@@ -437,20 +464,20 @@ setting that holds a template is simply text.
    accepted whatever the field's `format` or `pattern` (unless `minLength`
    forbids it), and the form offers "use the default" to go back. That is how
    a publisher clears a fallback line or a template they do not want.
-5c. **Rules across fields** ("an address is required unless the operation is
+8. **Rules across fields** ("an address is required unless the operation is
    list") that `show_when` cannot express are not part of the schema. Check
    them in a first step and stop with `workflow.fail` and a plain reason.
    v1's `validate:` expression on an input is gone.
-6. **What a person typed is always enforced.** Settings on save, the inputs
+9. **What a person typed is always enforced.** Settings on save, the inputs
    of a manual run, inputs supplied over the API and a distribution form on
    save are validated, and a bad value is refused with a message naming the
    field.
-7. **What a machine produced is checked where you can fix it.** Values passed
+10. **What a machine produced is checked where you can fix it.** Values passed
    to a plugin action, an action's outputs, and event and webhook payloads
    are errors at `passport-plugin check`, on a dry run and on a sandbox. In
    production they are a warning in the run log (2.3.0), so a vendor changing
    a response does not stop a publisher's automation.
-8. **Settings rules.** A `secret` has no default. An `advanced` field must
+11. **Settings rules.** A `secret` has no default. An `advanced` field must
    have a default and cannot be required or secret. `show_when` cannot name a
    secret field or the field itself, and its value (each one, in a list) must
    fit the named field's type.
