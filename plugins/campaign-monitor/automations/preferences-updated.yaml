@@ -1,0 +1,79 @@
+version: 1.0.0
+name: Keep newsletter opt-outs current on a list
+description: >-
+  When a member changes which newsletters they receive by email, set a custom
+  field per newsletter category on a Campaign Monitor list to say whether
+  they opted out of it.
+help: |
+  Each category you list is written on every change: `true` when the member
+  has opted out of that category on email, `false` otherwise, so opting back
+  in clears the flag. Categories you do not list are ignored. Nobody is added
+  to or removed from the list.
+
+  Opting out of email altogether is a different thing; add "Unsubscribe
+  members who opt out of email" for that.
+
+  Create one **Text** custom field on the list for every row, with exactly the
+  key you enter. Campaign Monitor drops values for fields that do not exist,
+  without an error. Then build segments on them, for example exclude
+  `[opt_out_weekly] equals true` from that newsletter's campaigns.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/tune-variant.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id, category_fields]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List that holds the opt-out fields
+    category_fields:
+      type: array
+      title: Category opt-out fields
+      description: One row per newsletter category to keep current.
+      items:
+        type: object
+        required: [category, field]
+        properties:
+          category:
+            type: string
+            format: passport.category
+            title: Category
+          field:
+            type: string
+            title: Campaign Monitor field key
+            description: The field's personalization tag without the square brackets, for example opt_out_weekly.
+            minLength: 1
+on:
+  # body.delivery is the whole updated state: one entry per category the
+  # member has preferences for, { category, channels: { email: <bool> } },
+  # true meaning opted out. Every listed field is written on every run.
+  - event: user.preferences.updated
+    schema: { $ref: passport/schemas/user.preferences.updated@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  # The categories this member has opted out of on email.
+  - id: opted
+    action: set-output
+    with:
+      categories: '${{ map(filter(coalesce(trigger.body.delivery, list()), #.channels.email == true), #.category) }}'
+
+  # One row per listed category: "true" when opted out, else "false".
+  - id: fields
+    action: set-output
+    with:
+      custom_fields: '${{ map(automation.settings.category_fields, ({Key: #.field, Value: toString(#.category in steps.opted.outputs.categories)})) }}'
+
+  # Campaign Monitor answers 400 or 404 when the address is not on the list.
+  # That is nothing to do, not a failure.
+  - id: update-fields
+    action: campaign-monitor/subscriber.update
+    continue-on-error: true
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      custom_fields: "${{ steps.fields.outputs.custom_fields }}"

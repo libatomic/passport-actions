@@ -1,0 +1,73 @@
+name: subscriber.update
+version: 1.1.0
+title: Update a subscriber
+description: Changes a subscriber's address, name or custom fields on a Campaign Monitor list.
+help: |
+  Campaign Monitor answers with an error when the address is not on the list.
+  A caller that does not mind should set `continue-on-error: true` on the step.
+inputs:
+  type: object
+  required: [list_id, email]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    email:
+      type: string
+      format: email
+      title: Email address
+      description: The subscriber's current address.
+    new_email:
+      type: string
+      format: email
+      title: New email address
+      description: Leave out to keep the current address.
+    name:
+      type: string
+      title: Name
+      description: The subscriber's display name. Left out, the name is sent empty, as v1 did.
+    custom_fields:
+      type: array
+      title: Custom fields
+      description: Fields to set or clear on the subscriber.
+      default: []
+      items: { $ref: campaign-monitor/schemas/custom-field }
+    resubscribe:
+      type: boolean
+      title: Resubscribe
+      description: Make the address active again even if it unsubscribed before.
+      default: false
+    consent_to_track:
+      type: string
+      title: Consent to track
+      description: Whether opens and clicks may be tracked for this subscriber.
+      enum: ["yes", "no", "unchanged"]
+      default: unchanged
+      ui:
+        labels: { "yes": "Yes", "no": "No", unchanged: Leave as it is }
+outputs:
+  type: object
+  required: [email]
+  properties:
+    email: { type: string, format: email, title: Address on the list, description: The new address when one was given. }
+returns:
+  email: "${{ empty(inputs.new_email) ? inputs.email : inputs.new_email }}"
+steps:
+  - id: update
+    action: http.put
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      query:
+        email: "${{ inputs.email }}"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: "${{ empty(inputs.new_email) ? inputs.email : inputs.new_email }}"
+        Name: "${{ inputs.name ?? '' }}"
+        CustomFields: "${{ inputs.custom_fields }}"
+        Resubscribe: "${{ inputs.resubscribe }}"
+        ConsentToTrack: "${{ inputs.consent_to_track }}"
+      expect_status: [200]

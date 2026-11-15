@@ -1,0 +1,69 @@
+version: 1.0.0
+name: Opt members out of email when they unsubscribe in Campaign Monitor
+description: >-
+  When someone unsubscribes from a list in Campaign Monitor, opt the matching
+  Passport member out of email, so both sides agree.
+help: |
+  After adding this, copy its webhook address and register it on each list
+  with "Register the unsubscribe webhook on a list". Campaign Monitor has no
+  screen for list webhooks.
+
+  Only a real unsubscribe opts the member out. Campaign Monitor sends the
+  same kind of event for spam complaints, hard bounces and deletions; those
+  are received and ignored. People who are on the list but have no Passport
+  account are skipped.
+
+  Campaign Monitor does not sign what it sends, so the token in the webhook
+  address is the only thing that authorises a request. Treat the address as a
+  secret.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/webhook.svg
+schemas:
+  event:
+    title: Campaign Monitor list event
+    type: object
+    required: [Type, EmailAddress]
+    properties:
+      Type:
+        type: string
+        title: Event type
+        description: Deactivate covers unsubscribes, spam complaints, hard bounces and deletions.
+        enum: [Deactivate, Subscribe, Update]
+      EmailAddress: { type: string, format: email, title: Address }
+      State:
+        type: string
+        title: State
+        description: The subscriber's state after the event. Only Unsubscribed is a consent signal.
+      Date: { type: string, title: When }
+on:
+  # Campaign Monitor batches events into one request; each element of Events
+  # becomes its own run, so one bad element does not block the rest.
+  - webhook: true
+    name: Campaign Monitor
+    validate: false
+    foreach: Events
+    schema: { $ref: "#/schemas/event" }
+    if: '${{ trigger.body.Type == "Deactivate" }}'
+steps:
+  # The person may not exist in Passport; that is fine, skip them. user.get
+  # loads the member's channel preferences; the JSON round trip turns them
+  # into plain maps, and the chain is nil-guarded down to an empty map for a
+  # member who never set any.
+  - id: lookup
+    action: user.get
+    continue-on-error: true
+    with:
+      login: "${{ trigger.body.EmailAddress }}"
+    outputs:
+      channels: '${{ fromJSON(toJSON(steps.lookup.outputs.user.preferences?.channels ?? {})) }}'
+
+  # user.update replaces the whole preferences object, so the member's current
+  # channels are sent back with only email.opt_out changed. merge keeps the
+  # first argument: the opt_out literal wins, everything else is carried over.
+  # Only State "Unsubscribed" is acted on.
+  - id: optout
+    if: '${{ steps.lookup.status == "ok" && trigger.body.Type == "Deactivate" && trigger.body.State == "Unsubscribed" }}'
+    action: user.update
+    with:
+      user_id: "${{ steps.lookup.outputs.user.id }}"
+      preferences:
+        channels: '${{ merge({email: merge({opt_out: true}, outputs.channels.email ?? {})}, outputs.channels) }}'

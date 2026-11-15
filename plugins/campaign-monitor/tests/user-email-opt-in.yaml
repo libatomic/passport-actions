@@ -1,0 +1,16 @@
+cases:
+  - name: Member opts back in
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: { list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" } }
+    trigger:
+      type: user.email.opt_in
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { channel: email, opt_out: false }
+    inputs: {}
+    samples:
+      steps:
+        load-user: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com, created_at: "2026-03-09T10:15:00Z", profile: { email: ada@example.com, name: Ada Lovelace } } }
+      actions:
+        http.post: { status: 200, body: ada@example.com }
+    expect: { status: success }

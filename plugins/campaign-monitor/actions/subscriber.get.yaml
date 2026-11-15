@@ -1,0 +1,35 @@
+name: subscriber.get
+version: 1.0.0
+title: Get a subscriber
+description: Reads one subscriber's details from a Campaign Monitor list.
+inputs:
+  type: object
+  required: [list_id, email]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    email:
+      type: string
+      format: email
+      title: Email address
+      description: The address to look up.
+# The whole result is the subscriber as Campaign Monitor returns it, so
+# `returns` is one expression and a caller reads steps.<id>.outputs.State,
+# steps.<id>.outputs.CustomFields and so on.
+outputs:
+  $ref: campaign-monitor/schemas/subscriber
+returns: "${{ steps.get.outputs.body }}"
+steps:
+  - id: get
+    action: http.get
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      query:
+        email: "${{ inputs.email }}"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Accept: application/json
+      expect_status: [200]

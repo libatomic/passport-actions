@@ -1,0 +1,45 @@
+cases:
+  - name: Opted out of one of two listed categories
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation:
+      settings:
+        list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+        category_fields:
+          - { category: "c0c0c0c0-0000-4000-8000-00000000000a", field: opt_out_weekly }
+          - { category: "c0c0c0c0-0000-4000-8000-00000000000b", field: opt_out_daily }
+    trigger:
+      type: user.preferences.updated
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body:
+        categories: ["c0c0c0c0-0000-4000-8000-00000000000a"]
+        delivery:
+          - { category: "c0c0c0c0-0000-4000-8000-00000000000a", channels: { email: true } }
+          - { category: "c0c0c0c0-0000-4000-8000-00000000000b", channels: { email: false } }
+    inputs: {}
+    samples:
+      steps:
+        load-user: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com, created_at: "2026-03-09T10:15:00Z", profile: { email: ada@example.com, name: Ada Lovelace } } }
+      actions:
+        http.put: { status: 200, body: "" }
+    expect: { status: success }
+
+  - name: Member has no category preferences
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation:
+      settings:
+        list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+        category_fields:
+          - { category: "c0c0c0c0-0000-4000-8000-00000000000a", field: opt_out_weekly }
+    trigger:
+      type: user.preferences.updated
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { categories: [] }
+    inputs: {}
+    samples:
+      steps:
+        load-user: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com, created_at: "2026-03-09T10:15:00Z", profile: { email: ada@example.com, name: Ada Lovelace } } }
+      actions:
+        http.put: { status: 200, body: "" }
+    expect: { status: success }

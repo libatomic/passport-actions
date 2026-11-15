@@ -1,0 +1,31 @@
+format: 2
+id: elevenlabs
+name: ElevenLabs Narration
+description: >-
+  Reads articles aloud with an ElevenLabs voice. Adds an Audio Narration
+  channel: publishing a distribution on it stores the narration as an MP3.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+category: audio
+visibility: public
+requires:
+  passport: "^2.3.0"
+allowed_hosts:
+  - api.elevenlabs.io
+settings:
+  type: object
+  required: [api_key]
+  properties:
+    api_key:
+      type: string
+      title: ElevenLabs API key
+      description: A restricted key with Text to Speech access, Voices read and User read.
+      help: |
+        Create it in ElevenLabs under **Developers, API keys**. Restrict it to:
+
+        - Text to Speech: Access
+        - Voices: Read
+        - User: Read
+
+        Every narration channel and helper in this plugin uses this one key.
+      secret: true
+test: ping

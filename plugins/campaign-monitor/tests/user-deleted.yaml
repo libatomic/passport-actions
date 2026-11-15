@@ -1,0 +1,14 @@
+cases:
+  - name: Erased account is deleted from the list
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: { list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" } }
+    trigger:
+      type: user.deleted
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com, profile: { email: ada@example.com, name: Ada Lovelace } }
+    inputs: {}
+    samples:
+      actions:
+        http.delete: { status: 200, body: "" }
+    expect: { status: success }

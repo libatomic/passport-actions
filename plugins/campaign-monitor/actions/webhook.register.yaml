@@ -1,0 +1,104 @@
+name: webhook.register
+version: 1.1.0
+title: Register, remove or list list webhooks
+description: Registers a webhook address on a Campaign Monitor list, removes it, or reads what is registered.
+help: |
+  Registering is safe to repeat: an address that is already registered on the
+  list is left alone. Removing an address that is not registered does nothing.
+  The webhooks on the list are returned whichever operation is chosen.
+inputs:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    operation:
+      type: string
+      title: Operation
+      enum: [register, unregister, list]
+      default: register
+      ui:
+        labels: { register: Register the address, unregister: Remove the address, list: Only read what is registered }
+    url:
+      type: string
+      format: uri
+      title: Webhook address
+      description: The address to register or remove. Not needed to only read what is registered.
+    events:
+      type: array
+      title: Events
+      description: The Campaign Monitor events to send to the address.
+      uniqueItems: true
+      items: { type: string, enum: [Subscribe, Update, Deactivate] }
+      default: [Deactivate]
+    payload_format:
+      type: string
+      title: Payload format
+      enum: [json, xml]
+      default: json
+      ui:
+        labels: { json: JSON, xml: XML }
+outputs:
+  type: object
+  required: [webhooks, registered, unregistered]
+  properties:
+    webhooks:
+      type: array
+      title: Webhooks on the list
+      description: What was registered before this run changed anything.
+      items:
+        type: object
+        properties:
+          WebhookID: { type: string, title: Webhook id }
+          Url: { type: string, title: Address }
+          Events: { type: array, title: Events, items: { type: string } }
+          Status: { type: string, title: Status }
+          PayloadFormat: { type: string, title: Payload format }
+    registered:
+      type: boolean
+      title: Registered now
+      description: True when this run registered the address. False when it was already there, or the operation was something else.
+    unregistered:
+      type: boolean
+      title: Removed now
+      description: True when this run removed the address. False when it was not registered, or the operation was something else.
+returns:
+  webhooks: "${{ steps.existing.outputs.body }}"
+  registered: "${{ steps.register.status == 'ok' }}"
+  unregistered: "${{ steps.unregister.status == 'ok' }}"
+steps:
+  # Always read what is registered: it is the check that makes registering
+  # safe to repeat, the lookup of the id to remove, and all of "list".
+  - id: existing
+    action: http.get
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+      expect_status: [200]
+
+  - id: register
+    if: '${{ inputs.operation == "register" && !empty(inputs.url) && !any(steps.existing.outputs.body, {.Url == inputs.url}) }}'
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        Events: "${{ inputs.events }}"
+        Url: "${{ inputs.url }}"
+        PayloadFormat: "${{ inputs.payload_format }}"
+      expect_status: [201]
+
+  - id: unregister
+    if: '${{ inputs.operation == "unregister" && !empty(inputs.url) && any(steps.existing.outputs.body, {.Url == inputs.url}) }}'
+    action: http.delete
+    with:
+      url: "https://api.createsend.com/api/v3.3/lists/${{ inputs.list_id }}/webhooks/${{ first(filter(steps.existing.outputs.body, {.Url == inputs.url})).WebhookID }}.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+      expect_status: [200]

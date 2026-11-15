@@ -1,0 +1,35 @@
+name: subscriber.delete
+version: 1.0.0
+title: Delete a subscriber
+description: Removes an address and its record from a Campaign Monitor list.
+help: |
+  This removes the list membership. To record that someone no longer wants
+  mail while keeping them on the list, use **Unsubscribe a subscriber**.
+
+  Campaign Monitor answers 400 (code 203) when the address is not on the
+  list. A caller that does not mind should set `continue-on-error: true`.
+inputs:
+  type: object
+  required: [list_id, email]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    email:
+      type: string
+      format: email
+      title: Email address
+      description: The address to delete from the list.
+steps:
+  - id: delete
+    action: http.delete
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      query:
+        email: "${{ inputs.email }}"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Accept: application/json
+      expect_status: [200]

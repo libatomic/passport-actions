@@ -1,0 +1,81 @@
+cases:
+  - name: Register on a list that has no webhook yet
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs:
+      list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      operation: register
+      webhook_url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc"
+    samples:
+      actions:
+        http.get: { status: 200, body: [] }
+        http.post: { status: 201, body: "ee1b3864e5ca61618q98su98qsu9q8us" }
+    expect:
+      status: success
+      steps:
+        webhook: { outputs: { registered: true, unregistered: false } }
+      not_run: [need-url, inventory]
+
+  - name: Show what is registered
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs:
+      list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      operation: list
+    samples:
+      actions:
+        http.get: { status: 200, body: [ { WebhookID: "ee1b3864e5ca61618q98su98qsu9q8us", Events: [Deactivate], Url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc", Status: Active, PayloadFormat: Json } ] }
+    expect:
+      status: success
+      steps:
+        inventory: { status: ok }
+      not_run: [need-url, webhook]
+
+  - name: Register without an address is refused
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs:
+      list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      operation: register
+    samples: {}
+    expect:
+      status: failed
+      reason: Enter the webhook address
+      not_run: [inventory, webhook]
+
+  - name: Register an address that is already on the list
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs:
+      list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      operation: register
+      webhook_url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc"
+    samples:
+      actions:
+        http.get: { status: 200, body: [ { WebhookID: "ee1b3864e5ca61618q98su98qsu9q8us", Events: [Deactivate], Url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc", Status: Active, PayloadFormat: Json } ] }
+    expect:
+      status: success
+      steps:
+        webhook: { outputs: { registered: false, unregistered: false } }
+
+  - name: Remove the address
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs:
+      list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+      operation: unregister
+      webhook_url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc"
+    samples:
+      actions:
+        http.get: { status: 200, body: [ { WebhookID: "ee1b3864e5ca61618q98su98qsu9q8us", Events: [Deactivate], Url: "https://example.passport.online/api/1.0.0/workflows/0a0a0a0a/webhook/tok_abc", Status: Active, PayloadFormat: Json } ] }
+        http.delete: { status: 200, body: "" }
+    expect:
+      status: success
+      steps:
+        webhook: { outputs: { registered: false, unregistered: true } }
+      not_run: [inventory]

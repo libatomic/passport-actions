@@ -1,0 +1,33 @@
+cases:
+  - name: Unsubscribe in Campaign Monitor opts the member out
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: {} }
+    trigger:
+      type: webhook
+      body: { Type: Deactivate, Date: "2026-11-14 09:30:00", State: Unsubscribed, EmailAddress: ada@example.com, Name: Ada Lovelace }
+    inputs: {}
+    samples:
+      steps:
+        lookup:
+          user:
+            id: "9f1c2d3e-0000-4000-8000-000000000001"
+            login: ada@example.com
+            preferences: { channels: { email: { opt_out: false, alt_address: ada@work.example }, sms: { opt_out: true } } }
+        optout: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001" } }
+    expect: { status: success }
+
+  - name: Hard bounce is received and ignored
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: {} }
+    trigger:
+      type: webhook
+      body: { Type: Deactivate, Date: "2026-11-14 09:31:00", State: Bounced, EmailAddress: ada@example.com }
+    inputs: {}
+    samples:
+      steps:
+        lookup: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com } }
+    expect:
+      status: success
+      not_run: [optout]

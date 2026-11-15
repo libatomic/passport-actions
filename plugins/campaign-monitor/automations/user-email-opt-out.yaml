@@ -1,0 +1,34 @@
+version: 1.0.0
+name: Unsubscribe members who opt out of email
+description: >-
+  When a member opts out of email in Passport, mark them unsubscribed on a
+  Campaign Monitor list.
+help: |
+  The member stays on the list, suppressed, until they opt back in. A member
+  who is not on the list is left alone.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-off-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List to unsubscribe the member from
+on:
+  - event: user.email.opt_out
+    schema: { $ref: passport/schemas/user.email.opt_out@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  # Campaign Monitor answers 400 when the address is not on the list, which
+  # is nothing to do.
+  - id: unsubscribe
+    action: campaign-monitor/subscriber.unsubscribe
+    continue-on-error: true
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"

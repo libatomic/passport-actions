@@ -1,0 +1,51 @@
+version: 1.0.0
+name: Keep renewal details current on a list
+description: >-
+  When a member's subscription changes, update their auto-renew flag,
+  scheduled cancellation date and billing interval on a Campaign Monitor list.
+help: |
+  Nobody is added to or removed from the list. A member who is not on the list
+  is left alone.
+
+  Create these custom fields on the list first. Campaign Monitor drops values
+  for fields that do not exist, without an error.
+
+  | Field key | Type | Value |
+  |---|---|---|
+  | `AutoRenew` | Text | `true` or `false` |
+  | `SubscriptionCancelsAt` | Date | The scheduled cancellation date; cleared when none is scheduled |
+  | `SubscriptionInterval` | Text | `month` or `year`; written only when the subscription has one |
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/autorenew.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List that holds the subscription fields
+on:
+  - event: user.subscription.updated
+    schema: { $ref: passport/schemas/user.subscription.updated@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  # Campaign Monitor answers 400 or 404 when the address is not on the list.
+  # That is nothing to do, not a failure.
+  - id: update-fields
+    action: campaign-monitor/subscriber.update
+    continue-on-error: true
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      # SubscriptionCancelsAt is either set (YYYY/MM/DD) or cleared, never sent
+      # as an empty value. SubscriptionInterval is included only when the
+      # event carries one: the row with an empty Key is filtered out. Clearing
+      # the interval is the cancellation automation's job. auto_renew is
+      # always in the event; == true turns a missing value into "false".
+      # Keep this on one line.
+      custom_fields: '${{ filter(list(({Key: "AutoRenew", Value: toString(trigger.body.auto_renew == true)}), empty(trigger.body.cancel_at) ? ({Key: "SubscriptionCancelsAt", Clear: true}) : ({Key: "SubscriptionCancelsAt", Value: date("2006/01/02", trigger.body.cancel_at)}), empty(trigger.body.recurring_interval) ? ({Key: ""}) : ({Key: "SubscriptionInterval", Value: toString(trigger.body.recurring_interval)})), #.Key != "") }}'

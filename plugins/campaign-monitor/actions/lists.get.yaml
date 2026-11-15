@@ -1,0 +1,28 @@
+name: lists.get
+version: 1.0.0
+title: Get subscriber lists
+description: Reads the subscriber lists of the client set in the plugin's settings.
+outputs:
+  type: object
+  required: [lists]
+  properties:
+    lists:
+      type: array
+      title: Lists
+      items:
+        type: object
+        required: [ListID, Name]
+        properties:
+          ListID: { type: string, title: List id }
+          Name: { type: string, title: Name }
+returns:
+  lists: "${{ steps.lists.outputs.body }}"
+steps:
+  - id: lists
+    action: http.get
+    with:
+      url: "https://api.createsend.com/api/v3.3/clients/${{ settings.client_id }}/lists.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Accept: application/json
+      expect_status: [200]

@@ -1,0 +1,20 @@
+version: 1.0.0
+name: Test connection
+description: Checks that ElevenLabs accepts the API key, and shows the plan and the characters left this month.
+on:
+  - manual: true
+outputs:
+  type: object
+  properties:
+    tier:
+      type: string
+      title: Plan
+    characters_left:
+      type: integer
+      title: Characters left this month
+returns:
+  tier: "${{ steps.usage.outputs.tier }}"
+  characters_left: "${{ steps.usage.outputs.characters_limit - steps.usage.outputs.characters_used }}"
+steps:
+  - id: usage
+    action: elevenlabs/usage.get

@@ -1,0 +1,28 @@
+name: subscriber
+version: 1.0.0
+title: Campaign Monitor subscriber
+description: One subscriber on a list, as the API returns it.
+type: object
+required: [EmailAddress, State]
+properties:
+  EmailAddress: { type: string, format: email, title: Address }
+  Name: { type: string, title: Name }
+  Date:
+    type: string
+    title: Subscribed on
+    description: When the subscriber joined the list, in the list's time zone.
+  State:
+    type: string
+    title: State
+    enum: [Active, Unconfirmed, Unsubscribed, Bounced, Deleted]
+  CustomFields:
+    type: array
+    title: Custom fields
+    items:
+      type: object
+      required: [Key, Value]
+      properties:
+        Key: { type: string, title: Field }
+        Value: { type: string, title: Value }
+  ReadsEmailWith: { type: string, title: Mail client }
+  ConsentToTrack: { type: string, title: Tracking consent }

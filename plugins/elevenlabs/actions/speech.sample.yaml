@@ -1,0 +1,61 @@
+name: speech.sample
+version: 1.0.0
+title: Read a short sample
+description: Reads text in a voice and returns the audio as base64, without saving anything. Billed by ElevenLabs.
+help: |
+  For previews. Uses the with-timestamps endpoint because it answers in JSON
+  with the audio as base64, at a bitrate that is enough to judge
+  pronunciation (22 kHz, 32 kbps). Use `speech.create` for what is published.
+category: ElevenLabs
+inputs:
+  type: object
+  required: [voice_id, model_id, text]
+  properties:
+    voice_id:
+      type: string
+      title: Voice
+      description: An ElevenLabs voice id.
+      minLength: 1
+    model_id:
+      type: string
+      title: Model
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
+    text:
+      type: string
+      title: Text to read
+      description: Already prepared for the model (pronunciations, cleanup and voice tags applied).
+      minLength: 1
+      ui: { widget: textarea, rows: 4 }
+outputs:
+  type: object
+  required: [audio, audio_type]
+  properties:
+    audio:
+      type: string
+      format: byte
+      title: Audio
+      description: The MP3, base64.
+    audio_type:
+      type: string
+      title: Audio type
+      description: Always audio/mpeg.
+returns:
+  audio: "${{ steps.sample.outputs.body.audio_base64 }}"
+  audio_type: audio/mpeg
+steps:
+  - id: sample
+    action: http.post
+    with:
+      url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}/with-timestamps"
+      query:
+        output_format: mp3_22050_32
+      headers:
+        xi-api-key: "${{ secrets.api_key }}"
+        Content-Type: application/json
+        Accept: application/json
+      body:
+        text: "${{ inputs.text }}"
+        model_id: "${{ inputs.model_id }}"
+      timeout: 2m
+      retries: 1
+      expect_status: [200]

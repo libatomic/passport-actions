@@ -1,0 +1,90 @@
+version: 1.0.0
+name: Register the unsubscribe webhook on a list
+description: >-
+  Registers the unsubscribe webhook's address on a Campaign Monitor list,
+  removes it, or shows what is registered. Run it once for each list.
+help: |
+  Campaign Monitor has no screen for list webhooks; this does it through
+  their API. It has nothing to set up, so it is not added: it is under
+  **Tools** on the plugin's Automations tab, with a **Run** button.
+
+  1. Add "Opt members out of email when they unsubscribe in Campaign Monitor"
+     and copy its webhook address.
+  2. Run this with the list and that address.
+  3. Run it again for each further list.
+
+  Registering is safe to repeat: an address already on the list is left
+  alone. Before you remove the unsubscribe automation, run this with
+  **Remove the address** so Campaign Monitor stops calling an address that no
+  longer exists.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/link-plus.svg
+inputs:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List
+    operation:
+      type: string
+      title: What to do
+      enum: [register, unregister, list]
+      default: register
+      ui:
+        widget: radio
+        labels: { register: Register the address, unregister: Remove the address, list: Only show what is registered }
+    webhook_url:
+      type: string
+      format: uri
+      title: Webhook address
+      description: Copy it from the unsubscribe automation's page.
+      pattern: "^https://.+/webhook/.+$"
+      # Not asked for when only showing what is registered. A hidden field is
+      # not required, validated or passed (guide 2.11, rule 3).
+      ui: { show_when: { operation: [register, unregister] } }
+on:
+  - manual: true
+steps:
+  # The form shows the address only when it is needed, but cannot say that it
+  # is then required (a rule across fields; guide 2.11, rule 5c), so this
+  # step does.
+  - id: need-url
+    if: '${{ inputs.operation != "list" && empty(inputs.webhook_url) }}'
+    action: workflow.fail
+    with:
+      reason: Enter the webhook address to register or remove.
+
+  - id: inventory
+    if: '${{ inputs.operation == "list" }}'
+    action: campaign-monitor/webhook.register
+    with:
+      list_id: "${{ inputs.list_id }}"
+      operation: list
+
+  # Deactivate is the only event the unsubscribe automation acts on.
+  - id: webhook
+    if: '${{ inputs.operation != "list" }}'
+    action: campaign-monitor/webhook.register
+    with:
+      list_id: "${{ inputs.list_id }}"
+      operation: "${{ inputs.operation }}"
+      url: "${{ inputs.webhook_url }}"
+      events: [Deactivate]
+
+  - id: report-register
+    if: '${{ inputs.operation == "register" }}'
+    action: log
+    with:
+      message: '${{ steps.webhook.outputs.registered ? "registered on list " + inputs.list_id : "already registered on list " + inputs.list_id + ", nothing to do" }}'
+
+  - id: report-unregister
+    if: '${{ inputs.operation == "unregister" }}'
+    action: log
+    with:
+      message: '${{ steps.webhook.outputs.unregistered ? "unregistered from list " + inputs.list_id : "was not registered on list " + inputs.list_id + ", nothing to do" }}'
+
+  - id: report-list
+    if: '${{ inputs.operation == "list" }}'
+    action: log
+    with:
+      message: "webhooks on list ${{ inputs.list_id }}: ${{ toJSON(steps.inventory.outputs.webhooks) }}"

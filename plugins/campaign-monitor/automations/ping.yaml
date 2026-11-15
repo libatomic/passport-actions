@@ -1,0 +1,20 @@
+version: 1.0.0
+name: Test connection
+description: Checks that Campaign Monitor accepts the API key and that the client id belongs to that account.
+on:
+  - manual: true
+outputs:
+  type: object
+  properties:
+    account: { type: string, title: Client name }
+returns:
+  account: '${{ first(filter(steps.clients.outputs.clients, {.ClientID == settings.client_id})).Name }}'
+steps:
+  - id: clients
+    action: campaign-monitor/clients.get
+
+  - id: wrong-client
+    if: '${{ !any(steps.clients.outputs.clients, {.ClientID == settings.client_id}) }}'
+    action: workflow.fail
+    with:
+      reason: The API key works, but the client id is not one of this account's clients.

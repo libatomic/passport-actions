@@ -1,0 +1,50 @@
+name: voices.list
+version: 1.0.0
+title: List voices
+description: Lists the voices on the ElevenLabs account, premade and cloned.
+help: |
+  `models` is empty for a professional voice clone that ElevenLabs has not
+  finished training; such a voice cannot read a narration yet.
+category: ElevenLabs
+outputs:
+  type: object
+  required: [voices]
+  properties:
+    voices:
+      type: array
+      title: Voices
+      items:
+        type: object
+        required: [voice_id, name]
+        properties:
+          voice_id:
+            type: string
+            title: Voice id
+            description: What a narration channel's voice settings take.
+          name:
+            type: string
+            title: Name
+          category:
+            type: string
+            title: Kind
+            description: premade, cloned, professional or generated.
+          models:
+            type: array
+            title: Ready on models
+            description: The models the voice can be used with. Empty while a professional clone is training.
+            items: { type: string }
+returns:
+  # The map literal is in parentheses so the expression engine does not read
+  # its braces as a closure.
+  voices: >-
+    ${{ map(steps.voices.outputs.body.voices ?? [], ({"voice_id": #.voice_id,
+    "name": #.name, "category": #.category ?? "",
+    "models": #.high_quality_base_model_ids ?? []})) }}
+steps:
+  - id: voices
+    action: http.get
+    with:
+      url: https://api.elevenlabs.io/v1/voices
+      headers:
+        xi-api-key: "${{ secrets.api_key }}"
+      expect_status: [200]

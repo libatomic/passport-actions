@@ -1,0 +1,33 @@
+format: 2
+id: campaign-monitor
+name: Campaign Monitor
+description: >-
+  Keep a Campaign Monitor list in step with your Passport members: verified
+  members are added, subscription and newsletter preferences are kept as custom
+  fields for segments, and unsubscribes are carried both ways.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-sync-outline.svg
+category: email
+docs_url: https://www.campaignmonitor.com/api/v3-3/
+visibility: public
+requires:
+  passport: "^2.3.0"
+allowed_hosts:
+  - api.createsend.com
+settings:
+  type: object
+  required: [api_key, client_id]
+  properties:
+    api_key:
+      type: string
+      title: API key
+      description: In Campaign Monitor, under Account settings, API keys.
+      secret: true
+    client_id:
+      type: string
+      title: Client ID
+      description: The 32-character client id from your Campaign Monitor account page.
+      help: |
+        The client id decides which subscriber lists are offered when you add
+        an automation. One install reaches one client.
+      pattern: "^[0-9a-f]{32}$"
+test: ping

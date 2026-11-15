@@ -1,0 +1,35 @@
+version: 1.0.0
+name: Resubscribe members who opt back in to email
+description: >-
+  When a member opts back in to email in Passport, make them active again on
+  a Campaign Monitor list.
+help: |
+  Opting back in is fresh consent, so this overrides an earlier unsubscribe in
+  Campaign Monitor. A member who was never on the list is added to it.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/email-check-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List to resubscribe the member on
+on:
+  - event: user.email.opt_in
+    schema: { $ref: passport/schemas/user.email.opt_in@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  - id: resubscribe
+    action: campaign-monitor/subscriber.add
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      # An explicit opt-in is fresh consent: make them active even if they
+      # unsubscribed in Campaign Monitor before.
+      resubscribe: true

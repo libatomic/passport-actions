@@ -1,0 +1,24 @@
+name: custom-field
+version: 1.0.0
+title: Custom field value
+description: One custom field to set, or to clear, on a subscriber.
+help: |
+  Campaign Monitor silently drops a value for a field that is not already
+  defined on the list. `Key` is the field's personalization tag without the
+  square brackets. A Date field takes its value as `YYYY/MM/DD`.
+type: object
+required: [Key]
+properties:
+  Key:
+    type: string
+    title: Field
+    description: The custom field's key, without square brackets.
+    minLength: 1
+  Value:
+    type: string
+    title: Value
+    description: The value to set. Leave out when clearing.
+  Clear:
+    type: boolean
+    title: Clear
+    description: Empty the field instead of setting it.

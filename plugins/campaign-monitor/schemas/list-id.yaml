@@ -1,0 +1,15 @@
+name: list-id
+version: 1.0.0
+title: Subscriber list
+description: A Campaign Monitor list, chosen from the lists of the client set in the plugin's settings.
+help: |
+  If the lists cannot be loaded, type the list's id: in Campaign Monitor, open
+  the list under Lists & Subscribers and look under Settings.
+type: string
+pattern: "^[0-9a-f]{32}$"
+ui:
+  options:
+    action: campaign-monitor/lists.get
+    items: "${{ outputs.lists }}"
+    value: "${{ item.ListID }}"
+    label: "${{ item.Name }}"

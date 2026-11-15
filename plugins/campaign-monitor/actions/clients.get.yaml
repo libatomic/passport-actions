@@ -1,0 +1,29 @@
+name: clients.get
+version: 1.0.0
+title: Get clients
+description: Reads every client on the Campaign Monitor account the API key belongs to.
+help: The cheapest call that proves the API key works.
+outputs:
+  type: object
+  required: [clients]
+  properties:
+    clients:
+      type: array
+      title: Clients
+      items:
+        type: object
+        required: [ClientID, Name]
+        properties:
+          ClientID: { type: string, title: Client id }
+          Name: { type: string, title: Name }
+returns:
+  clients: "${{ steps.clients.outputs.body }}"
+steps:
+  - id: clients
+    action: http.get
+    with:
+      url: https://api.createsend.com/api/v3.3/clients.json
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Accept: application/json
+      expect_status: [200]

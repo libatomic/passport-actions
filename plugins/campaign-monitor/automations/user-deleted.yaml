@@ -1,0 +1,30 @@
+version: 1.0.0
+name: Delete erased accounts from a list
+description: >-
+  When a member's Passport account is permanently deleted, delete them from a
+  Campaign Monitor list so their details do not remain there.
+help: |
+  Add this once for every list the member could be on. A member who is not on
+  the list is left alone.
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-remove-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List to delete the member from
+on:
+  - event: user.deleted
+    schema: { $ref: passport/schemas/user.deleted@^1 }
+steps:
+  # The member is already gone. The event's body is the whole member, so the
+  # address is read from it. Campaign Monitor answers 400 when the address is
+  # not on the list, which is nothing to do.
+  - id: remove-from-list
+    action: campaign-monitor/subscriber.delete
+    continue-on-error: true
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ coalesce(trigger.body.profile.email, trigger.body.login) }}"

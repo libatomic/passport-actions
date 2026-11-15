@@ -1,0 +1,73 @@
+name: subscriber.add
+version: 1.0.1
+title: Add a subscriber
+description: Adds an address to a Campaign Monitor list, or updates it if it is already there.
+help: |
+  Custom field values are dropped without an error when the field is not
+  defined on the list. Create the fields on the list first.
+
+  With **Resubscribe** on, an address that unsubscribed from the list before
+  is made active again. Turn it off to let an earlier unsubscribe stand.
+inputs:
+  type: object
+  required: [list_id, email]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    email:
+      type: string
+      format: email
+      title: Email address
+    name:
+      type: string
+      title: Name
+      description: The subscriber's display name. Left out, the name is sent empty, as v1 did.
+    custom_fields:
+      type: array
+      title: Custom fields
+      description: Fields to set or clear on the subscriber.
+      default: []
+      items: { $ref: campaign-monitor/schemas/custom-field }
+    resubscribe:
+      type: boolean
+      title: Resubscribe
+      description: Make the address active again even if it unsubscribed before.
+      default: true
+    consent_to_track:
+      type: string
+      title: Consent to track
+      description: Whether opens and clicks may be tracked for this subscriber.
+      enum: ["yes", "no", "unchanged"]
+      default: "yes"
+      ui:
+        labels: { "yes": "Yes", "no": "No", unchanged: Leave as it is }
+outputs:
+  type: object
+  required: [email]
+  properties:
+    email: { type: string, format: email, title: Address added }
+    created:
+      type: boolean
+      title: New subscriber
+      description: False when Campaign Monitor answered that the address was already on the list.
+returns:
+  email: "${{ steps.add.outputs.body }}"
+  created: "${{ steps.add.outputs.status == 201 }}"
+steps:
+  - id: add
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: "${{ inputs.email }}"
+        Name: "${{ inputs.name ?? '' }}"
+        CustomFields: "${{ inputs.custom_fields }}"
+        Resubscribe: "${{ inputs.resubscribe }}"
+        ConsentToTrack: "${{ inputs.consent_to_track }}"
+      expect_status: [200, 201]

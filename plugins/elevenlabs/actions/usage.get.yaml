@@ -1,0 +1,39 @@
+name: usage.get
+version: 1.0.0
+title: Get this month's usage
+description: Reads the ElevenLabs plan and how many characters of this month's quota are used.
+category: ElevenLabs
+outputs:
+  type: object
+  required: [tier, characters_used, characters_limit]
+  properties:
+    tier:
+      type: string
+      title: Plan
+      description: The ElevenLabs subscription tier, such as creator or pro.
+    characters_used:
+      type: integer
+      title: Characters used
+      description: Characters read so far in the current period.
+    characters_limit:
+      type: integer
+      title: Characters allowed
+      description: The period's quota.
+    characters_reset_at:
+      type: string
+      format: date-time
+      title: Quota resets at
+returns:
+  tier: "${{ steps.usage.outputs.body.tier ?? '' }}"
+  characters_used: "${{ toInt(steps.usage.outputs.body.character_count ?? 0) }}"
+  characters_limit: "${{ toInt(steps.usage.outputs.body.character_limit ?? 0) }}"
+  characters_reset_at: >-
+    ${{ date("2006-01-02T15:04:05Z07:00", steps.usage.outputs.body.next_character_count_reset_unix ?? 0) }}
+steps:
+  - id: usage
+    action: http.get
+    with:
+      url: https://api.elevenlabs.io/v1/user/subscription
+      headers:
+        xi-api-key: "${{ secrets.api_key }}"
+      expect_status: [200]

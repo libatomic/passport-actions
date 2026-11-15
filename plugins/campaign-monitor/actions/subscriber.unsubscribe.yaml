@@ -1,0 +1,32 @@
+name: subscriber.unsubscribe
+version: 1.0.0
+title: Unsubscribe a subscriber
+description: Marks an address as unsubscribed on a Campaign Monitor list. It stays on the list, suppressed.
+help: |
+  Campaign Monitor answers 400 (code 203) when the address is not on the
+  list. A caller that does not mind should set `continue-on-error: true`.
+inputs:
+  type: object
+  required: [list_id, email]
+  properties:
+    list_id:
+      type: string
+      title: List
+      description: The Campaign Monitor list id.
+      pattern: "^[0-9a-f]{32}$"
+    email:
+      type: string
+      format: email
+      title: Email address
+      description: The address to unsubscribe.
+steps:
+  - id: unsubscribe
+    action: http.post
+    with:
+      url: "https://api.createsend.com/api/v3.3/subscribers/${{ inputs.list_id }}/unsubscribe.json"
+      headers:
+        Authorization: "Basic ${{ base64Encode(secrets.api_key + ':x') }}"
+        Content-Type: application/json
+      body:
+        EmailAddress: "${{ inputs.email }}"
+      expect_status: [200]

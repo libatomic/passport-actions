@@ -1,0 +1,70 @@
+version: 1.0.0
+name: Add verified members to a list
+description: >-
+  When a member verifies their email address, add them to a Campaign Monitor
+  list with the site name, their Passport id and the date they joined.
+help: |
+  Members are added when they **verify** their address, not when they sign up,
+  so typos, bots and abandoned sign-ups stay off the list.
+
+  Create these custom fields on the list first. Campaign Monitor drops values
+  for fields that do not exist, without an error.
+
+  | Field key | Type | Value |
+  |---|---|---|
+  | `InstanceName` | Text | The site's name |
+  | `PassportUserID` | Text | The member's Passport id |
+  | `CreatedAt` | Date | The date the account was created |
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-plus-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List to add new members to
+    resubscribe:
+      type: boolean
+      title: Resubscribe people who unsubscribed before
+      description: A verified sign-up is treated as fresh consent. Turn off to let an earlier unsubscribe stand.
+      default: true
+      ui: { level: advanced }
+    consent_to_track:
+      type: string
+      title: Consent to track
+      description: Whether opens and clicks may be tracked for the members this adds.
+      help: |
+        Choose "Leave as it is" if your members have not explicitly agreed to
+        open and click tracking, for example under GDPR.
+      enum: ["yes", "no", "unchanged"]
+      default: "yes"
+      ui:
+        level: advanced
+        labels: { "yes": "Yes", "no": "No", unchanged: Leave as it is }
+on:
+  - event: user.email.verified
+    schema: { $ref: passport/schemas/user.email.verified@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  - id: add-to-list
+    action: campaign-monitor/subscriber.add
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      resubscribe: "${{ automation.settings.resubscribe }}"
+      consent_to_track: "${{ automation.settings.consent_to_track }}"
+      custom_fields:
+        - Key: InstanceName
+          Value: "${{ instance.name }}"
+        - Key: PassportUserID
+          Value: "${{ trigger.user_id }}"
+        - Key: CreatedAt
+          # A Campaign Monitor Date field takes YYYY/MM/DD; anything else is
+          # dropped without an error.
+          Value: '${{ date("2006/01/02", steps.load-user.outputs.user.created_at) }}'

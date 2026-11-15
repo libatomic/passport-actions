@@ -1,0 +1,43 @@
+cases:
+  - name: New paid subscriber
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: { list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" } }
+    trigger:
+      type: user.subscription.status.active
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { prev_status: incomplete, status: active, subscription_id: "5a5a5a5a-0000-4000-8000-000000000002" }
+    inputs: {}
+    samples:
+      steps:
+        load-subscription: { subscription: { id: "5a5a5a5a-0000-4000-8000-000000000002", user_id: "9f1c2d3e-0000-4000-8000-000000000001", plan_id: "7b7b7b7b-0000-4000-8000-000000000003", price_id: "8c8c8c8c-0000-4000-8000-000000000004", recurring_interval: month } }
+        load-user: { user: { id: "9f1c2d3e-0000-4000-8000-000000000001", login: ada@example.com, created_at: "2026-03-09T10:15:00Z", profile: { email: ada@example.com, name: Ada Lovelace } } }
+      actions:
+        http.post: { status: 201, body: ada@example.com }
+    expect: { status: success }
+
+  - name: Subscription without a plan is skipped
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: { list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" } }
+    trigger:
+      type: user.subscription.status.active
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { status: active, subscription_id: "5a5a5a5a-0000-4000-8000-000000000002" }
+    inputs: {}
+    samples:
+      steps:
+        load-subscription: { subscription: { id: "5a5a5a5a-0000-4000-8000-000000000002", user_id: "9f1c2d3e-0000-4000-8000-000000000001", plan_id: "", price_id: "" } }
+    expect: { status: success }
+
+  - name: Trial is skipped when trials are turned off
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    automation: { settings: { list_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90", include_trials: false } }
+    trigger:
+      type: user.subscription.status.trialing
+      user_id: "9f1c2d3e-0000-4000-8000-000000000001"
+      body: { status: trialing, subscription_id: "5a5a5a5a-0000-4000-8000-000000000002" }
+    inputs: {}
+    samples: {}
+    expect: { status: success }

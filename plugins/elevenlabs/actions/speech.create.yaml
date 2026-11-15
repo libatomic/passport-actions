@@ -1,0 +1,119 @@
+name: speech.create
+version: 1.0.0
+title: Read text to an MP3 asset
+description: Reads text in a voice and stores the MP3 as an asset. One ElevenLabs request; billed.
+help: |
+  The MP3 goes straight into the asset store (`response_asset`), never into
+  the run's outputs, and is only written once the whole file has arrived.
+  With `overwrite`, an asset of the same file name keeps its id.
+
+  `previous_text` and `next_text` give the voice the text around this piece
+  so that pieces joined later sound continuous. `eleven_v3` and `eleven_v4`
+  do not take them; they are left out for those models.
+
+  Every request that reaches ElevenLabs is billed, and a retry is another
+  request. This action makes at most 2 attempts.
+category: ElevenLabs
+inputs:
+  type: object
+  required: [voice_id, model_id, text, filename]
+  properties:
+    voice_id:
+      type: string
+      title: Voice
+      description: An ElevenLabs voice id.
+      minLength: 1
+    model_id:
+      type: string
+      title: Model
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
+    text:
+      type: string
+      title: Text to read
+      description: At most what the model takes in one request.
+      minLength: 1
+      ui: { widget: textarea, rows: 6 }
+    previous_text:
+      type: string
+      title: Text before this piece
+      description: Leave out for the first piece.
+      ui: { widget: textarea, rows: 3 }
+    next_text:
+      type: string
+      title: Text after this piece
+      description: Leave out for the last piece.
+      ui: { widget: textarea, rows: 3 }
+    filename:
+      type: string
+      title: Asset file name
+      pattern: "\\.mp3$"
+      ui: { placeholder: narration-part-1.mp3 }
+    overwrite:
+      type: boolean
+      title: Replace an asset of the same name
+      description: Keeps the asset's id and link.
+      default: true
+    description:
+      type: string
+      title: Asset description
+    narration:
+      type: object
+      title: Narration details
+      description: Stored on the asset as metadata.narration, to tell what it was made from.
+      properties:
+        distribution_id: { type: string, title: Distribution }
+        article_id:      { type: string, title: Article }
+        audience_id:     { type: string, title: Audience }
+        voice_id:        { type: string, title: Voice }
+        model_id:        { type: string, title: Model }
+        text_hash:       { type: string, title: Hash of the spoken text }
+        requests:        { type: integer, title: Requests for the whole narration, minimum: 1 }
+outputs:
+  type: object
+  required: [asset_id]
+  properties:
+    asset_id:
+      type: string
+      format: passport.asset
+      title: Asset
+      description: The stored MP3.
+    size:
+      type: integer
+      title: Size
+      description: Bytes.
+    characters_billed:
+      type: integer
+      title: Characters billed
+      description: What ElevenLabs charged for this request (its Character-Cost header). 0 when it did not say.
+returns:
+  asset_id: "${{ steps.tts.outputs.asset_id }}"
+  size: "${{ toInt(steps.tts.outputs.size ?? 0) }}"
+  characters_billed: >-
+    ${{ toInt(steps.tts.outputs.headers?.["Character-Cost"] ?? 0) }}
+steps:
+  - id: tts
+    action: http.post
+    with:
+      url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}"
+      query:
+        output_format: mp3_44100_128
+      headers:
+        xi-api-key: "${{ secrets.api_key }}"
+        Content-Type: application/json
+        Accept: audio/mpeg
+      body: >-
+        ${{ inputs.model_id in ["eleven_v3", "eleven_v4"]
+        ? {"text": inputs.text, "model_id": inputs.model_id}
+        : {"text": inputs.text, "model_id": inputs.model_id,
+        "previous_text": inputs.previous_text,
+        "next_text": inputs.next_text} }}
+      timeout: 15m
+      retries: 2
+      expect_status: [200]
+      response_asset:
+        filename: "${{ inputs.filename }}"
+        overwrite: "${{ inputs.overwrite }}"
+        mime_type: audio/mpeg
+        description: "${{ inputs.description ?? '' }}"
+        metadata:
+          narration: "${{ inputs.narration }}"

@@ -1,0 +1,62 @@
+version: 1.0.0
+name: Mark ended subscriptions on a list
+description: >-
+  When a member's subscription ends, clear their subscription details on a
+  Campaign Monitor list and record the date it ended.
+help: |
+  The member stays on the list and stays subscribed to it: a cancellation is
+  not an unsubscribe. A member who is not on the list is left alone.
+
+  Create these custom fields on the list first. Campaign Monitor drops values
+  for fields that do not exist, without an error.
+
+  | Field key | Type | Value |
+  |---|---|---|
+  | `PassportSubscriptionID`, `PassportPlanID`, `SubscriptionInterval`, `AutoRenew` | Text | Cleared |
+  | `SubscriptionCancelsAt` | Date | Cleared |
+  | `SubscriptionExpiredAt` | Date | The date the subscription ended |
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-cancel-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List that holds the subscription fields
+on:
+  # A subscription billed through Stripe is deleted when it ends; it never
+  # passes through a canceled status. The event's body is the whole
+  # subscription, which is already gone, so the member is loaded directly.
+  - event: user.subscription.deleted
+    schema: { $ref: passport/schemas/user.subscription.deleted@^1 }
+steps:
+  - id: load-user
+    action: user.get
+    with:
+      user_id: "${{ trigger.user_id }}"
+
+  # Campaign Monitor answers 400 or 404 when the address is not on the list.
+  # That is nothing to do, not a failure.
+  - id: update-fields
+    action: campaign-monitor/subscriber.update
+    continue-on-error: true
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      custom_fields:
+        - Key: PassportSubscriptionID
+          Clear: true
+        - Key: PassportPlanID
+          Clear: true
+        - Key: SubscriptionInterval
+          Clear: true
+        - Key: AutoRenew
+          Clear: true
+        - Key: SubscriptionCancelsAt
+          Clear: true
+        - Key: SubscriptionExpiredAt
+          # The moment the subscription was deleted, as YYYY/MM/DD. Not the
+          # body's ends_at or cancel_at, which are scheduled period dates.
+          Value: '${{ date("2006/01/02", now()) }}'

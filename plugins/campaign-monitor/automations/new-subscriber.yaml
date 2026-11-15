@@ -1,0 +1,102 @@
+version: 1.0.0
+name: Add new subscribers to a list
+description: >-
+  When a member's subscription becomes active, or a trial or gift starts, add
+  them to a Campaign Monitor list with their subscription and plan details.
+help: |
+  Only subscriptions that have a plan and a price are added; free
+  subscriptions are skipped. A checkout that was never paid does not reach
+  either state, so it never lands on the list.
+
+  Create these custom fields on the list first. Campaign Monitor drops values
+  for fields that do not exist, without an error.
+
+  | Field key | Type | Value |
+  |---|---|---|
+  | `InstanceName` | Text | The site's name |
+  | `PassportUserID` | Text | The member's Passport id |
+  | `PassportSubscriptionID` | Text | The subscription's Passport id |
+  | `PassportPlanID` | Text | The plan's Passport id |
+  | `SubscriptionInterval` | Text | `month` or `year` |
+  | `SubscriptionExpiredAt` | Date | Cleared: a new subscription replaces an earlier expiry |
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-star-outline.svg
+multiple: true
+settings:
+  type: object
+  required: [list_id]
+  properties:
+    list_id:
+      $ref: campaign-monitor/schemas/list-id
+      title: List to add subscribers to
+    include_trials:
+      type: boolean
+      title: Include trials and gifts
+      description: Also add members whose subscription starts as a trial or a gift. Turn off to add paying subscribers only.
+      default: true
+    resubscribe:
+      type: boolean
+      title: Resubscribe people who unsubscribed before
+      description: A new subscription is treated as fresh consent. Turn off to let an earlier unsubscribe stand.
+      default: true
+      ui: { level: advanced }
+    consent_to_track:
+      type: string
+      title: Consent to track
+      description: Whether opens and clicks may be tracked for the members this adds.
+      enum: ["yes", "no", "unchanged"]
+      default: "yes"
+      ui:
+        level: advanced
+        labels: { "yes": "Yes", "no": "No", unchanged: Leave as it is }
+on:
+  # The status events are used, not user.subscription.created: at creation the
+  # subscription is still incomplete and payment has not been confirmed.
+  - event: user.subscription.status.active
+    schema: { $ref: passport/schemas/user.subscription.status.active@^1 }
+  # Trials and gifts are real subscriptions that start in the trialing state.
+  - event: user.subscription.status.trialing
+    schema: { $ref: passport/schemas/user.subscription.status.trialing@^1 }
+steps:
+  - id: skip-trial
+    if: '${{ trigger.type == "user.subscription.status.trialing" && !automation.settings.include_trials }}'
+    action: workflow.exit
+
+  # Load the whole subscription for the plan, the interval and the member, and
+  # to confirm it is backed by a plan and a price.
+  - id: load-subscription
+    action: subscription.get
+    with:
+      subscription_id: "${{ trigger.body.subscription_id }}"
+    outputs:
+      is_subscriber: "${{ !empty(steps.load-subscription.outputs.subscription.plan_id) && !empty(steps.load-subscription.outputs.subscription.price_id) }}"
+
+  - id: load-user
+    if: "${{ outputs.is_subscriber }}"
+    action: user.get
+    with:
+      user_id: "${{ steps.load-subscription.outputs.subscription.user_id }}"
+
+  - id: add-to-list
+    if: "${{ outputs.is_subscriber }}"
+    action: campaign-monitor/subscriber.add
+    with:
+      list_id: "${{ automation.settings.list_id }}"
+      email: "${{ steps.load-user.outputs.user.profile.email }}"
+      name: "${{ steps.load-user.outputs.user.profile.name }}"
+      resubscribe: "${{ automation.settings.resubscribe }}"
+      consent_to_track: "${{ automation.settings.consent_to_track }}"
+      custom_fields:
+        - Key: InstanceName
+          Value: "${{ instance.name }}"
+        - Key: PassportUserID
+          Value: "${{ steps.load-subscription.outputs.subscription.user_id }}"
+        - Key: PassportSubscriptionID
+          Value: "${{ steps.load-subscription.outputs.subscription.id }}"
+        - Key: PassportPlanID
+          Value: "${{ steps.load-subscription.outputs.subscription.plan_id }}"
+        - Key: SubscriptionInterval
+          Value: "${{ steps.load-subscription.outputs.subscription.recurring_interval }}"
+        # A new subscription replaces any earlier expiry, so win-back segments
+        # stop matching a returning customer.
+        - Key: SubscriptionExpiredAt
+          Clear: true

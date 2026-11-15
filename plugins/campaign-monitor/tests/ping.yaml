@@ -1,0 +1,22 @@
+cases:
+  - name: Key and client id are accepted
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs: {}
+    samples:
+      actions:
+        http.get: { status: 200, body: [ { ClientID: "0123456789abcdef0123456789abcdef", Name: The Daily Example } ] }
+    expect: { status: success }
+
+  - name: Client id belongs to another account
+    settings: { client_id: "0123456789abcdef0123456789abcdef" }
+    secrets: { api_key: test }
+    trigger: { type: manual }
+    inputs: {}
+    samples:
+      actions:
+        http.get: { status: 200, body: [ { ClientID: "ffffffffffffffffffffffffffffffff", Name: Someone Else } ] }
+    expect:
+      status: failed
+      reason: the client id is not one of this account's clients
