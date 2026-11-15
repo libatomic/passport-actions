@@ -55,7 +55,7 @@ test: ping
 
 | Key | Required | Meaning |
 |---|---|---|
-| `format` | yes | `2` |
+| `format` | yes | `2`. A `plugin.yaml` that does not say so is refused |
 | `id` | yes | The plugin's id |
 | `name` | yes | Shown in the registry and the admin |
 | `description` | yes | One or two sentences: what the publisher gets |
@@ -154,6 +154,15 @@ requires:
 | `~2.3.0` | 2.3.0 and up, below 2.4.0 |
 | `>=2.3.0, <2.6.0` | both conditions; **a comma means "and"** (npm uses a space; Passport does not) |
 | `^2.3.0 \|\| ^3.0.0` | either |
+| `2.3.0 - 2.5.0`, `2.3.x` | a span; any patch of 2.3 |
+
+Two differences from npm. A space between conditions is an error here: use
+a comma. And below 1.0 the caret still holds only the major: `^0.2.3` admits
+`0.9.0`, where npm would stop at `0.3.0`; write `~0.2.3` for that.
+
+The server's version is `passport`. The 2.3-format name for it, `atomic`,
+is not accepted in a v2 manifest. `passport` and `atomic` cannot be used as
+plugin ids, and a plugin cannot require itself.
 
 A plugin's effective requirement is everything its files require together.
 If an action needs a function that arrived in 2.4.0, put

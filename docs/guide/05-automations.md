@@ -170,21 +170,34 @@ protection, so treat the address as a secret.
 
 **Signature check**
 
-| Key | Meaning |
-|---|---|
-| `header` | The request header that carries the signature |
-| `algorithm` | `hmac-sha1`, `hmac-sha256` or `hmac-sha512` |
-| `encoding` | `hex` or `base64` |
-| `secret` | The signing secret, normally one of the automation's secret settings |
-| `payload` | What is signed, as a template: `{body}` (the raw body), `{timestamp}`, `{url}`, `{form_sorted}` (form fields sorted by name, each as name then value) |
-| `fields` | For a header of the form `t=…,v1=…`: which part is the timestamp and which the signature, `{ timestamp: t, signature: v1 }` |
-| `prefix` | Text before the signature in the header, such as `sha256=` |
-| `tolerance` | Seconds a timestamp may be off. Default `300` when the payload uses `{timestamp}` |
+| Key | Required | Meaning |
+|---|---|---|
+| `header` | yes | The request header that carries the signature |
+| `algorithm` | yes | `hmac-sha1`, `hmac-sha256` or `hmac-sha512` |
+| `encoding` | yes | `hex` (either case) or `base64` (standard, with or without padding) |
+| `secret` | yes | Exactly one secret reference, such as `"${{ automation.secrets.webhook_secret }}"`. A literal, or text built around a reference, is refused |
+| `payload` | yes | What is signed, as a template: `{body}` (the raw body, byte for byte), `{timestamp}`, `{url}` (the full address called), `{form_sorted}` (form fields sorted by name, each written as name then value; a repeated field's values sorted) |
+| `fields` | no | For a header of the form `t=…,v1=…`: which part is the timestamp and which the signature, `{ timestamp: t, signature: v1 }`. `signature` is required when `fields` is given. If the header carries several signatures under that key, any one may match |
+| `timestamp_header` | no | A separate header that carries the timestamp, for vendors that send it apart from the signature |
+| `prefix` | no | Text before the signature in the header, such as `sha256=`. A signature without it is refused |
+| `tolerance` | no | Seconds the timestamp may be off. Default `300` when the payload uses `{timestamp}`; `0` turns the age check off |
 
-Stripe is `header: Stripe-Signature`, `hmac-sha256`, `hex`,
-`payload: "{timestamp}.{body}"`, `fields: { timestamp: t, signature: v1 }`.
-GitHub is `header: X-Hub-Signature-256`, `hmac-sha256`, `hex`,
-`payload: "{body}"`, `prefix: "sha256="`.
+A payload that uses `{timestamp}` needs exactly one source for it:
+`fields.timestamp` or `timestamp_header`. The timestamp is seconds since
+1970.
+
+| Vendor | Settings |
+|---|---|
+| Stripe | `header: Stripe-Signature`, `hmac-sha256`, `hex`, `payload: "{timestamp}.{body}"`, `fields: { timestamp: t, signature: v1 }` |
+| GitHub | `header: X-Hub-Signature-256`, `hmac-sha256`, `hex`, `payload: "{body}"`, `prefix: "sha256="` |
+| Slack | `header: X-Slack-Signature`, `hmac-sha256`, `hex`, `payload: "v0:{timestamp}:{body}"`, `timestamp_header: X-Slack-Request-Timestamp`, `prefix: "v0="` |
+| Twilio | `header: X-Twilio-Signature`, `hmac-sha1`, `base64`, `payload: "{url}{form_sorted}"` |
+
+Only HMAC signatures are covered. A vendor that signs with a public key
+(RSA, Ed25519) or a JWT cannot be checked this way yet; use `validate: false`
+and the token, and say so in the plugin's README.
+
+A request that fails the check is answered 403 and starts nothing.
 
 ### Schedule
 

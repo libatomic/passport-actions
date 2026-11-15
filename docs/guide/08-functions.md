@@ -22,9 +22,9 @@ version the tool was built from.
 | `trimPrefix(s, prefix)`, `trimSuffix(s, suffix)` | `s` without that prefix / suffix | |
 | `upper(s)`, `lower(s)` | Upper / lower case | |
 | `title(s)` | **All upper case.** Kept for v1; use `titleCase` | |
-| `titleCase(s)` | First letter of each word upper case | 2.3.0 |
+| `titleCase(s)` | First letter of each word upper case, the rest left as written. A word starts at the beginning, after white space, or after a hyphen, slash, opening bracket or opening quote: `o'neil mcDonald` to `O'neil McDonald` | 2.3.0 |
 | `camelCase(s)`, `kebabCase(s)`, `snakeCase(s)` | Re-cased | |
-| `slugify(s)` | Lower case, accents removed, anything else to single hyphens: `"Été 2026!"` to `ete-2026` | 2.3.0 |
+| `slugify(s)` | Lower case, accents removed (`ß æ œ ø þ ł` and the like become `ss ae oe o th l`), every run of anything else to a single hyphen, trimmed: `"Été 2026!"` to `ete-2026`. Text in a script with no Latin form gives an empty string | 2.3.0 |
 | `replace(s, old, new)` | Every `old` replaced | |
 | `replaceEach(text, rules, opts)` | Applies a list of replacements in order. Each rule is a map; `opts` names its keys and behaviour: `find`, `replace` (key names, default `find` / `replace`), `literal` (no regex), `word` (whole words only), `ignoreCase` | 2.1.4 |
 | `contains(s, sub)`, `hasPrefix(s, p)`, `hasSuffix(s, p)` | Boolean | |
@@ -74,7 +74,7 @@ are how it is carried.
 | `base64UrlEncode(s)`, `base64UrlDecode(s)` | URL-safe base64, no padding (JWT segments, signed URLs) | 2.3.0 |
 | `hexEncode(s)`, `hexDecode(s)` | Lower-case hex | 2.3.0 |
 | `urlEncode(s)`, `urlDecode(s)` | Query-string escaping | |
-| `formEncode(map)` | `a=1&b=two`, keys sorted, values escaped: an `application/x-www-form-urlencoded` body or a query string | 2.3.0 |
+| `formEncode(map)` | `a=1&b=two`, keys sorted, values escaped: an `application/x-www-form-urlencoded` body or a query string. A list value repeats its key; a nil value is written `key=` | 2.3.0 |
 | `toJSON(v)` | JSON text | |
 | `fromJSON(s)` | The value the JSON text describes | |
 | `urlParse(s)` | `{ scheme, host, path, query, fragment }` | |
@@ -87,9 +87,9 @@ Each returns lower-case hex unless an encoding is given.
 |---|---|---|
 | `sha256(s)` | SHA-256 digest | 2.1.4 |
 | `sha1(s)`, `sha512(s)`, `md5(s)` | That digest. `md5` and `sha1` are for vendors that require them, not for security | 2.3.0 |
-| `crc32(s)` | CRC-32 (IEEE) as a number | 2.3.0 |
+| `crc32(s)` | CRC-32 (IEEE) as an integer: `crc32("123456789")` is `3421780262` | 2.3.0 |
 | `hmac(algorithm, key, data)` | HMAC with `sha1`, `sha256` or `sha512`, as hex | 2.3.0 |
-| `hmac(algorithm, key, data, encoding)` | The same, as `hex`, `base64` or `base64url` | 2.3.0 |
+| `hmac(algorithm, key, data, encoding)` | The same, as `hex`, `base64` or `base64url` (no padding) | 2.3.0 |
 
 ```yaml
 headers:
@@ -103,8 +103,9 @@ headers:
 | `gzip(text)` | The gzipped text, as base64 | 2.3.0 |
 | `gunzip(base64)` | The text inside | 2.3.0 |
 
-Both are limited to 1 MiB of uncompressed text; larger data goes through an
-asset.
+Both are limited to 1 MiB (1,048,576 bytes) of uncompressed text and fail
+beyond it; `gunzip` stops reading at the limit, so a small value cannot
+unpack into a huge one. Larger data goes through an asset.
 
 ## 8.7 Numbers
 
@@ -115,7 +116,7 @@ asset.
 | `max(a, b)`, `min(a, b)` | | |
 | `ceil(n)`, `floor(n)`, `abs(n)` | | |
 | `round(n, places)` | Rounded to that many decimal places | |
-| `formatNumber(n, places)` | Text with thousands separators and that many decimals: `1,234.50` | 2.3.0 |
+| `formatNumber(n, places)` | Text with comma thousands separators and that many decimals: `1,234.50`. A value that rounds to zero has no minus sign | 2.3.0 |
 
 ## 8.8 Lists and maps
 
@@ -129,8 +130,8 @@ asset.
 | `hasKey(map, key)` | Boolean | |
 | `dig(map, key, key, …)` | The value at that path, or nil | |
 | `merge(a, b, …)` | One map. **The first argument wins** where keys repeat | |
-| `pick(map, keys…)` | Only those keys | 2.3.0 |
-| `omit(map, keys…)` | Without those keys | 2.3.0 |
+| `pick(map, keys…)` | Only those keys. The keys may also be given as one list | 2.3.0 |
+| `omit(map, keys…)` | Without those keys. The keys may also be given as one list | 2.3.0 |
 
 From the expression language itself, with `#` as the element: `map`,
 `filter`, `find`, `findIndex`, `all`, `any`, `none`, `one`, `count`, `sum`,
@@ -145,7 +146,7 @@ From the expression language itself, with `#` as the element: `map`,
 | `empty(v)` | True for nil, `""`, `0`, `false`, an empty list or map |
 | `default(fallback, v)` | `v`, or `fallback` when `v` is empty. **Fallback first** |
 | `coalesce(a, b, …)` | The first that is not empty |
-| `ternary(ifTrue, ifFalse, cond)` | Prefer `cond ? a : b` |
+| `ternary(cond, ifTrue, ifFalse)` | Prefer `cond ? a : b` |
 
 ## 8.10 Dates and time
 
@@ -157,9 +158,9 @@ the reference time `2006-01-02 15:04:05` written the way you want it.
 | `now()` | The current time | |
 | `unixEpoch()` | Seconds since 1970 | |
 | `date(layout, value)` | `value` (a time, RFC 3339 text or Unix seconds) written in `layout` | |
-| `dateParse(layout, text)` | The RFC 3339 time that `text` in `layout` means | 2.3.0 |
-| `dateAdd(value, duration)` | `value` moved by `duration` (`"24h"`, `"-90m"`) | 2.3.0 |
-| `dateDiff(a, b)` | Seconds from `a` to `b` | 2.3.0 |
+| `dateParse(layout, text)` | The RFC 3339 time (UTC) that `text` in `layout` means. Empty text gives empty text; text that does not fit the layout is an error | 2.3.0 |
+| `dateAdd(value, duration)` | `value` moved by `duration` (`"24h"`, `"-90m"`). An empty value gives empty text | 2.3.0 |
+| `dateDiff(a, b)` | Whole seconds from `a` to `b` as an integer, negative when `b` is earlier. An error when either is not a time, so a missing value is never read as "no time apart" | 2.3.0 |
 | `duration(s)` | A duration in a normal form: `"90m"` to `1h30m0s` | |
 | `fromNow(value)` | Words: `in 3 days`, `2 hours ago` | |
 
@@ -168,7 +169,7 @@ the reference time `2006-01-02 15:04:05` written the way you want it.
 | Function | Returns | Since |
 |---|---|---|
 | `uuid()` | A new random UUID | 2.3.0 |
-| `randomString(n)` | `n` random letters and digits | 2.3.0 |
+| `randomString(n)` | `n` random letters and digits, `n` up to 1,024 | 2.3.0 |
 
 Both give a different value each time. On a dry run they are fixed
 (`00000000-0000-4000-8000-000000000000`, `aaaa…`) so runs can be compared.

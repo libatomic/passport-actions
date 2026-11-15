@@ -38,7 +38,7 @@ properties:
 | Key | Required | Meaning |
 |---|---|---|
 | `name` | yes | Must equal the file name without `_N` and `.yaml` |
-| `version` | yes | Semver; the major must match the file ([1.3](01-project-and-manifest.md#13-versions)) |
+| `version` | yes | Semver; the major must match the file ([1.3](01-project-and-manifest.md#13-versions)). A schema's first version is `1.0.0`; there is no major 0 |
 | `requires` | no | [1.5](01-project-and-manifest.md#15-requires) |
 | everything else | | The schema itself: JSON Schema 2020-12 with `title`, `description`, `help`, and `ui` when the schema is meant to be used as a form field (a list chooser declared once and referenced by every automation, for instance) |
 

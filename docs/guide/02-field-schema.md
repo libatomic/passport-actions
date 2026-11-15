@@ -173,13 +173,20 @@ the form picks a control from it. An unknown format is an error.
 | Group | Formats |
 |---|---|
 | Text | `email`, `uri`, `phone` (E.164, `+15551230000`), `uuid`, `hostname`, `slug`, `color` (`#rrggbb`), `language` (ISO 639-1), `country` (ISO 3166-1 alpha-2), `currency` (ISO 4217), `timezone` (IANA), `regex` (RE2) |
-| Time | `date` (`2026-11-14`), `date-time` (RFC 3339), `time` (`14:30`), `duration` (`90s`, `24h`) |
+| Time | `date` (`2026-11-14`), `date-time` (RFC 3339), `time` (`14:30`), `duration` (`90s`, `24h`, `1h30m`; not ISO 8601's `PT90S`) |
 | Long text | `html`, `markdown`, `template` (a Passport template), `json`, `yaml`, `css` |
 | Binary | `byte` (base64 text; see chapter 9) |
 | Passport records | `passport.user`, `passport.audience`, `passport.asset`, `passport.template`, `passport.plan`, `passport.category`, `passport.article`, `passport.application`, `passport.distribution` |
+| Passport ids | `passport.id` |
 
-A `passport.*` value is the record's id. The form shows a picker for that
-kind of record, and the server checks the id exists on the site.
+A `passport.<record>` value is that record's id. The form shows a picker for
+that kind of record, and the server checks the id exists on the site.
+
+`passport.id` is the id of any Passport record, when which kind does not
+matter or there is nothing to pick from: an id in an event's body, for
+instance. Passport ids are short text such as `Ch3oep6QbWZm8q5XEjgS5`, not
+UUIDs. Do not use `format: uuid` for one; `uuid` is for identifiers that
+really are UUIDs, usually a vendor's.
 
 Use a format before reaching for `pattern`. A URL is `format: uri`, not a
 pattern that starts with `https`.
