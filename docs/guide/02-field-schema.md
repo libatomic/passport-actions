@@ -254,13 +254,73 @@ of keys is closed; an unknown key is an error.
 | `show_when` | any field | Shown only while every named field has the given value, or one of a list of values: `{ auth: basic }`, `{ operation: [add, remove] }`. A named field must be a string, number or boolean field of the same form, and a value must be one of its `enum` when it has one |
 | `expression` | action inputs | Whether the step editor offers `${{ }}` for this field. Defaults to `true` for action inputs and is always `false` for settings |
 | `suggested_keys` | key/value editor | Keys offered in the editor |
+| `paragraphs` | a `paragraphs` field | What the paragraph editor offers (below) |
 | `layout` | the root object of a form | Sections, rows and columns ([2.9](#29-form-layout)) |
 
 Values for `widget`: `text`, `textarea`, `password`, `number`, `slider`,
 `switch`, `checkbox`, `select`, `radio`, `multiselect`, `checkboxes`, `tags`,
 `rows`, `keyvalue`, `code`, `date`, `datetime`, `time`, `color`, `picker`,
-`hidden`. A widget that cannot hold the field's type is an error (a `switch`
-on a string, for example).
+`paragraphs`, `hidden`. A widget that cannot hold the field's type is an
+error (a `switch` on a string, for example).
+
+### The paragraph editor
+
+`widget: paragraphs` edits an HTML string as its paragraphs, for text that
+is going to be read aloud, posted or otherwise turned into something else.
+The field must be `type: string, format: html`; it usually defaults to the
+article's body. The editor:
+
+- shows each paragraph as a block whose text can be changed, and which can
+  be switched off;
+- shows restricted sections (`{{ if hasAnyAudience … }}`) as markers, with
+  whether a chosen audience gets them;
+- can show the body as one channel would see it;
+- can play a sample of each paragraph, add pronunciations by right-clicking
+  a word, and insert tags from a menu.
+
+Edits are written back into the same HTML: a paragraph switched off gets
+`data-text="skip"`, a restricted section's replacement line gets
+`data-text="instead"`, and everything else (markup, template tags) is left
+as it was. `htmlText` drops what is marked `skip`, so a step reading the
+field gets exactly the text the editor showed.
+
+```yaml
+script:
+  type: string
+  format: html
+  title: What is read
+  default: "${{ article.body }}"
+  ui:
+    widget: paragraphs
+    paragraphs:
+      audience: audience
+      skip_setting: skip_selectors
+      section_line: { setting: locked_line, label: Read instead }
+      term_list: { setting: pronunciations, find: word, replace: say, label: Pronunciation }
+      sample: audio
+```
+
+| `ui.paragraphs` key | Effect |
+|---|---|
+| `audience` | Another field of the same form, `format: passport.audience`. Restricted sections are marked as read or not read for the audience chosen there. Without it they are shown, unmarked |
+| `channel_view` | Show the body as that channel sees it: each `{{ if isChannel "<channel>" }}…{{ else }}…{{ end }}` is replaced by its first branch when the editor loads the text |
+| `skip_setting` | A setting that holds CSS selectors for parts never used (an array of strings); the editor leaves those parts out |
+| `section_line` | `{ setting, label }`: each restricted section gets an editable line to use instead for audiences without access, starting from that setting's value (a string) |
+| `sample` | `audio`: a play button on each paragraph runs a preview with `trigger.preview.sample` set to the paragraph's text, and plays the `audio` (base64) and `audio_type` it returns |
+| `preview_label` | The label of the preview button |
+| `term_list` | `{ setting, find, replace, label }`: right-click a word to add or edit a row of that list setting (an array of objects; `find` and `replace` name a row's two properties). Saved to the settings at once. While a row is being edited, its play button previews with the unsaved list |
+| `tags` | `{ setting, title, sets }`: a menu of tags to insert. `setting` (a string setting, usually an `enum`) picks the set from `sets`, falling back to `sets.default`. A set is `{ note, groups: [ { label, tags: [ "[tag]" or { tag, hint } ] } ] }` |
+
+A setting named here is one of the settings of what owns the form: the
+channel's own settings for a channel's distribution form, the automation's
+own settings for an extension's inputs. `sample` and `preview_label` need
+that channel or extension to answer previews (`channel.preview` or
+`extension.preview`).
+
+The editor can be used in a channel's distribution form and in an
+extension's inputs. A channel may instead give the same keys as `channel.ui`
+to use the editor on the distribution's own body
+([6.7](06-channels.md#67-body-editor-hints)).
 
 ## 2.7 Which control a field gets
 

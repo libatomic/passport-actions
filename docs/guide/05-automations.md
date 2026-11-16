@@ -366,6 +366,7 @@ steps:
 | `on` | yes | The kind of record it is run on: `article`, `user`, `subscription`, `distribution`, `template`, `asset`, `plan`, `audience` or `category` |
 | `label` | no | What the menu item says. Defaults to the automation's `name`. Write it as the thing to do: "Create Audio Narration" |
 | `if` | no | Offer it only when true. It reads only the record: `"${{ subscription.status == 'active' }}"` |
+| `preview` | no | `true`: the extension answers previews, for a [paragraph editor](02-field-schema.md#the-paragraph-editor)'s play buttons. Default `false` |
 
 An automation has `extension` or `on`, never both. An extension cannot be
 started by an event, a webhook, a schedule or `workflow.run`. When the same
@@ -386,6 +387,40 @@ this form may be an expression over the record, `automation.settings` and
 `settings`, as in a channel's distribution form
 ([2.10](02-field-schema.md#210-defaults-that-follow-another-value)). It is
 worked out when the form opens, and the person may type over it.
+
+**The form remembers the last run on the record.** When the extension has
+run on this record before, the form opens with the values of that last run,
+so text edited for one narration is still there for the next. **Start from
+the record** sets every field back to its default. A field the last run did
+not have (added in a newer version) takes its default; a value the form no
+longer accepts is dropped.
+
+**Previews.** With `preview: true`, a preview runs the same steps with
+`trigger.action` `preview` (it is `run` otherwise), `inputs` as they are on
+screen, and `trigger.preview.sample` set to the text of the paragraph being
+played. A preview makes nothing: no assets, no records, no calls that change
+anything at the vendor. Return what to play as outputs `audio` (base64) and
+`audio_type`. Previews are not listed with the record's runs.
+
+**Reading a `paragraphs` field.** Render it as an audience, then take the
+text:
+
+```yaml
+- id: script
+  action: template.render
+  with:
+    body: "${{ inputs.script }}"
+    article_id: "${{ article.id }}"
+    audience_id: "${{ inputs.audience }}"
+- id: text
+  action: vars.set
+  with:
+    text: "${{ htmlText(steps.script.outputs.body) }}"
+```
+
+Restricted sections then resolve as they would for a member of that
+audience, a replacement line is kept where a section is not read, and what
+was switched off is dropped by `htmlText`.
 
 **What it hands back.** Declare `outputs` and `returns`. The admin shows the
 result when the run ends, each output by its `title` and drawn by its

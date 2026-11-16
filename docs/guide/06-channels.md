@@ -296,19 +296,17 @@ of the plugin's to stay clear of future admin keys.
 
 ## 6.7 Body editor hints
 
-`channel.ui` adjusts the body editor on the distribution page. The engine
-ignores it; the admin reads it. The set is closed.
+`channel.ui` puts the distribution's own body in the paragraph editor on the
+distribution page. The engine ignores it; the admin reads it.
 
 | Hint | Effect |
 |---|---|
-| `body_editor: paragraphs` | Edit an HTML body as its paragraphs: change text, switch a paragraph off, see restricted sections as markers with whether the distribution's audience gets them |
-| `preview_label: <text>` | The preview button's label |
-| `channel_view: <channel>` | Keep the body as that channel shows it: each `{{ if isChannel "<channel>" }}…{{ else }}…{{ end }}` is replaced by its first branch when the body is loaded or copied from the article |
-| `skip_setting: <setting>` | The channel setting that holds CSS selectors for parts that are not used; the editor leaves those parts out. The setting is an array of strings |
-| `section_line: { setting, label }` | Each restricted section gets an editable replacement line, defaulting to that setting's value. The setting is a string |
-| `sample: audio` | A play button per paragraph: a preview run with `trigger.preview.sample` set to the paragraph's text, expecting `audio` (base64) and `audio_type` back |
-| `term_list: { setting, find, replace, label }` | Right-click a word to add or edit a row in that list setting (pronunciations, say); saved to the channel's settings. The setting is an array of objects; `find` and `replace` name the two properties of a row. While a row is being edited, its play button runs a preview with the unsaved list |
-| `tags: { setting, title, sets }` | A menu of tags an editor can insert into the text. `setting` is a string setting (usually an `enum`); its value picks the set from `sets`, falling back to `sets.default`. A set is `{ note, groups: [ { label, tags: [ "[tag]" or { tag, hint } ] } ] }` |
+| `body_editor: paragraphs` | Edit the body with the [paragraph editor](02-field-schema.md#the-paragraph-editor). Restricted sections are marked for the distribution's audience |
+| `preview_label`, `channel_view`, `skip_setting`, `section_line`, `sample`, `term_list`, `tags` | As the keys of `ui.paragraphs` ([2.6](02-field-schema.md#the-paragraph-editor)) |
+
+Use this when the channel publishes the body itself, edited. When the
+channel needs a second text beside the body, put a `paragraphs` field in its
+distribution form instead.
 
 A hint names a **channel setting**. In v1 they named workflow inputs, and v1
 `choice` / `choices` are replaced by fields of the distribution form with

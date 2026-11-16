@@ -304,6 +304,7 @@ Renders a template (by id or name) or a raw body against a context, returning th
 | `body` | template or body | Raw template body |
 | `data` / `context` | no | Render context object |
 | `article_id` | no | Render with this article as `.article`, as a distribution's render does (2.3.0) |
+| `audience_id` | no | Render as a member of this audience, with no user data: `hasAnyAudience` / `audiences` blocks resolve for it. Can't be combined with `user_id` (2.3.0) |
 | `user_id` | no | User context |
 | `channel` | no | Channel override |
 | `transmute` | no | `true` atomicizes the rendered HTML via headless Chrome (inline styles, capture embeds, tokenize links). Needed by channels that post HTML to a system that can't run scripts (e.g. another ESP, a distribution trigger). Off by default. |
