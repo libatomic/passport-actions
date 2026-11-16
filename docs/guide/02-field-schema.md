@@ -313,7 +313,9 @@ script:
 
 A setting named here is one of the settings of what owns the form: the
 channel's own settings for a channel's distribution form, the automation's
-own settings for an extension's inputs. `sample` and `preview_label` need
+own settings for an extension's inputs. An extension that names a setting
+here therefore has settings, and is added before it is run. `sample` and
+`preview_label` need
 that channel or extension to answer previews (`channel.preview` or
 `extension.preview`).
 

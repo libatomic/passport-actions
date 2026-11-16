@@ -400,7 +400,15 @@ longer accepts is dropped.
 screen, and `trigger.preview.sample` set to the text of the paragraph being
 played. A preview makes nothing: no assets, no records, no calls that change
 anything at the vendor. Return what to play as outputs `audio` (base64) and
-`audio_type`. Previews are not listed with the record's runs.
+`audio_type`; a preview with no sample (the `preview_label` button) may also
+return `text`, `characters`, `limit` and `note`, which the editor shows.
+Previews are not listed with the record's runs.
+
+A preview is not held to the form's `required` list, so a paragraph can be
+played before every field is filled; what is given is still checked. While a
+pronunciation is being edited, the preview carries the extension's settings
+as they are on screen, and `automation.settings` holds those for that
+preview only.
 
 **Reading a `paragraphs` field.** Render it as an audience, then take the
 text:
