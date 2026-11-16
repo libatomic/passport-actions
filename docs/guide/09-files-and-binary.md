@@ -70,6 +70,16 @@ Only one of `body`, `form`, `body_base64` and `multipart` may be given. A
 file in `multipart` is always an asset; it is streamed from storage and never
 enters the run's state.
 
+- `http.get` and `http.delete` send no body: `form`, `body_base64` and
+  `multipart` there are an error.
+- `body_base64` with no `Content-Type` is sent as `application/octet-stream`.
+  For `form` and `body_base64` a `Content-Type` you set wins; for
+  `multipart` it is always Passport's, since it carries the boundary.
+- In `form` and in multipart `fields`, a list repeats the field, a map is
+  sent as JSON text, and a null is left out.
+- A multipart file's `filename` and `content_type` default to the asset's.
+  The asset must be one of this site's.
+
 ## 9.3 Receiving bytes without an asset
 
 By default a response is returned in `body`: parsed when it is JSON, text
@@ -94,6 +104,11 @@ behind), ask for base64:
 | `response_encoding` | `auto` (default: JSON or text) or `base64` | 2.3.0 |
 | `max_response_size` | Bytes. Default 10 MiB when no `response_asset` is given; a larger response fails the step | 2.3.0 |
 
+With `response_encoding: base64`, an error response is still read as JSON or
+text, so `steps.<id>.error.detail.body` stays readable. A response over
+`max_response_size` fails the step without a retry and returns none of the
+body.
+
 Many vendors offer a JSON variant that already returns base64 (ElevenLabs'
 `with-timestamps`, for one). Prefer that when it exists.
 
@@ -105,7 +120,7 @@ A few hundred kilobytes for a preview is fine; a whole file is not.
 | Action | Does |
 |---|---|
 | `asset.get` | Metadata, and with `link: true` an address a vendor can fetch the file from |
-| `asset.create` | From `url` (fetched by the server) or `payload` (text). `payload_base64` for bytes (2.3.0) |
+| `asset.create` | From `url` (fetched by the server, which may reach only the plugin's `allowed_hosts`), `payload` (text) or `payload_base64` (bytes, 2.3.0). Only one of `url` and `payload_base64` |
 | `asset.update` | Metadata |
 | `asset.delete` | Removes the asset and its file |
 | `asset.concat` | Joins assets in order into one. MP3s are joined frame by frame. `overwrite: true` keeps the final asset's id; `delete_sources: true` removes the parts |

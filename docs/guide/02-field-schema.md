@@ -504,6 +504,11 @@ returns:
 value may be an expression or a plain literal (`audio_type: audio/mpeg`). The
 result is checked against `outputs`.
 
+An output whose expression yields nothing is left out, at the top and inside
+a group, as an empty field is on a form: it is a fault only if `outputs`
+requires it (`outputs.contact.name: is required`). Inside a list or a value
+that takes any JSON, a nil stays and reaches the caller as `null`.
+
 When the whole result is one value you already have, such as a vendor's
 response described by a schema, `returns` may be a single expression instead
 of a map:
