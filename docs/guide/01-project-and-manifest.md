@@ -122,6 +122,10 @@ A definition refers to another by name and version range. References are
 resolved when the plugin is built and **pinned** to an exact version in the
 released package, so a release never changes underneath a publisher.
 
+The one exception is `passport/…`: the server keeps one file per major and
+updates it in place, so a built package refers to Passport's schemas as
+`@^<the version it was built against>`, and records the exact version it saw.
+
 | Referring to | Written as | Example |
 |---|---|---|
 | A built-in action | its name | `action: http.post` |
@@ -204,6 +208,11 @@ self-contained: the site installs one package, its content hash covers
 everything in it, and a later release of `acme-api` changes nothing until
 this plugin is released again.
 
+The copies live in the package under `_deps/<plugin>/actions/` and
+`_deps/<plugin>/schemas/`. References to them keep their written form,
+`<plugin>/<name>@<x.y.z>`, and resolve to the copy. A dependency's own
+dependencies are copied the same way.
+
 What follows from that:
 
 - The publisher installs only your plugin. `acme-api` does not appear on
@@ -218,7 +227,11 @@ What follows from that:
   which are missing.
 - Only actions and schemas can be used from another plugin. Automations and
   channels cannot.
-- Dependencies may have dependencies, to a depth of 8. A cycle is an error.
+- Dependencies may have dependencies, to a depth of 8. A cycle is an error,
+  and so is a build that would need two versions of one plugin, or a
+  dependency that leads back to the plugin being built.
+- A plugin in `requires` that nothing uses is a warning, and is not copied.
+- The effective server requirement includes what the copied actions require.
 
 ## 1.7 The registry
 

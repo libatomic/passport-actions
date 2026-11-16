@@ -18,8 +18,8 @@ server uses, so what it accepts is what the server accepts.
 | Command | Does |
 |---|---|
 | `passport-plugin check <folder>` | Loads the project and reports every problem, with file and line. Exit code 1 if there are any |
-| `passport-plugin build <folder>` | Builds the package the way a release does: references pinned, dependencies copied in |
-| `passport-plugin run <folder> --automation <key> [--case <name>]` | Dry-runs an automation with a test case |
+| `passport-plugin build <folder> [--registry owner/name[@branch]]` | Builds the package the way a release does: references pinned, dependencies copied in. A plugin with dependencies needs `--registry` to fetch them |
+| `passport-plugin run <folder> --automation <key> [--case <name>]` | Dry-runs an automation with a test case. With dependencies, give `--registry` as for `build` |
 | `passport-plugin run <folder> --channel <name> [--case <name>]` | Dry-runs a channel |
 | `passport-plugin run <folder> --action <name> [--case <name>]` | Dry-runs one plugin action |
 | `passport-plugin info` | The server version the tool was built from |
