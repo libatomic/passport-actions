@@ -57,7 +57,7 @@ A plugin is a folder of YAML files. There are five kinds of definition.
 | **Plugin** | The bundle that is built, reviewed, released and installed. Holds the others, and the settings they share | `plugin.yaml` |
 | **Schema** | A named shape of data: an action's input or output, an event's body | `schemas/<name>.yaml` |
 | **Action** | One reusable operation with declared inputs and outputs. The engine has built-in actions; a plugin adds its own, made of steps | `actions/<name>.yaml` |
-| **Automation** | A trigger (manual, event, webhook, schedule) and the steps to run when it fires | `automations/<key>.yaml` |
+| **Automation** | A trigger (manual, event, webhook, schedule) and the steps to run when it fires. An automation marked as an **extension** has no trigger: a person runs it on one record (an article, a member), from that record's page | `automations/<key>.yaml` |
 | **Channel** | A place a distribution can be published to: Spotify, a Facebook page, an audio narration | `channels/<name>.yaml` |
 
 An automation never defines a channel, and a channel is never started by a
@@ -186,6 +186,10 @@ sequenceDiagram
 Inputs are validated before anything is queued, so a bad value never becomes
 a failed run. A caller may ask to wait up to 60 seconds and get the outputs
 back; that is how previews and "Run" in the admin work.
+
+An **extension** runs the same way. The request also names the record; the
+API checks the caller may change it, loads it, and the run starts with the
+record in hand.
 
 ### An event
 

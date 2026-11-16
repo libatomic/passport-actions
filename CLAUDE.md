@@ -44,6 +44,9 @@ syntax into this branch.
   form. `inputs` are only for manual runs and action calls.
 - A channel handles `publish`, `republish` (update, never duplicate) and
   `delete`, and has no side effects in a `preview`.
+- Something a person does to one record on demand (narrate this article,
+  send this member to the CRM) is an automation with `extension:`, not a
+  channel and not a trigger. Safe to run twice on the same record.
 - Binary is an asset or base64 text, never a raw string.
 - One file per major version. A breaking change is a new file
   (`name_2.yaml`); the old one stays.

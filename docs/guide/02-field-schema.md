@@ -432,8 +432,12 @@ The expression may read `article`, `distribution`, `channel.settings` and
 `settings`. See chapter 6 for the full list of what `article` and
 `distribution` hold.
 
-Everywhere else a `default` is a plain value. Only `${{ … }}` in a
-distribution field's default is ever evaluated. Passport template text
+An [extension](05-automations.md#57-extensions)'s `inputs` form takes the
+same kind of default, over the record it is run on, `automation.settings`
+and `settings`. There it is worked out once, when the form opens.
+
+Everywhere else a `default` is a plain value. Only `${{ … }}` in the default
+of a distribution field or an extension's input is ever evaluated. Passport template text
 (`{{ .article.title }}`) in any default is kept exactly as written; a
 setting that holds a template is simply text.
 

@@ -77,7 +77,8 @@ cases:
 | `automation.settings`, `automation.secrets`, `automation.label` | The automation's own (automation tests) |
 | `channel.settings`, `channel.secrets`, `channel.name`, `channel.label` | The channel's own (channel tests) |
 | `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id }` |
-| `inputs` | For a manual run or an action |
+| `inputs` | For a manual run, an extension or an action |
+| `record` | For an extension: the record it is run on, with the fields its steps and its form's defaults read. `expect.offered: false` checks that `extension.if` hides it for this record |
 | `fields`, `distribution`, `article` | For a channel: the distribution form's values, the distribution, and the article its followed defaults read |
 | `samples.steps.<id>` | The outputs that step returns instead of running. Only the run's own steps, never steps inside a plugin action. A step that runs a plugin action may be sampled this way too; the action's own steps then do not run. For a step inside a loop, give a list: one entry per pass, the last repeated if the loop runs longer |
 | `samples.actions.<action>` | The outputs every step running that action returns, unless it has its own sample. Built-in or plugin action; steps inside a plugin action are reached this way (`samples.actions.http.post`). Give a list to answer successive calls differently: one entry per call in the order they happen, the last repeated |

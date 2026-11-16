@@ -54,7 +54,8 @@ steps:
 | `settings` | no | This automation's own settings, a [form schema](02-field-schema.md), filled in when the publisher adds it. Read as `automation.settings.<name>` and `automation.secrets.<name>` |
 | `inputs` | no | What a manual run, or a caller using `workflow.run`, supplies. A form schema. Read as `inputs.<name>` |
 | `outputs`, `returns` | no | What a manual run or a synchronous `workflow.run` gets back ([2.12](02-field-schema.md#212-outputs)) |
-| `on` | yes | One or more triggers ([5.3](#53-triggers)) |
+| `on` | yes, unless `extension` | One or more triggers ([5.3](#53-triggers)) |
+| `extension` | no | Makes this an extension: run by a person on one Passport record, from that record's page ([5.7](#57-extensions)). In place of `on` |
 | `vars` | no | Starting values for `vars` |
 | `steps` | yes | [Chapter 7](07-steps-and-expressions.md) |
 | `schemas` | no | Shapes used only in this file ([3.3](03-schemas.md#33-schemas-inside-an-automation-or-channel)) |
@@ -228,6 +229,9 @@ listed under "Tools" on the same tab with a **Run** button (and its inputs
 form, if it has one). A "list my voices" or "register the webhook" helper is
 written this way.
 
+**Extensions** are run from a record's page, not from this tab
+([5.7](#57-extensions)).
+
 Write `name`, `description` and every setting's `title` and `description`
 for that reader. They do not see steps, triggers or YAML.
 
@@ -300,3 +304,112 @@ slow to a manual automation in the same plugin:
 **One automation per thing a publisher would switch off.** "Add new
 subscribers" and "Remove canceled subscribers" are two automations, even if
 they share every action.
+
+## 5.7 Extensions
+
+An **extension** is an automation a person runs on one Passport record, from
+that record's page in the admin. It does something *to* or *from* that
+record: makes an audio narration of an article, sends a member's details to a
+CRM, grants a member a trial. It has no triggers; nothing starts it but a
+person.
+
+```yaml
+# automations/narrate.yaml
+version: 1.0.0
+name: Create audio narration
+description: Reads the article aloud with an ElevenLabs voice and saves it as an MP3.
+extension:
+  on: article
+  label: Create Audio Narration
+  if: "${{ article.published_at != nil }}"
+settings:
+  type: object
+  properties:
+    model_id: { type: string, title: Model, enum: [eleven_multilingual_v2, eleven_turbo_v2_5], default: eleven_multilingual_v2 }
+inputs:
+  type: object
+  required: [voice]
+  properties:
+    voice:
+      type: string
+      title: Voice
+      ui: { options: { action: elevenlabs/voices.list, items: "${{ outputs.voices }}", value: "${{ item.voice_id }}", label: "${{ item.name }}" } }
+    intro:
+      type: string
+      title: Spoken introduction
+      default: "${{ article.title }}, by ${{ article.author }}"
+outputs:
+  type: object
+  required: [asset_id]
+  properties:
+    asset_id: { type: string, format: passport.asset, title: Narration }
+returns:
+  asset_id: "${{ steps.join.outputs.asset_id }}"
+steps:
+  - id: speak
+    action: elevenlabs/speech.create
+    with:
+      text: "${{ inputs.intro + '. ' + htmlText(article.body) }}"
+      voice: "${{ inputs.voice }}"
+      model_id: "${{ automation.settings.model_id }}"
+      filename: "narration-${{ article.id }}.mp3"
+  # …
+```
+
+| `extension` key | Required | Meaning |
+|---|---|---|
+| `on` | yes | The kind of record it is run on: `article`, `user`, `subscription`, `distribution`, `template`, `asset`, `plan`, `audience` or `category` |
+| `label` | no | What the menu item says. Defaults to the automation's `name`. Write it as the thing to do: "Create Audio Narration" |
+| `if` | no | Offer it only when true. It reads only the record: `"${{ subscription.status == 'active' }}"` |
+
+An automation has `extension` or `on`, never both. An extension cannot be
+started by an event, a webhook, a schedule or `workflow.run`. When the same
+work must also happen on an event, put the steps in an action and call it
+from the extension and from an event automation.
+
+**What the run reads.** The record, under the name of its kind (`article`,
+`user`, `subscription`, …), as it was when the run started and with the
+fields the matching `get` action returns. `trigger.type` is `extension`,
+`trigger.record.kind` and `trigger.record.id` say what it was run on, and
+`trigger.user_id` is the member when the record is a user or a subscription.
+`inputs`, `automation.settings` and the plugin's `settings` are as in any
+automation.
+
+**The form.** `inputs` is the form shown each time it is run; leave it out
+and the extension runs at one click, after a confirmation. A `default` in
+this form may be an expression over the record, `automation.settings` and
+`settings`, as in a channel's distribution form
+([2.10](02-field-schema.md#210-defaults-that-follow-another-value)). It is
+worked out when the form opens, and the person may type over it.
+
+**What it hands back.** Declare `outputs` and `returns`. The admin shows the
+result when the run ends, each output by its `title` and drawn by its
+`format`: a `passport.asset` as a player or a download link, another
+`passport.*` id as a link to that record, anything else as text. The
+record's page lists the extension's recent runs with what each produced, so
+a narration made last week is still found on its article.
+
+**What the publisher sees.** On the page of a record of that kind, an
+**Extensions** menu lists each extension that applies, by its label. Choosing
+one shows its form, then the run's progress and result. On the plugin's
+Automations tab an extension is listed with the kind it runs on.
+
+- With no `settings`, the extension is on the menu as soon as the plugin is
+  enabled.
+- With `settings`, the publisher adds it first, like any automation, and it
+  is on the menu while it is enabled. With `multiple: true` each one added
+  is its own menu item, under the label the publisher gave it.
+
+A person needs permission to change the record to run an extension on it.
+The run is recorded with who ran it.
+
+**Writing one.**
+
+- Make it safe to run twice on the same record: name what it creates after
+  the record (`narration-${{ article.id }}.mp3`, with `overwrite: true`) so
+  a second run replaces the first.
+- Long work is fine: the run is a job, and the admin shows it running.
+- An extension is not a channel. A channel publishes a distribution
+  somewhere; an extension makes or changes something in Passport that a
+  channel, or a person, may then use.
+

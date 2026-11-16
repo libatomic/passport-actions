@@ -183,6 +183,7 @@ instead.
 | `channel.name`, `.label`, `.settings`, `.secrets` | This channel (channels) |
 | `fields` | The distribution form's values (channels) |
 | `distribution`, `article` | The distribution being published and its article (channels; [6.5](06-channels.md#65-what-a-channel-must-answer)) |
+| `article`, `user`, `subscription`, … | The record an extension was run on, under the name of its kind (extensions; [5.7](05-automations.md#57-extensions)) |
 | `inputs` | What was supplied for this run. Inside a plugin action: the action's inputs |
 | `trigger` | What started the run ([5.3](05-automations.md#53-triggers), [6.5](06-channels.md#65-what-a-channel-must-answer)) |
 | `steps.<id>.outputs`, `.status`, `.error` | An earlier step's result |
