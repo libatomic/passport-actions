@@ -79,7 +79,8 @@ steps:
 |---|---|---|
 | `version` | yes | Semver ([1.3](01-project-and-manifest.md#13-versions)) |
 | `description` | yes | One or two sentences for the plugin's Channels tab |
-| `help`, `icon` | no | |
+| `help` | no | Longer guidance for the publisher, Markdown; may link to pages in `docs/` |
+| `icon` | no | A file in `assets/`, or an https URL ([1.1](01-project-and-manifest.md#11-a-plugin-project)) |
 | `multiple` | no | `true` if a publisher may add it more than once (one per page, say). Default `false` |
 | `channel` | yes | What kind of channel it is ([6.2](#62-the-channel-block)) |
 | `settings` | no | This channel's own settings, a [form schema](02-field-schema.md), filled in when the publisher adds it. Read as `channel.settings.<name>` and `channel.secrets.<name>` |

@@ -55,7 +55,9 @@ syntax into this branch.
 2. Each automation, channel and action has a test case in `tests/` and
    `passport-plugin run` passes it.
 3. `README.md` in the plugin says what the publisher gets, what they must
-   have from the vendor, and what each automation and channel does.
+   have from the vendor, and what each automation and channel does. Help a
+   publisher needs to set it up or fix it goes in pages under `docs/`;
+   icons go in `assets/`.
 4. Say plainly what you could not verify: anything that needs the real
    vendor has only been dry-run.
 

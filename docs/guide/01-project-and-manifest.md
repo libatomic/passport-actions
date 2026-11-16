@@ -2,9 +2,9 @@
 
 ## 1.1 A plugin project
 
-A plugin is a folder with `plugin.yaml` at its root. Every file is YAML with
-the extension `.yaml`. What a file is follows from the folder it is in; the
-manifest does not list them.
+A plugin is a folder with `plugin.yaml` at its root. Every definition is
+YAML with the extension `.yaml`. What a file is follows from the folder it is
+in; the manifest does not list them.
 
 ```
 plugins/campaign-monitor/
@@ -13,9 +13,29 @@ plugins/campaign-monitor/
   channels/…                      one channel definition per file
   actions/subscriber.add.yaml     one action per file
   schemas/subscriber.yaml         one schema per file
+  assets/icon.svg                 icons and images the plugin shows
+  docs/getting-started.md         help pages, shipped with the plugin
   tests/new-subscriber.yaml       test cases; never shipped
   README.md                       shown in the registry
 ```
+
+A plugin is software other people install and rely on. Everything a
+publisher sees of it travels in the project: its name and description, its
+icons, its forms and their help text, its help pages and how to reach
+support.
+
+**`assets/`** holds SVG and PNG files, each up to 256 KB. An `icon` key
+anywhere in the plugin may name one by its path in the project
+(`icon: assets/lists.svg`). Icons are drawn square; give an SVG a square
+`viewBox` and a PNG at least 128 pixels a side.
+
+**`docs/`** holds help pages in Markdown, one page per file, its first
+`# heading` the page's title. They are shipped with the plugin and shown
+with it in the admin and the registry. A link from any `help` text or page
+to another page is written as its path (`[Choosing a list](docs/lists.md)`).
+Write them for the publisher: what to set up at the vendor, what each
+automation and channel does, what to do when something fails. Images in a
+page come from `assets/`.
 
 A folder with a `plugin.yml` (no `a`) is a v1 or 2.3-format project and is
 not covered by this guide.
@@ -36,9 +56,12 @@ format: 2
 id: campaign-monitor
 name: Campaign Monitor
 description: Keep a Campaign Monitor list in step with your Passport subscribers.
-icon: https://cdn.passport.online/plugins/campaign-monitor.svg
+icon: assets/icon.svg
 category: email
 docs_url: https://docs.passport.online/plugins/campaign-monitor
+support:
+  url: https://help.example.com/campaign-monitor
+  email: plugins@example.com
 visibility: public
 requires:
   passport: "^2.3.0"
@@ -59,9 +82,10 @@ test: ping
 | `id` | yes | The plugin's id |
 | `name` | yes | Shown in the registry and the admin |
 | `description` | yes | One or two sentences: what the publisher gets |
-| `icon` | no | An https URL to an SVG or PNG |
+| `icon` | no | A file in `assets/`, or an https URL to an SVG or PNG |
 | `category` | no | Registry grouping: `email`, `audio`, `social`, `commerce`, `analytics`, `content`, `other` |
-| `docs_url` | no | Publisher-facing documentation |
+| `docs_url` | no | Documentation kept outside the plugin, if any. Pages in `docs/` are preferred: they ship with the version they describe |
+| `support` | no | How a publisher reaches whoever supports the plugin: `url` (https), `email`, or both. Shown on the plugin's page and in the registry |
 | `visibility` | no | `public` (default) or `restricted` (offered only to sites an operator grants it to) |
 | `requires` | yes | What the plugin needs ([1.5](#15-requires)). `passport` is required |
 | `allowed_hosts` | when it calls out | The hosts `http.*` may reach: a host name, or `*.example.com`. No IP addresses. Nothing else is reachable, whatever the site's own allowlist says |

@@ -295,7 +295,6 @@ knowledge of how the engine happened to behave.
 | One workflow per channel name, one install per package | Add a definition as many times as it allows | Two Facebook pages needed a copied blueprint |
 | Unversioned, or a `v2/` folder | Semver in every file, one file per major | References can state what they need |
 | Editor hints the engine ignores (`ui:` on the trigger) | A closed, documented set on the channel, plus the distribution form | The admin and the Studio can rely on them |
-| Publishers author workflows in a studio | Publishers install plugins; their own automations are YAML, built-in actions only, under limits | A full engine in publishers' hands, with AI producing plausible but wrong workflows, was more risk than value |
 
 What did **not** change: the executor, the step kinds, expressions, the
 built-in actions, and every v1 workflow already installed, which keeps

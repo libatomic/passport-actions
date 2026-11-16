@@ -151,7 +151,7 @@ steps:
 | `title` | yes | Shown in the Toolbox |
 | `description` | yes | One sentence: what it does. Shown in the Toolbox and the step's Properties |
 | `help` | no | Longer guidance, Markdown |
-| `icon`, `category` | no | Toolbox presentation. `category` is any short text; actions with the same one are grouped together under the plugin |
+| `icon`, `category` | no | Toolbox presentation. `icon` is a file in `assets/` or an https URL. `category` is any short text; actions with the same one are grouped together under the plugin |
 | `inputs` | no | A [form schema](02-field-schema.md): what `with:` must supply |
 | `outputs` | no | A data schema: what the action returns |
 | `returns` | when there are `outputs` | One value per output, or a single expression for the whole result ([2.12](02-field-schema.md#212-outputs)) |

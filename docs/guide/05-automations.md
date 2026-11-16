@@ -48,8 +48,8 @@ steps:
 | `version` | yes | Semver ([1.3](01-project-and-manifest.md#13-versions)) |
 | `name` | yes | What the publisher sees in the plugin's Automations tab. Say what it does: "Add new subscribers to a list" |
 | `description` | yes | One or two sentences |
-| `help` | no | Longer guidance for the publisher, Markdown |
-| `icon` | no | |
+| `help` | no | Longer guidance for the publisher, Markdown; may link to pages in `docs/` |
+| `icon` | no | A file in `assets/`, or an https URL ([1.1](01-project-and-manifest.md#11-a-plugin-project)) |
 | `multiple` | no | `true` if a publisher may add it more than once (one per list, say). Default `false` |
 | `settings` | no | This automation's own settings, a [form schema](02-field-schema.md), filled in when the publisher adds it. Read as `automation.settings.<name>` and `automation.secrets.<name>` |
 | `inputs` | no | What a manual run, or a caller using `workflow.run`, supplies. A form schema. Read as `inputs.<name>` |
