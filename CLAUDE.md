@@ -26,7 +26,7 @@ syntax into this branch.
 - **Never write `releases/` or `index.json`**, and never write `uuid` or
   `version` in a `plugin.yaml`. The back office writes those at release.
 - Do not commit or push. Work reaches the registry by being pushed for
-  review from Plugin Studio.
+  review from Passport Studio.
 - Every file is YAML with the extension `.yaml`. Unknown keys are errors.
 - Always quote expressions: `"${{ … }}"`.
 - Built-in actions and functions are a closed list: `docs/reference/BUILTINS.md`

@@ -23,7 +23,7 @@ docs/                          the guide and reference
 
 `plugins/`, `releases/` and `index.json` are written by the Passport back
 office when a change is released. Do not commit to them by hand. Build and
-test a plugin in Plugin Studio, push it for review, and release it from
+test a plugin in Passport Studio, push it for review, and release it from
 there.
 
 ## Plugins

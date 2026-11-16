@@ -106,7 +106,7 @@ Unknown keys are an error in every v2 file. A typo is reported, not ignored.
 
 YAML anchors and aliases (`&name`, `*name`) may be used within one file to
 avoid repeating a block. They do not reach across files; share across files
-with a schema or an action. Plugin Studio keeps them as written. Merge keys
+with a schema or an action. Passport Studio keeps them as written. Merge keys
 (`<<:`) are not supported; write the block out.
 
 ## 1.3 Versions
@@ -278,8 +278,8 @@ docs/                             this guide and the reference
 `plugins/`, `releases/` and `index.json` are written **only by the back
 office, at release**. Never commit to them by hand, and never let Claude or
 Scout write them. Work reaches the registry by being pushed for review from
-Plugin Studio and released from there or from the back office
+Passport Studio and released from there or from the back office
 ([chapter 10](10-testing-review-release.md)).
 
 To work on a plugin that is already released, use "Get from the registry" in
-Plugin Studio; it copies the released source into your workspace.
+Passport Studio; it copies the released source into your workspace.

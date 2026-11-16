@@ -5,7 +5,7 @@ when they build one.
 
 This guide defines **Workflow v2**: the five kinds of definition a plugin is
 made of, how each is written, and how the engine runs them. It is the
-reference Plugin Studio, the back office and the engine are built against.
+reference Passport Studio, the back office and the engine are built against.
 
 | Chapter | |
 |---|---|
@@ -43,8 +43,8 @@ accepts today.
 | The distribution form ([6.4](guide/06-channels.md)) | Not built: a channel runs with empty `fields` |
 | Extensions ([5.7](guide/05-automations.md#57-extensions)) | Not built |
 | The publisher's admin pages for v2 plugins | Not built: a v2 plugin is installed and set up through the back office sandbox operations and Passport desktop |
-| Plugin Studio: the new workbench, help-page editor, Form tab and Test panel | Built |
-| Plugin Studio: the Design surface and the form designer | Not built |
+| Passport Studio: the new workbench, help-page editor, Form tab and Test panel | Built |
+| Passport Studio: the Design surface and the form designer | Not built |
 | External Node.js actions (`uses:`), and the 2.3 format this guide replaces (`plugin.yml`, `workflows/`, `recipes/`) | Node actions removed; a `plugin.yml` project still builds and installs as before |
 
 ## Concepts
@@ -123,7 +123,7 @@ all become forms.
 
 | Who | Does |
 |---|---|
-| Operator, in Plugin Studio | Builds the plugin, tests it on their own machine and on a sandbox, pushes it for review |
+| Operator, in Passport Studio | Builds the plugin, tests it on their own machine and on a sandbox, pushes it for review |
 | Second operator | Reviews and approves; the back office releases it to the registry |
 | Publisher, in the admin | Installs from the Registry tab, fills in settings, adds automations and channels, enables them |
 | Publisher, with their own automations | Writes an automation in YAML from built-in actions only, under limits. See the Passport Automations Guide. None of those limits apply to a plugin |
@@ -307,7 +307,7 @@ running as it is.
 
 ## Working with Claude
 
-Scout in Plugin Studio is the supported way to build a plugin by asking for
+Scout in Passport Studio is the supported way to build a plugin by asking for
 it: it knows this guide, checks and dry-runs what it writes, and shows every
 change before it is saved. Claude Code works too, in a checkout of this
 branch, given the right context.

@@ -4,15 +4,15 @@ A plugin goes through five stages. The first three are on your own machine.
 
 | Stage | Where | Proves |
 |---|---|---|
-| Check | Plugin Studio, or `passport-plugin check` | Every file is valid and every reference resolves |
-| Dry run | Plugin Studio's Test panel, or `passport-plugin run` | The steps do what you meant, with sample data and no server |
+| Check | Passport Studio, or `passport-plugin check` | Every file is valid and every reference resolves |
+| Dry run | Passport Studio's Test panel, or `passport-plugin run` | The steps do what you meant, with sample data and no server |
 | Sandbox | A Passport desktop sandbox, or a sandbox site on a cluster | It works against a real Passport and the real vendor |
 | Review | The back office, by a second operator | Someone else has read it |
 | Release | The back office | It is in the registry |
 
 ## 10.1 The tool
 
-Plugin Studio runs `passport-plugin` for you. It is the same engine code the
+Passport Studio runs `passport-plugin` for you. It is the same engine code the
 server uses, so what it accepts is what the server accepts.
 
 | Command | Does |
@@ -100,7 +100,7 @@ in `allowed_hosts`, which is useful once, with a real key in `secrets`, to
 capture what a vendor actually returns. Keys in test files are never real;
 the tool refuses to push a `tests/` file whose `secrets` look like live keys.
 
-In Plugin Studio the **Form** tab shows each form as the publisher will see
+In Passport Studio the **Form** tab shows each form as the publisher will see
 it, and the **Test** panel builds a case by filling those forms in: plugin
 settings, the automation's or channel's settings, then inputs or the
 distribution form against a sample article. A sample trigger body is offered
@@ -110,7 +110,7 @@ from the event's schema.
 
 A dry run proves the logic. A sandbox proves the integration.
 
-- **Passport desktop** runs a whole Passport on your Mac. Plugin Studio finds
+- **Passport desktop** runs a whole Passport on your Mac. Passport Studio finds
   it and installs your draft on it directly.
 - **A sandbox site on a cluster**, through the back office, when you need
   something the desktop cannot do (real mail delivery, a public webhook
@@ -137,7 +137,7 @@ the reviewer sees what was tried.
 
 ## 10.4 Review
 
-**Push for review** in Plugin Studio sends the plugin's files to the back
+**Push for review** in Passport Studio sends the plugin's files to the back
 office. It checks and builds them again, so a project with problems is
 refused with the same problems the Studio lists.
 
@@ -166,7 +166,7 @@ What a reviewer looks for:
 
 ## 10.5 Release
 
-An approved change is released from Plugin Studio's Changes window or from
+An approved change is released from Passport Studio's Changes window or from
 the back office. The operator says what kind of release it is:
 
 | Choice | Plugin version |
