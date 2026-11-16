@@ -73,7 +73,9 @@ The file's name without `.yaml` and `_N` is the automation's **key**.
 | Example | which list to add people to | which member to re-send to |
 
 An event, webhook or schedule run has no inputs. If a value is needed by
-those runs, it is a setting.
+those runs, it is a setting. The check warns about `inputs` on an automation
+with no manual trigger, and about required inputs on one that also has other
+triggers.
 
 In v1 both were "inputs" with defaults. When converting, an input the
 installer filled in is a setting; an input marked `runtime: true` is an

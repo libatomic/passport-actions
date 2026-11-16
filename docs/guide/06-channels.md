@@ -101,7 +101,7 @@ A channel has no `on:` and no `inputs`.
 | `base_type` | no | `podcast`, `rss`, `email` or `sms`: reuse that built-in channel's editor (a media file for `podcast`, for example) |
 | `requires_audience` | no | A broadcast channel must still be given an audience, to render for it. Unicast always needs one |
 | `application` | no | Offer only this application's audiences |
-| `address` | unicast | What identifies a member on this channel: a list of `{ name, label, type, required, placeholder }` with `type` one of `text`, `phone`, `email`, `url` |
+| `address` | no | For a unicast channel that needs to know who a member is on the destination: a list of `{ name, label, type, required, placeholder }` with `type` one of `text`, `phone`, `email`, `url`. Leave it out when the member's Passport email or phone is enough |
 | `connect_url` | no | A "Connect" button in the member app |
 | `preview` | no | `true`: the channel answers `preview` ([6.5](#65-what-a-channel-must-answer)) |
 | `status` | no | `true`: the channel answers `status` |

@@ -59,7 +59,7 @@ steps:
   - id: opted
     action: set-output
     with:
-      categories: '${{ map(filter(coalesce(trigger.body.delivery, list()), #.channels.email == true), #.category) }}'
+      categories: '${{ map(filter(trigger.body.delivery ?? [], #.channels.email == true), #.category) }}'
 
   # One row per listed category: "true" when opted out, else "false".
   - id: fields

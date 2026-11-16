@@ -145,7 +145,7 @@ From the expression language itself, with `#` as the element: `map`,
 | `toString(v)`, `toInt(v)`, `toFloat(v)`, `toBool(v)` | The value as that type |
 | `empty(v)` | True for nil, `""`, `0`, `false`, an empty list or map |
 | `default(fallback, v)` | `v`, or `fallback` when `v` is empty. **Fallback first** |
-| `coalesce(a, b, …)` | The first that is not empty |
+| `coalesce(a, b, …)` | The first that is not empty, or nil when all are. An empty list or map counts as empty, so `coalesce(x, list())` is nil when `x` is missing: for "a list, or an empty one" write `x ?? []` |
 | `ternary(cond, ifTrue, ifFalse)` | Prefer `cond ? a : b` |
 
 ## 8.10 Dates and time

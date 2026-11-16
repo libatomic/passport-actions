@@ -181,3 +181,14 @@ registered on any number of lists.
   plugin but means they cannot be included by another plugin as they are.
 - The sample bodies in `tests/` were written from the v1 schemas and READMEs,
   not captured from a real site.
+
+## Found by the v2 tool (15 November 2026)
+
+`automations/preferences-updated.yaml` failed its "Member has no category
+preferences" test case: the step `opted` read
+`coalesce(trigger.body.delivery, list())`, and `coalesce` skips empty values,
+so with no preferences it returned nil and `filter` failed on it. It now
+reads `trigger.body.delivery ?? []`. **The v1 blueprint
+(`blueprints/cm/preferences-updated`) has the same expression and the same
+fault**: a member with no delivery preferences fails that run in production
+today. For Jon.

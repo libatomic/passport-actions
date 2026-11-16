@@ -243,6 +243,9 @@ Every function is in [chapter 8](08-functions.md).
   `$`, or use `replaceEach` with `literal: true`.
 - **`merge` keeps the first.** `merge(new, old)` keeps your new keys.
 - **`default` takes the fallback first.** `default("none", value)`.
+- **`coalesce` cannot fall back to something empty.** `coalesce(x, list())`
+  is nil when `x` is missing, and the next function fails on it. Write
+  `x ?? []`.
 - **`len` counts bytes**, not characters.
 - **`title` upper-cases everything.** Use `titleCase`.
 - **No silent conversion.** `"5" == 5` is false. Use `toInt`, `toFloat`,
