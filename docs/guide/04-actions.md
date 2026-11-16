@@ -167,7 +167,9 @@ steps:
   or variables, and its step ids cannot collide with the caller's, so the
   same action can be used many times in one run.
 - **What it shares with the caller:** `settings`, `secrets`, and the
-  automation's or channel's own settings, `trigger`, `user` and `instance`.
+  automation's or channel's own settings, `fields`, `distribution`,
+  `article`, `trigger`, `user` and `instance`. These are copies: a `user.get`
+  inside the action changes the action's `user`, not the caller's.
   An action meant to be used from *other* plugins should not read `settings`
   or `secrets`; take them as inputs ([1.6](01-project-and-manifest.md#16-depending-on-another-plugin)).
 - **Inputs are checked.** `with:` is validated against `inputs`. Literal
@@ -175,12 +177,17 @@ steps:
   checked when the step runs ([rule 10](02-field-schema.md#211-rules-that-apply-to-every-form)).
 - **Returns.** After the last step, each `returns` expression is evaluated
   and the result is checked against `outputs`. The caller gets exactly those
-  values. An action with no `outputs` returns nothing.
+  values. An action with no `outputs` returns nothing, and reading
+  `steps.<id>.outputs.<x>` of it, or an `<x>` it does not declare, is a check
+  error. When `returns` is a single expression whose value is not a map, the
+  caller reads it as `steps.<id>.outputs.result`.
 - **Failure.** A step that fails inside the action, and is not handled inside
   it, fails the calling step with the same error. The caller handles it like
   any failed step (`on_error`, `continue-on-error`).
   `steps.<id>.error.detail` carries an HTTP error's status and body.
-- **Actions may call actions**, to a depth of 8.
+- **Actions may call actions**, to a depth of 8 (the action a step of the
+  run calls is level 1). An action that calls itself is refused when the
+  plugin is checked; a longer cycle is refused when it runs.
 - **Not allowed inside an action:** `wait` (a run can only pause at its top
   level), and `workflow.exit` (use an `if:` to skip the remaining steps).
   `workflow.fail` is allowed and fails the whole run. In an automation or a

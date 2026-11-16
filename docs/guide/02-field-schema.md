@@ -476,7 +476,8 @@ setting that holds a template is simply text.
    to a plugin action, an action's outputs, and event and webhook payloads
    are errors at `passport-plugin check`, on a dry run and on a sandbox. In
    production they are a warning in the run log (2.3.0), so a vendor changing
-   a response does not stop a publisher's automation.
+   a response does not stop a publisher's automation. A plugin action given
+   inputs that do not fit runs with them as given, its defaults filled in.
 11. **Settings rules.** A `secret` has no default. An `advanced` field must
    have a default and cannot be required or secret. `show_when` cannot name a
    secret field or the field itself, and its value (each one, in a list) must

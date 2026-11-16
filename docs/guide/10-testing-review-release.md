@@ -79,7 +79,7 @@ cases:
 | `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id }` |
 | `inputs` | For a manual run or an action |
 | `fields`, `distribution`, `article` | For a channel: the distribution form's values, the distribution, and the article its followed defaults read |
-| `samples.steps.<id>` | The outputs that step returns instead of running. A step that runs a plugin action may be sampled this way too; the action's own steps then do not run. For a step inside a loop, give a list: one entry per pass, the last repeated if the loop runs longer |
+| `samples.steps.<id>` | The outputs that step returns instead of running. Only the run's own steps, never steps inside a plugin action. A step that runs a plugin action may be sampled this way too; the action's own steps then do not run. For a step inside a loop, give a list: one entry per pass, the last repeated if the loop runs longer |
 | `samples.actions.<action>` | The outputs every step running that action returns, unless it has its own sample. Built-in or plugin action; steps inside a plugin action are reached this way (`samples.actions.http.post`). Give a list to answer successive calls differently: one entry per call in the order they happen, the last repeated |
 | `expect.status` | `success` or `failed` |
 | `expect.reason` | For a failed run: text the failure reason must contain |
