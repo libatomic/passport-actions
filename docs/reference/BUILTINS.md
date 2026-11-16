@@ -303,6 +303,7 @@ Renders a template (by id or name) or a raw body against a context, returning th
 | `template` / `template_name` / `template_id` | template or body | Template selector (name or id) |
 | `body` | template or body | Raw template body |
 | `data` / `context` | no | Render context object |
+| `article_id` | no | Render with this article as `.article`, as a distribution's render does (2.3.0) |
 | `user_id` | no | User context |
 | `channel` | no | Channel override |
 | `transmute` | no | `true` atomicizes the rendered HTML via headless Chrome (inline styles, capture embeds, tokenize links). Needed by channels that post HTML to a system that can't run scripts (e.g. another ESP, a distribution trigger). Off by default. |
@@ -486,7 +487,7 @@ Render a distribution's template into its final title and body — the same rend
 | `title` | The rendered title |
 | `body` | The rendered body |
 
-A distribution **without a template** (the usual custom-channel case) renders its
+The template is the distribution's own (`template_id`, chosen in the channel's template menu; guide 6.8). A distribution **without a template** renders its
 own body (or the `body` override) as the template, so its template actions and
 restricted-content blocks run with the article in context (`{{ .article.title }}`,
 `timeFormat`, …). To put text around the body, compose it into `body` first.

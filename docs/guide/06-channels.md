@@ -2,7 +2,7 @@
 
 A channel is a place a distribution can be published to. Passport has
 built-in channels (web, email, SMS, RSS, podcast); a plugin adds more: a
-Facebook page, Spotify, an audio narration.
+Facebook page, a LinkedIn page, Spotify.
 
 A channel is not an automation. Nothing triggers it. It runs when a publisher
 publishes, republishes, deletes or previews a distribution on it, or asks for
@@ -106,6 +106,7 @@ A channel has no `on:` and no `inputs`.
 | `connect_url` | no | A "Connect" button in the member app |
 | `preview` | no | `true`: the channel answers `preview` ([6.5](#65-what-a-channel-must-answer)) |
 | `status` | no | `true`: the channel answers `status` |
+| `template` | no | The template menu on the distribution page ([6.8](#68-templates)): `{ required, default }`, or `false` for none |
 | `ui` | no | Hints for the body editor ([6.7](#67-body-editor-hints)) |
 
 ## 6.3 Adding a channel
@@ -135,7 +136,9 @@ publisher creates or edits a distribution on this channel, under the fields
 every distribution has (audience, body, schedule).
 
 Use it for what must be decided per distribution: a summary, a title for the
-vendor, which template, which voice, whether it is a trailer.
+vendor, a cover image, whether it is a trailer. Which template renders the
+distribution is not a field here: the distribution page has its own template
+menu ([6.8](#68-templates)).
 
 ```yaml
 distribution:
@@ -158,18 +161,14 @@ distribution:
       title: Episode type
       enum: [full, bonus, trailer]
       default: full
-    template:
+    season:
       type: string
-      format: passport.template
-      title: Show notes template
-    voice:
-      type: string
-      title: Voice
-      default: "${{ channel.settings.voice_id }}"
+      title: Season
+      default: "${{ channel.settings.current_season }}"
       ui:
         options:
-          items: "${{ channel.settings.voices }}"
-          value: "${{ item.voice_id }}"
+          items: "${{ channel.settings.seasons }}"
+          value: "${{ item.number }}"
           label: "${{ item.name }}"
 ```
 
@@ -189,20 +188,9 @@ What the expression may read:
 | `settings` | the plugin's settings (not its secrets) |
 
 **Choices from the channel's settings.** `ui.options` without an `action`
-takes its `items` straight from an expression, as `voice` does above: the
+takes its `items` straight from an expression, as `season` does above: the
 list the publisher maintains in the channel's settings becomes the menu on
 each distribution.
-
-**Templates.** A `format: passport.template` field shows the templates made
-for this channel. Render with it:
-
-```yaml
-- id: notes
-  action: distribution.render
-  with:
-    distribution_id: "${{ trigger.distribution_id }}"
-    template_id: "${{ fields.template }}"
-```
 
 **In a run**, `fields.<name>` holds the resolved values. The form is
 validated when the distribution is saved, and again, with followed values
@@ -327,7 +315,137 @@ A hint names a **channel setting**. In v1 they named workflow inputs, and v1
 `ui.options` ([2.8](02-field-schema.md#28-choices-loaded-from-an-action)),
 which lists the default first, marks it, and hides an empty menu.
 
-## 6.8 Checklist
+## 6.8 Templates
+
+Not every channel uses a template. A channel that posts the vendor a few
+fields (a title, a link, an audio file) has nothing to render. A channel
+that hands the vendor finished text (a post, show notes, a message) renders
+the distribution with `distribution.render`, and that render is where a
+template comes in.
+
+### The template menu
+
+**A channel whose steps call `distribution.render` gets a template menu on
+the distribution page**, beside the audience and the schedule. Nothing has
+to be declared for it: the build finds the call in the channel's steps,
+nested steps included, and in the plugin actions those steps call. A
+channel that never renders has no menu.
+
+The menu is saved as the distribution's template (`distribution.template_id`,
+the field every distribution already has), and `distribution.render` uses
+it with no input of its own:
+
+```yaml
+- id: render
+  action: distribution.render
+  with:
+    distribution_id: "${{ trigger.distribution_id }}"
+- id: post
+  action: facebook/post.publish
+  with:
+    message: "${{ steps.render.outputs.body }}"
+```
+
+With no template chosen, `distribution.render` renders the distribution's
+own body as the template, as it always has.
+
+`channel.template` changes the menu:
+
+```yaml
+channel:
+  name: facebook-post
+  # …
+  template:
+    required: true
+    default: post
+```
+
+| Key | Meaning |
+|---|---|
+| `required` | `true`: a distribution on this channel cannot be saved without a template. Default `false` |
+| `default` | One of this plugin's templates (below), by name. A new distribution on this channel starts with it chosen |
+
+`template: false` turns the menu off for a channel that renders but must
+not be given a template. `template:` on a channel that never calls
+`distribution.render` is an error.
+
+**What the menu lists.** The site's article templates. Those offered for
+this channel come first, marked: the plugin's own templates whose `for`
+names the channel, and the site's copies of them. The rest follow.
+
+### Templates a plugin ships
+
+A plugin may ship templates in `templates/`, one per file, so a channel
+works well the day it is added and the publisher has something to start
+from.
+
+```yaml
+# templates/post.yaml
+name: Facebook post
+description: The article's title and summary, then a link to read the rest.
+for: [channel/facebook-post]
+title: "{{ .article.title }}"
+body: |
+  {{ .article.title }}
+
+  {{ .article.summary }}
+```
+
+| Key | Required | Meaning |
+|---|---|---|
+| `name` | yes | What the publisher sees in the template menu and the Templates page |
+| `description` | no | One sentence, shown with it |
+| `for` | yes | The channels and extensions it is offered for: `channel/<name>`, `automation/<key>` |
+| `title` | no | The title template. Without it the title is the article's |
+| `body` | yes | The template, in Passport's template language |
+
+`title` and `body` are Passport template text (`{{ .article.title }}`), not
+`${{ }}` expressions. They are rendered by Passport when a distribution or an
+extension renders with the template, with the same data and functions as
+any template on the site; nothing in them is evaluated by the run.
+
+**On the site.** Installing the plugin adds each of its templates as an
+article template owned by the plugin. The publisher sees them on the
+Templates page under the plugin's name; they cannot be edited there, only
+used or **copied**. A copy is the site's own template, starts offered for
+the same channels and extensions, and is never touched by the plugin again.
+Upgrading the plugin replaces its templates with the new version's.
+Uninstalling removes them; copies stay.
+
+A template is part of the plugin's contract: removing one, or taking a
+channel out of its `for`, is a breaking change. When an upgrade removes a
+template, distributions waiting to publish with it move to the channel's
+`default`, or to none.
+
+### Templates in an extension
+
+An extension renders a record, not a distribution, so it has no template
+menu. When the publisher should choose how something is worded (the words
+read before and after an article, say), give the extension's inputs a
+`format: passport.template` field, and render with `template.render`:
+
+```yaml
+inputs:
+  type: object
+  properties:
+    script:
+      type: string
+      format: passport.template
+      title: Script
+      default: narration-script        # one of this plugin's templates
+steps:
+  - id: script
+    action: template.render
+    with:
+      template_id: "${{ inputs.script }}"
+      article_id: "${{ article.id }}"
+```
+
+A `format: passport.template` field lists the templates offered for its
+definition first, as the menu does. Its `default` may name one of the
+plugin's own templates; the form shows that template chosen.
+
+## 6.9 Checklist
 
 - `publish`, `republish` and `delete` all handled; `preview` and `status` if
   declared.
@@ -338,3 +456,5 @@ which lists the default first, marks it, and hides an empty menu.
 - Per-channel values are channel settings; per-distribution values are in
   the distribution form; shared credentials are plugin settings.
 - `multiple: true` if a publisher could reasonably want two.
+- A channel that renders ships a template that suits the destination and
+  names it as `channel.template.default`.

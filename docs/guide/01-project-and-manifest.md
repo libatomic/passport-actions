@@ -13,6 +13,7 @@ plugins/campaign-monitor/
   channels/…                      one channel definition per file
   actions/subscriber.add.yaml     one action per file
   schemas/subscriber.yaml         one schema per file
+  templates/post.yaml             Passport templates the plugin ships
   assets/icon.svg                 icons and images the plugin shows
   docs/getting-started.md         help pages, shipped with the plugin
   tests/new-subscriber.yaml       test cases; never shipped
@@ -37,6 +38,11 @@ Write them for the publisher: what to set up at the vendor, what each
 automation and channel does, what to do when something fails. Images in a
 page come from `assets/`.
 
+**`templates/`** holds Passport templates the plugin ships for its channels
+and extensions to use, one per file. Installing the plugin adds them to the
+site as templates the publisher can use as they are or copy and change
+([6.8](06-channels.md#68-templates)).
+
 A folder with a `plugin.yml` (no `a`) is a v1 or 2.3-format project and is
 not covered by this guide.
 
@@ -47,6 +53,7 @@ Names:
 | Plugin `id` | lowercase letters, digits and single hyphens, up to 64 characters; unique in the registry; never changes | `campaign-monitor` |
 | Automation key, channel name | same rule as an id | `new-subscriber`, `facebook-post` |
 | Action and schema name | lowercase letters, digits, hyphens, underscores and dots | `subscriber.add`, `user.email.opt_in` |
+| Template name | same rule as an id; equals the file name | `post`, `show-notes` |
 | File | the name, plus `_<major>` from major version 2 on, plus `.yaml` | `subscriber.add.yaml`, `subscriber.add_2.yaml` |
 
 ## 1.2 `plugin.yaml`
