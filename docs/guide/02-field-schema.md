@@ -402,7 +402,8 @@ Rules:
 4. On a narrow screen every item takes the full width, in reading order.
 5. A section's `level` or `show_when` hides the fields in it. A field's own
    `level` and `show_when` still apply. A field hidden either way is treated
-   as hidden everywhere: not required, not validated, not kept.
+   as hidden everywhere: not required, not validated, and not passed to a
+   run (rule 3 of [2.11](#211-rules-that-apply-to-every-form)).
 
 ## 2.10 Defaults that follow another value
 
@@ -447,7 +448,9 @@ setting that holds a template is simply text.
    written.
 2. **Required** is the object-level `required` list, as in JSON Schema.
 3. **Hidden fields.** A field hidden by `show_when` is neither required nor
-   validated, and its stored value is not passed to a run.
+   validated, and its stored value is not passed to a run. A value sent for
+   a field while it is hidden is not taken; what was stored before stays,
+   and is there again if the field is shown later.
 4. **Defaults first.** Defaults are applied, then the value is validated.
 5. **No silent conversion.** `"5"` is not `5`. An expression that yields text
    where a number is declared is an error; `toInt`, `toFloat` and `toBool`
