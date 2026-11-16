@@ -301,6 +301,11 @@ slow to a manual automation in the same plugin:
     inputs: { since: "${{ trigger.body.changed_at }}" }
 ```
 
+`automation` names an automation of this plugin by its key. A tool runs as
+itself. When the publisher has added the automation once, that one runs.
+When they have added it several times, say which with `name:`, the short
+name they gave it; without it the step fails, and nothing is guessed.
+
 **One automation per thing a publisher would switch off.** "Add new
 subscribers" and "Remove canceled subscribers" are two automations, even if
 they share every action.

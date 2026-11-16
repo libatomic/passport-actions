@@ -30,21 +30,22 @@ the engine and tools are being brought up to it. Until a part is built, the
 table says so, and `passport-plugin check` is the judge of what your server
 accepts today.
 
-| Part | State on 14 November |
+| Part | State on 16 November |
 |---|---|
-| Plugin packages, registry, review and release, sandbox and desktop testing | Built, in the 2.3 format this guide replaces (`plugin.yml`, `workflows/`, `recipes/`) |
-| The built-ins added in 2.1.4 (`asset.delete`, `asset.concat`, `workflow.fail`, `response_asset`, narration functions, previews) | Built and in 2.3 |
-| The 2.3.0 functions ([chapter 8](guide/08-functions.md)) | Built |
-| The signed-webhook check ([5.3](guide/05-automations.md#53-triggers)) | Built. Reads `secrets.<name>`; an automation's own secrets follow with added automations |
-| `requires` with `passport`, and `format: 2` | Built. A `format: 2` plugin is recognised and refused until the v2 loader lands |
-| The built-in `passport` schemas, resolver and validation | Built; not yet used by runs |
-| External Node.js actions (`uses:`) | Removed |
-| v2 files (`plugin.yaml`, `automations/`, `channels/`, `actions/`, `schemas/`) | Specified here, not built |
-| The field schema checks, form layout | Being built |
-| Plugin actions with declared inputs and outputs | Specified here, not built (recipes are today's nearest thing) |
-| Adding automations and channels with their own settings | Specified here, not built |
-| The distribution form | Specified here, not built |
-| Binary in `http.*`, choices loaded from an action | Specified here, not built |
+| v2 files (`plugin.yaml`, `automations/`, `channels/`, `actions/`, `schemas/`, `assets/`, `docs/`), the checks, the build (references pinned, dependencies copied in, the index entry) | Built |
+| The field schema, form layout, and validation of what people type and what the engine produces ([chapter 2](guide/02-field-schema.md)) | Built |
+| Plugin actions with declared inputs and outputs | Built |
+| The plugin's settings as a form, with secrets kept apart | Built |
+| The built-in `passport` schemas, the 2.3.0 functions ([chapter 8](guide/08-functions.md)), binary in `http.*` ([chapter 9](guide/09-files-and-binary.md)), the signed-webhook check | Built |
+| Installing a v2 plugin; adding automations and channels with their own settings; tools; the connection test | Built, in review |
+| Effect classes on built-ins ([4.2](guide/04-actions.md)) | Built, in review |
+| Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Not built: the field is a plain box |
+| The distribution form ([6.4](guide/06-channels.md)) | Not built: a channel runs with empty `fields` |
+| Extensions ([5.7](guide/05-automations.md#57-extensions)) | Not built |
+| The publisher's admin pages for v2 plugins | Not built: a v2 plugin is installed and set up through the back office sandbox operations and Passport desktop |
+| Plugin Studio: the new workbench, help-page editor, Form tab and Test panel | Built |
+| Plugin Studio: the Design surface and the form designer | Not built |
+| External Node.js actions (`uses:`), and the 2.3 format this guide replaces (`plugin.yml`, `workflows/`, `recipes/`) | Node actions removed; a `plugin.yml` project still builds and installs as before |
 
 ## Concepts
 
