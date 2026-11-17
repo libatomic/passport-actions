@@ -181,20 +181,50 @@ in a form, it will be added together with a defined control.
 `format` on a string is a closed list. The server checks every one of them;
 the form picks a control from it. An unknown format is an error.
 
-| Group | Formats |
-|---|---|
-| Text | `email`, `uri`, `phone` (E.164, `+15551230000`), `uuid`, `hostname`, `slug`, `color` (`#rrggbb`), `language` (ISO 639-1), `country` (ISO 3166-1 alpha-2), `currency` (ISO 4217), `timezone` (IANA), `regex` (RE2) |
-| Time | `date` (`2026-11-14`), `date-time` (RFC 3339), `time` (`14:30`), `duration` (`90s`, `24h`, `1h30m`; not ISO 8601's `PT90S`) |
-| Long text | `html`, `markdown`, `template` (a Passport template), `json`, `yaml`, `css` |
-| Binary | `byte` (base64 text; see chapter 9) |
-| Passport records | `passport.user`, `passport.audience`, `passport.asset`, `passport.template`, `passport.plan`, `passport.category`, `passport.article`, `passport.application`, `passport.distribution` |
-| Passport ids | `passport.id` |
+The table is generated from the engine (`passport-plugin reference`; do not
+edit it by hand): each format, its group, exactly what a value must be, and
+an example.
 
-What some of them accept, exactly: `uri` needs a scheme (`https://…`);
-`phone` is `+` and 7 to 15 digits; `time` is `HH:MM` or `HH:MM:SS` with no
-offset; `duration` is not negative; `byte` is padded standard base64; `json`
-and `yaml` must parse; `html`, `markdown`, `template` and `css` are text and
-are not checked.
+<!-- reference:begin formats -->
+| Format | Group | A value must be | Example |
+|---|---|---|---|
+| `byte` | binary | Standard base64 (RFC 4648) with its padding. The URL-safe alphabet and text without padding are refused. | `aGk=` |
+| `color` | text | # and six hex digits, in either case. No three-digit form and no colour names. | `#1a2b3c` |
+| `country` | text | Two upper-case letters, as an ISO 3166-1 alpha-2 code is written. The shape is checked, not that the code exists. | `US` |
+| `css` | long text | Text; not checked. |  |
+| `currency` | text | Three upper-case letters, as an ISO 4217 code is written. The shape is checked, not that the code exists. | `USD` |
+| `date` | time | A calendar date written YYYY-MM-DD (the full-date of RFC 3339). | `2026-11-14` |
+| `date-time` | time | RFC 3339: a date, T, a time and Z or an offset. Seconds may have a fraction. | `2026-11-14T15:04:05Z` |
+| `duration` | time | A Go duration: numbers with a unit each (ns, us, ms, s, m, h), run together, such as 90s or 1h30m. Not ISO 8601 (PT1H), no days, and not negative. | `1h30m` |
+| `email` | text | One address and nothing else, as RFC 5322 writes an address: no display name, no angle brackets. | `ann@example.com` |
+| `hostname` | text | A DNS host name: labels of letters, digits and hyphens, none starting or ending with a hyphen, each at most 63 characters and 253 in all. No scheme, port or path. | `news.example.com` |
+| `html` | long text | Text; not checked. |  |
+| `json` | long text | Text that parses as JSON (RFC 8259). | `{"a": 1}` |
+| `language` | text | Two lower-case letters, as an ISO 639-1 code is written. The shape is checked, not that the code exists. | `en` |
+| `markdown` | long text | Text; not checked. |  |
+| `passport.application` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.article` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.asset` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.audience` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.category` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.distribution` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.id` | passport ids | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.plan` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `passport.template` | passport records | A Passport id, or the name of one of the plugin's templates: a slug of at most 64 characters. | `welcome-email` |
+| `passport.user` | passport records | A Passport id as the server writes one, in base58, or the same id written as a UUID. Not empty. | `123e4567-e89b-12d3-a456-426614174000` |
+| `phone` | text | E.164: a plus sign and 7 to 15 digits, the first not 0. No spaces, brackets or hyphens. | `+15551230000` |
+| `regex` | text | A regular expression in RE2 syntax: no look-around and no back-references. | `^[a-z]+$` |
+| `slug` | text | Lower-case letters and digits, in groups joined by single hyphens. | `spring-sale-2026` |
+| `template` | long text | Text; not checked. |  |
+| `time` | time | A time of day on the 24-hour clock, HH:MM or HH:MM:SS, with no offset. | `14:30` |
+| `timezone` | text | A name of the IANA time zone database, or UTC. Local is refused. | `America/New_York` |
+| `uri` | text | An address with a scheme (RFC 3986), such as https://example.com or mailto:ann@example.com. A bare host or path is refused. | `https://example.com/a` |
+| `uuid` | text | A UUID in its 36-character form, with hyphens (RFC 4122). | `123e4567-e89b-12d3-a456-426614174000` |
+| `yaml` | long text | Text that parses as YAML. | `a: 1` |
+<!-- reference:end formats -->
+
+`template` is a Passport template. `byte` is how a small file travels as
+text ([chapter 9](09-files-and-binary.md)).
 
 A `passport.<record>` value is that record's id. The form shows a picker for
 that kind of record, and the server checks the id exists on the site.
@@ -202,8 +232,9 @@ that kind of record, and the server checks the id exists on the site.
 `passport.id` is the id of any Passport record, when which kind does not
 matter or there is nothing to pick from: an id in an event's body, for
 instance. Passport ids are short text such as `Ch3oep6QbWZm8q5XEjgS5`, not
-UUIDs. Do not use `format: uuid` for one; `uuid` is for identifiers that
-really are UUIDs, usually a vendor's.
+UUIDs (the server also takes the same id written as a UUID, which is the
+form the table's example shows). Do not use `format: uuid` for one; `uuid`
+is for identifiers that really are UUIDs, usually a vendor's.
 
 Use a format before reaching for `pattern`. A URL is `format: uri`, not a
 pattern that starts with `https`.

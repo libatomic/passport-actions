@@ -22,6 +22,8 @@ controls which steps run.
 | Key | Meaning |
 |---|---|
 | `id` | Required. Lowercase letters, digits, hyphens and underscores; unique among the steps of the file; in a channel, among the steps of its flow. Results are at `steps.<id>`: `.outputs`, and `.status`, which is `ok`, `skipped` or `error` |
+| `name` | A short title in plain words, up to 80 characters: "Work out what is read". Shown in place of the bare id in Passport Studio, in a run's step list and in the admin |
+| `description` | What the step does and why, in Markdown, up to 2,000 characters. Never evaluated: `${{ }}` in it is text |
 | `action` | The action to run ([chapter 4](04-actions.md)) |
 | `with` | The action's inputs |
 | `if` | Run the step only when true. A skipped step has `steps.<id>.status == "skipped"` |
@@ -32,6 +34,28 @@ controls which steps run.
 | `then`, `else` | With `if`: a branch ([7.2](#72-branches)) |
 | `expression`, `switch` | A choice among several ([7.2](#72-branches)) |
 | `foreach`, `as`, `while`, `until`, `max`, `steps` | A loop ([7.3](#73-loops)) |
+
+**Say what each step is for.** A step's id and action rarely tell the next
+person what it does. Give every step a `name`, and a `description` wherever
+the reason is not plain from the action: what it works out, what it expects,
+why it is done here. They change nothing in a run. Passport Studio shows
+them on the step, the run's step list shows the name, and the checker
+advises it for any definition with more than five steps and none documented.
+A YAML comment above a step is still fine for a note to whoever edits the
+source (why a pattern is written as it is), and Passport Studio shows it on
+the step too; but a comment is not seen in a run or by the admin, so what a
+step does belongs in `description`.
+
+```yaml
+- id: mode
+  name: Work out what this run is for
+  description: >-
+    A real run, a preview of the whole text, or a preview of one paragraph
+    (the play button). Later steps branch on `steps.mode.outputs.mode`.
+  action: set-output
+  with:
+    mode: "${{ trigger.action != 'preview' ? 'run' : 'text' }}"
+```
 
 A step has an `action`, or is a branch, or is a loop. Unknown keys are an
 error.

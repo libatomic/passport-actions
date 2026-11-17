@@ -47,10 +47,14 @@ syntax into this branch.
     --update docs/reference/SCHEMAS.md \
     --update docs/guide/04-actions.md \
     --update docs/guide/08-functions.md \
-    --update docs/guide/09-files-and-binary.md
+    --update docs/guide/09-files-and-binary.md \
+    --update docs/guide/02-field-schema.md
   ```
 - Do not guess a vendor's API. Use the documentation you were given, or ask
   for it.
+- Every step has a `name` in plain words, and a `description` when what it
+  does or why is not plain from its action (guide 7.1). Comments are for
+  notes about the source itself.
 - Every form field has a `title`, and a `description` unless the title is
   unmistakable. Use the narrowest type, a `format` where one fits, an `enum`
   for a fixed set of choices, an `array` for a list, `secret: true` for

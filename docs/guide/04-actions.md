@@ -36,7 +36,7 @@ hand), weakest class first:
 | Effect | Meaning | Loads a field's choices | Built-ins |
 |---|---|---|---|
 | `control` | Shapes the run and touches nothing. | yes | `log`, `set-output`, `sleep`, `transmute`, `vars.set`, `wait`, `workflow.exit`, `workflow.fail` |
-| `read` | Reads Passport data. | yes | `application.get`, `article.get`, `asset.get`, `audience.get`, `audience.view`, `credit.get`, `distribution.get`, `distribution.render`, `entitlement.get`, `job.get`, `option.get`, `plan.get`, `subscription.get`, `template.render`, `user.get` |
+| `read` | Reads Passport data. | yes | `application.get`, `article.get`, `asset.get`, `audience.get`, `audience.view`, `credit.get`, `distribution.deliveries`, `distribution.get`, `distribution.render`, `entitlement.get`, `job.get`, `option.get`, `plan.get`, `subscription.get`, `template.render`, `user.get` |
 | `external` | Calls another system. | yes | `http.delete`, `http.get`, `http.patch`, `http.post`, `http.put` |
 | `notify` | Sends a message to a person. | no | `sendmail`, `sendsms` |
 | `write` | Creates or changes Passport data. | no | `asset.concat`, `asset.create`, `asset.update`, `asset.virtual`, `credit.invite.create`, `distribution.create`, `distribution.update`, `entitlement.create`, `entitlement.update`, `event.emit`, `feed.item.create`, `instance.cache.flush`, `job.create`, `user.audienceRefresh`, `user.create`, `user.feed.invalidate`, `user.update`, `workflow.run` |
@@ -69,6 +69,7 @@ The ones you will use most:
 | Read the distribution being published | `distribution.get` | |
 | Render the body for a channel | `distribution.render` | `as_audience: true` renders once as a member of the distribution's audience and of every audience ranked below it |
 | Keep a file for some audiences only, or one file per audience | `audiences` on the step that creates the asset; `asset.virtual` | See [9.7](09-files-and-binary.md#97-protected-and-virtual-assets) |
+| Act on what a per-member channel sent, member by member | `distribution.deliveries` | In the `update`, `delete` or `status` flow of a `per_member` channel ([6.5.9](06-channels.md#659-per-member-channels)) |
 | Keep something of the channel's own on a distribution | `distribution.update` | Only `context`, and it **replaces** the map: merge the old keys back in. Not for the remote id or link: a flow returns those ([6.5.10](06-channels.md#6510-what-passport-keeps)) |
 | Stop early, successfully | `workflow.exit` | |
 | Stop as failed, with a reason the publisher sees | `workflow.fail` | Not caught by `on_error` or `continue-on-error` |

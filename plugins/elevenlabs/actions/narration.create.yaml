@@ -1,7 +1,7 @@
 name: narration.create
 version: 1.0.0
 title: Read a text to one protected MP3
-description: Reads a prepared text in a voice, one ElevenLabs request per piece, and joins the audio into one MP3 that only one audience's members and staff can fetch. Billed.
+description: Reads a prepared text in a voice, one ElevenLabs request per piece, and joins the audio into one MP3 that only one audience's members and admins can fetch. Billed.
 help: |
   Takes the pieces `narration.text` returns. Each piece is read with
   `speech.create` and stored as `<file name>-part-<n>.mp3`; the pieces (even

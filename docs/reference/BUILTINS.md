@@ -18,6 +18,7 @@ this page does not exist. The functions an expression may call are in
 >   --update docs/reference/BUILTINS.md \
 >   --update docs/reference/EVENTS.md \
 >   --update docs/reference/SCHEMAS.md \
+>   --update docs/guide/02-field-schema.md \
 >   --update docs/guide/04-actions.md \
 >   --update docs/guide/08-functions.md \
 >   --update docs/guide/09-files-and-binary.md
@@ -34,10 +35,10 @@ this page does not exist. The functions an expression may call are in
   - [User](#user): [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging): [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
   - [Data & Templates](#data--templates): [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content): [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`asset.virtual`](#assetvirtual) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [Commerce & Content](#commerce--content): [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`distribution.deliveries`](#distributiondeliveries) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`asset.virtual`](#assetvirtual) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [HTTP](#http): [`http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`](#httpget--httppost--httpput--httppatch--httpdelete)
   - [Utility & Flow Control](#utility--flow-control): [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`workflow.fail`](#workflowfail) · [`wait`](#wait)
-- **[Expression Functions](#expression-functions)**: in [chapter 8](../guide/08-functions.md)
+- **[Expression Functions](#expression-functions)**: in [chapter 8](../guide/08-functions.md); the expression language's own are tabled here
 
 ## Context Variables
 
@@ -97,26 +98,26 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `user_id` | no | user | One selector is required. |
-| `login` | no | expression | Login (email) |
-| `subject` | no | expression | Subject (external ID) |
-| `phone` | no | expression | Phone number. |
+| `user_id` | no | user | The user's id. The selectors are tried in this order: user_id, login, subject, phone; the first one given is used. Takes an id. |
+| `login` | no | expression | The user's login, an email address. Matched without regard to case. |
+| `subject` | no | expression | The user's subject: the id an identity provider knows them by. |
+| `phone` | no | expression | The user's phone number in E.164 form, such as +15551230000. |
+
+One of `user_id`, `login`, `subject` and `phone` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `user` | object | The loaded user |
-| `user.id` |  | User ID |
-| `user.login` |  | Login / email |
-| `user.profile` |  | Profile object |
-| `user.profile.name` |  | Display name |
-| `user.profile.email` |  | Profile email |
-| `user.profile.given_name` |  | First name |
-| `user.profile.family_name` |  | Last name |
-| `user.profile.picture` |  | Profile picture URL |
-| `user.roles` |  | User roles |
+| `user.id` | text | User ID |
+| `user.login` | text | Login / email |
+| `user.profile` | object | Profile object |
+| `user.profile.name` | text | Display name |
+| `user.profile.email` | text | Profile email |
+| `user.profile.given_name` | text | First name |
+| `user.profile.family_name` | text | Last name |
+| `user.profile.picture` | text | Profile picture URL |
+| `user.roles` | list | User roles |
 <!-- reference:end action:user.get -->
-
-One of `user_id`, `login`, `subject` and `phone` is required.
 
 ### `user.create`
 Creates a user (also sets `user.*`). A duplicate login classifies as `conflict`.
@@ -126,27 +127,25 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `login` | yes | expression | Login (email) |
-| `password` | no | text | Password. |
-| `profile` | no | json | Profile. |
-| `roles` | no | json | Roles. |
-| `metadata` | no | json | Metadata. |
+| `login` | yes | expression | The new user's login: an email address. One that is already taken fails the step as conflict. |
+| `password` | no | text | A password to give the user. Left out, the user has none. |
+| `profile` | no | json | An OpenID profile object: name, given_name, family_name, email, picture, phone_number and the like. A value that is not such an object is ignored. |
+| `roles` | no | json | A list of the roles (permission names) to give the user. A value that is not a list of text is ignored. |
+| `metadata` | no | json | A map kept with the user and read back as user.metadata. A value that is not a map is ignored. |
 
 | Output | Type | Description |
 |---|---|---|
 | `user` | object | The created user |
-| `user.id` |  | User ID |
-| `user.login` |  | Login / email |
-| `user.profile` |  | Profile object |
-| `user.profile.name` |  | Display name |
-| `user.profile.email` |  | Profile email |
-| `user.profile.given_name` |  | First name |
-| `user.profile.family_name` |  | Last name |
-| `user.profile.picture` |  | Profile picture URL |
-| `user.roles` |  | User roles |
+| `user.id` | text | User ID |
+| `user.login` | text | Login / email |
+| `user.profile` | object | Profile object |
+| `user.profile.name` | text | Display name |
+| `user.profile.email` | text | Profile email |
+| `user.profile.given_name` | text | First name |
+| `user.profile.family_name` | text | Last name |
+| `user.profile.picture` | text | Profile picture URL |
+| `user.roles` | list | User roles |
 <!-- reference:end action:user.create -->
-
-`profile` is an OpenID profile object and `roles` a list of permissions.
 
 ### `user.update`
 Updates a user (also sets `user.*`). Not-found classifies as `not_found`.
@@ -156,28 +155,28 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `user_id` | no | user | One selector is required. |
-| `subject` | no | expression | Subject. |
-| `login` | no | expression | Login (email) |
-| `profile` | no | json | Profile Updates. |
-| `preferences` | no | json | Channel Preferences. |
-| `metadata` | no | json | Metadata. |
+| `user_id` | no | user | The id of the user to change. Required unless subject is given. Takes an id. |
+| `subject` | no | expression | The subject of the user to change, in place of user_id. |
+| `login` | no | expression | A new login (an email address) for the user. It does not select the user. Left out, or the same as now, the login stays. |
+| `profile` | no | json | The profile claims to change, as an OpenID profile object; the ones left out stay. A value that is not such an object is ignored. |
+| `preferences` | no | json | The user's channel preferences (which channels they take email, SMS and the like on). A value of another shape fails the step as invalid. |
+| `metadata` | no | json | A map of metadata to set on the user. A value that is not a map is ignored. |
+
+One of `user_id` and `subject` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `user` | object | The updated user |
-| `user.id` |  | User ID |
-| `user.login` |  | Login / email |
-| `user.profile` |  | Profile object |
-| `user.profile.name` |  | Display name |
-| `user.profile.email` |  | Profile email |
-| `user.profile.given_name` |  | First name |
-| `user.profile.family_name` |  | Last name |
-| `user.profile.picture` |  | Profile picture URL |
-| `user.roles` |  | User roles |
+| `user.id` | text | User ID |
+| `user.login` | text | Login / email |
+| `user.profile` | object | Profile object |
+| `user.profile.name` | text | Display name |
+| `user.profile.email` | text | Profile email |
+| `user.profile.given_name` | text | First name |
+| `user.profile.family_name` | text | Last name |
+| `user.profile.picture` | text | Profile picture URL |
+| `user.roles` | list | User roles |
 <!-- reference:end action:user.update -->
-
-One of `user_id`, `subject` and `login` is required: it selects the user.
 
 ### `user.audienceRefresh`
 Schedules an audience-membership refresh for a user (deduped within a 10-minute window).
@@ -187,11 +186,11 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `user_id` | yes | user | User ID. |
+| `user_id` | yes | user | The id of the user whose audience memberships are worked out again. Takes an id. |
 
 | Output | Type | Description |
 |---|---|---|
-| `job_id` |  | The refresh job ID |
+| `job_id` | text | The refresh job ID |
 <!-- reference:end action:user.audienceRefresh -->
 
 ### `user.feed.invalidate`
@@ -202,65 +201,66 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `channel` | no | text | podcast or rss; omit for all. One of `podcast`, `rss`. |
-| `user_id` | no | user | User ID. |
-| `distribution_id` | no | expression | Distribution ID. |
+| `channel` | no | text | The feeds to invalidate: podcast or rss. Left out, both. Any other value fails the step as invalid. One of `podcast`, `rss`. |
+| `user_id` | no | user | Narrow the invalidation to this user's personal feeds. Left out, the site's feeds. Takes an id. |
+| `distribution_id` | no | expression | Narrow the invalidation to the feeds that carry this distribution. |
 
 | Output | Type | Description |
 |---|---|---|
-| `invalidated` |  | Whether feeds were invalidated |
+| `invalidated` | boolean | Whether feeds were invalidated |
 <!-- reference:end action:user.feed.invalidate -->
-
-`user_id` and `distribution_id` each narrow the invalidation, to that user's feeds or to that distribution's.
 
 ## Messaging
 
 ### `sendmail`
-Sends an email using a template (by id or name) or a raw body.
+Sends an email using a template (by id or name) or a body given as base64 text.
 
 <!-- reference:begin action:sendmail -->
 Effect: `notify`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `to` | no | expression | String, comma-separated string, list, or list of {address, name}. |
-| `subject` | no | text | Subject. |
-| `template` | no | template | Template name (alias: template_name; or template_id). Also read as `template_name`. |
-| `body` | no | text | Raw email body (instead of a template). |
-| `data` | no | json | Template Data. Also read as `context`. |
-| `user_id` | no | user | User ID. |
-| `to_audience` | no | audience | Send to every user in an audience, by audience name. |
-| `audience_id` | no | audience | Send to every user in an audience, by audience id. |
-| `skip_sender_verification` | no | boolean | Bypass the approved-sender check (admin/system templates). |
+| `to` | no | expression | Who the email goes to: one address, several separated by commas, a list of addresses, or a list of { address, name }. May be left out when user_id, to_audience or audience_id gives the recipients; with none of them the step fails. |
+| `subject` | no | text | The subject line; it may use template syntax. A template that has a title of its own uses that instead. Left out, "New Message From" and the site's title. |
+| `template` | no | template | The name of the template to send. template_id takes the template's id instead. Takes a name. Also read as `template_name`. |
+| `body` | no | text | The message itself, in place of a template, as base64 text (base64Encode(...)). It is sent as it is, not rendered. Without a template or a body no message is sent. |
+| `data` | no | json | A map of values the template reads. A value that is not a map is ignored. Also read as `context`. |
+| `user_id` | no | user | The id of the user to send to, at their email address, and the member the template is rendered for. Takes an id. |
+| `to_audience` | no | audience | Send to the members of the audience with this name. At most 25 members are sent to; for a whole audience use a distribution. Takes a name. |
+| `audience_id` | no | audience | Send to the members of the audience with this id. At most 25 members are sent to; for a whole audience use a distribution. Takes an id. |
+| `skip_sender_verification` | no | boolean | true: send even when the from address is not an approved sender, as Passport's own account emails do. Read only when it is true or false, not text. Default false. |
 | `template_id` | no | text | The template by its id, in place of template. Not offered in the step form. |
+
+One of `template`, `template_id` and `body` is required. One of `to`, `user_id`, `to_audience` and `audience_id` is required.
 
 | Output | Type | Description |
 |---|---|---|
-| `count` |  | Number of messages sent |
+| `count` | number | Number of messages sent |
+| `transactional` | boolean | True when the message left through Passport's transactional email service; not set otherwise |
 <!-- reference:end action:sendmail -->
 
-One of `template` (or `template_id`) and `body` is required. `to` may be omitted when `user_id` resolves a recipient. `user_id` also associates the send with that user.
+`user_id` also associates the send with that user.
 
 ### `sendsms`
-Sends a templated or raw SMS (SMS-channel parity with `sendmail`).
+Sends an SMS from a template or from a body given as base64 text (SMS-channel parity with `sendmail`).
 
 <!-- reference:begin action:sendsms -->
 Effect: `notify`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `template` | no | template | Template name (alias: template_name; or template_id). Also read as `template_name`. |
-| `body` | no | text | Raw message body (instead of a template). |
-| `user_id` | no | user | Recipient user (resolves the phone number). |
-| `context` | no | json | Template Context. Also read as `data`. |
+| `template` | no | template | The name of the template to send. template_id takes the template's id instead. Takes a name. Also read as `template_name`. |
+| `body` | no | text | The message itself, in place of a template, as base64 text (base64Encode(...)). Without a template or a body no message is sent. |
+| `user_id` | yes | user | The id of the user to text, at their mobile number. A user with no mobile number fails the step. Takes an id. |
+| `context` | no | json | A map of values the template reads. A value that is not a map is ignored. Also read as `data`. |
 | `template_id` | no | text | The template by its id, in place of template. Not offered in the step form. |
+
+One of `template`, `template_id` and `body` is required.
 
 | Output | Type | Description |
 |---|---|---|
-| `count` |  | Number of messages sent |
+| `count` | number | Number of messages sent |
 <!-- reference:end action:sendsms -->
-
-One of `template` (or `template_id`) and `body` is required.
 
 ## Data & Templates
 
@@ -272,24 +272,24 @@ Effect: `read`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `audience` | no | audience | Audience slug/name (or use audience_id). |
-| `audience_id` | no | audience | Audience ID. |
-| `created_after` | no | text | Created After. |
-| `limit` | no | number | Page Size. Default `500`. |
-| `max` | no | number | Max Members. Default `10000`. |
+| `audience` | no | audience | The audience's name. Read only when audience_id is not given. Takes a name. |
+| `audience_id` | no | audience | The audience's id. Takes an id. |
+| `created_after` | no | text | Keep only the members created after this time: RFC 3339 text, or a time before now written -24h or now-90m (a Go duration: h, m, s). Left out, every member. |
+| `limit` | no | number | How many members are read from the database at a time. It does not bound the result; max does. Default `500`. |
+| `max` | no | number | The most members to return. With max set, a larger audience gives the first max and truncated: true. Left out, the limit is 10,000 and a larger audience fails the step instead of returning a part of it. Default `10000`. |
+
+One of `audience_id` and `audience` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `users` | array | Audience members |
-| `users.id` |  | User ID |
-| `users.login` |  | Login |
-| `users.email` |  | Email |
-| `users.name` |  | Display name |
-| `count` |  | Number of members returned |
-| `truncated` |  | True if capped by max |
+| `users.id` | text | User ID |
+| `users.login` | text | Login |
+| `users.email` | text | Email |
+| `users.name` | text | Display name |
+| `count` | number | Number of members returned |
+| `truncated` | boolean | True if capped by max |
 <!-- reference:end action:audience.view -->
-
-One of `audience_id` and `audience` is required. `created_after` keeps only the members created after that time.
 
 ### `audience.get`
 Load an audience and the content categories it gates on. Use this when you need the audience's *definition* rather than its members — most often to tell a third-party platform who may access content (e.g. Spotify Open Access entitlements).
@@ -299,8 +299,10 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `audience_id` | no | audience | One of audience_id or audience is required. |
-| `audience` | no | text | Audience Name. |
+| `audience_id` | no | audience | One of audience_id or audience is required. Takes an id. |
+| `audience` | no | text | The audience's name, in place of its id. |
+
+One of `audience_id` and `audience` is required.
 
 | Output | Type | Description |
 |---|---|---|
@@ -310,8 +312,6 @@ Effect: `read`. Automations a publisher writes: yes.
 | `category_slugs` | list | Category slugs — e.g. Spotify entitlements |
 | `category_ids` | list | Category IDs |
 <!-- reference:end action:audience.get -->
-
-One of `audience_id` and `audience` (the audience's name) is required.
 
 An audience that doesn't filter on categories returns empty arrays (i.e. ungated).
 
@@ -327,10 +327,12 @@ Effect: `read`. Automations a publisher writes: yes.
 | Input | Required | Type | Description |
 |---|---|---|---|
 | `application_id` | no | text | One of application_id, name, client_id or integration_type is required. |
-| `name` | no | text | Name or slug. |
-| `client_id` | no | text | Client ID. |
+| `name` | no | text | The application's name or its slug. |
+| `client_id` | no | text | The application's OAuth client id. |
 | `integration_type` | no | text | e.g. spotify — the instance's integration application of that type. |
 | `metadata_keys` | no | list | Dot paths to return under application.metadata (e.g. spotify.open_categories). Omit for none. Credential paths are refused. |
+
+One of `application_id`, `name`, `client_id` and `integration_type` is required.
 
 | Output | Type | Description |
 |---|---|---|
@@ -340,8 +342,6 @@ Effect: `read`. Automations a publisher writes: yes.
 | `audiences` | list | The application's audiences ({id, name}) |
 | `audience_ids` | list | Audience IDs |
 <!-- reference:end action:application.get -->
-
-One of `application_id`, `name`, `client_id` and `integration_type` is required.
 
 Credentials are never returned: the client secret, session secret and integration blob are
 omitted, and metadata is an **allowlist** — only the paths listed in `metadata_keys` come
@@ -383,22 +383,24 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `template` | no | template | Pick an existing template (or an expression). Alias: template_name; or template_id. Also read as `template_name`. |
-| `data` | no | json | Context passed to the template. Also read as `context`. |
+| `template` | no | template | The name of the template to render. template_id takes the template's id instead. Takes a name. Also read as `template_name`. |
+| `data` | no | json | A map of values the template reads. A value that is not a map is ignored. Also read as `context`. |
 | `body` | no | text | Raw template body (instead of a template). |
 | `article_id` | no | text | Render with this article as .article, as a distribution's render does. |
 | `audience_id` | no | text | Render as a member of this audience and of every audience ranked below it, with no user data: hasAnyAudience/audiences blocks resolve for them. Can't be combined with user_id. |
-| `user_id` | no | user | User ID. |
-| `channel` | no | text | Channel. |
+| `user_id` | no | user | The id of the user to render as: the template's member is that user. Not with audience_id. Takes an id. |
+| `channel` | no | text | The channel to render for (email, sms, rss, podcast or a plugin's channel): what the template's isChannel reads. |
 | `transmute` | no | boolean | Atomicize the rendered HTML via headless Chrome (inline styles, capture embeds, tokenize links). Needed by channels that post HTML to systems that can't run scripts. |
-| `template_id` | no | text | The template by its id, in place of template. In a plugin's run, also the name of one of the plugin's own templates. Not offered in the step form. |
+| `template_id` | no | text | The template by its id, in place of template. In a plugin's run, also the name of one of the plugin's own templates. Takes an id or a name. Not offered in the step form. |
+
+One of `template`, `template_id` and `body` is required. At most one of `audience_id` and `user_id` may be given.
 
 | Output | Type | Description |
 |---|---|---|
-| `body` |  | The rendered output string |
+| `body` | text | The rendered output string |
 <!-- reference:end action:template.render -->
 
-One of `template` (or `template_id`) and `body` is required. `article_id` and `audience_id` need Passport 2.3.0; a render as an audience is described under [Rendering as an audience](#rendering-as-an-audience). `transmute` is off by default.
+`article_id` and `audience_id` need Passport 2.3.0; a render as an audience is described under [Rendering as an audience](#rendering-as-an-audience). `transmute` is off by default.
 
 ### `instance.cache.flush`
 Flushes the instance cache.
@@ -408,15 +410,15 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `prefix` | no | text | Targeted prefix (supports trailing *, e.g. user:*). |
-| `all` | no | boolean | Flush All. |
+| `prefix` | no | text | The cache keys to remove, by what they start with, such as user: (a trailing * is allowed and means the same). Not read when all is true. |
+| `all` | no | boolean | true: remove everything the site has cached. prefix is then not read. Default false. |
+
+One of `prefix` and `all` is required.
 
 | Output | Type | Description |
 |---|---|---|
-| `flushed` |  | Prefix flushed (or "all") |
+| `flushed` | text | Prefix flushed (or "all") |
 <!-- reference:end action:instance.cache.flush -->
-
-Give `prefix`, or `all: true` to flush the whole instance cache: one of the two is required.
 
 ### `transmute`
 Atomicize HTML — inline CSS, resolve images, etc. — via headless Chrome. The same engine `template.render` uses with `transmute: true`, exposed as a standalone step for HTML you assemble in a workflow.
@@ -444,16 +446,16 @@ Effect: `read`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `job_id` | no | expression | Job ID. |
-| `hash` | no | text | Look up by dedupe hash instead of ID. |
+| `job_id` | no | expression | The job's id. Required unless hash is given. |
+| `hash` | no | text | The job's dedupe hash, in place of its id. Read only when job_id is not given. |
+
+One of `job_id` and `hash` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `job` | object | The job object |
 | `id` | text | Job ID |
 <!-- reference:end action:job.get -->
-
-One of `job_id` and `hash` is required.
 
 ### `job.create`
 Enqueue a background job of the given type.
@@ -463,20 +465,18 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `type` | yes | text | Job Type. |
+| `type` | yes | text | The kind of job to start. One the server has no handler for is refused. |
 | `params` | no | json | Job-type-specific parameters. |
-| `group_id` | no | expression | Group ID. |
-| `scheduled_at` | no | text | Scheduled At (RFC3339) |
-| `dedupe_window` | no | text | Go duration, e.g. "10m". |
-| `interval` | no | text | Recurring interval as a Go duration. |
+| `group_id` | no | expression | An id to group the job under, so that jobs of one group can be found together. |
+| `scheduled_at` | no | text | When to run it, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Left out, as soon as a worker is free. Text that is not a time is ignored. |
+| `dedupe_window` | no | text | A Go duration, such as 10m: a job of the same type and params started within it is not started again. Text that is not a duration is ignored. |
+| `interval` | no | text | A Go duration, such as 24h: the job runs again each time it has passed. Left out, the job runs once. |
 
 | Output | Type | Description |
 |---|---|---|
 | `job` | object | The created job |
 | `id` | text | Job ID |
 <!-- reference:end action:job.create -->
-
-`group_id` groups the job under an id; `dedupe_window` suppresses duplicates within that window.
 
 ## Commerce & Content
 
@@ -488,16 +488,16 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `plan_id` | no | expression | Plan ID. |
-| `addon_plan_id` | no | expression | Addon Plan ID. |
-| `stripe_product` | no | text | Stripe Product. |
+| `plan_id` | no | expression | The plan's id. The selectors are tried in this order: plan_id, stripe_product, addon_plan_id. |
+| `addon_plan_id` | no | expression | Load the plan whose addon_plan_id is this id. |
+| `stripe_product` | no | text | The id of the plan's product in Stripe (prod_...). |
+
+One of `plan_id`, `stripe_product` and `addon_plan_id` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `plan` | object | The plan object |
 <!-- reference:end action:plan.get -->
-
-One of `plan_id`, `addon_plan_id` and `stripe_product` is required.
 
 ### `option.get`
 Read an instance option value by name. Protected options are **not** overridden, so protected values are not exposed to a workflow.
@@ -507,12 +507,12 @@ Effect: `read`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `name` | yes | text | Option Name. |
+| `name` | yes | text | The option's name. |
 
 | Output | Type | Description |
 |---|---|---|
-| `name` |  | The option name |
-| `value` |  | The decoded option value |
+| `name` | text | The option name |
+| `value` | any | The decoded option value |
 <!-- reference:end action:option.get -->
 
 ### `subscription.get`
@@ -523,38 +523,38 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `subscription_id` | no | expression | Subscription ID. |
-| `user_id` | no | user | With plan_id, returns that user's subscription to the plan. |
-| `plan_id` | no | expression | Plan ID. |
-| `stripe_subscription` | no | text | Stripe Subscription. |
-| `recurring_interval` | no | text | Recurring Interval. |
+| `subscription_id` | no | expression | The subscription's id. |
+| `user_id` | no | user | The id of the user whose subscription is loaded: with plan_id, their most recent subscription to that plan; without it, the one with the recurring_interval given, which must then be given. Takes an id. |
+| `plan_id` | no | expression | With user_id: the plan the subscription is to. |
+| `stripe_subscription` | no | text | The subscription's id in Stripe (sub_...). |
+| `recurring_interval` | no | text | With user_id and no plan_id: the billing interval of the subscription to load, month, year or once. |
+
+One of `subscription_id`, `stripe_subscription` and `user_id` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `subscription` | object | The subscription object |
 <!-- reference:end action:subscription.get -->
 
-One selector is required: `subscription_id`, `stripe_subscription`, or `user_id` with `plan_id` (the user's subscription to that plan, the most recent match). `recurring_interval` is read with `user_id`, for a lookup without a plan.
-
 ### `credit.get`
-Load a credit by ID, owner, passcode, or Stripe coupon.
+Load a credit by ID, passcode, or Stripe coupon; `owner_id` only narrows the lookup to a credit that user owns.
 
 <!-- reference:begin action:credit.get -->
 Effect: `read`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `credit_id` | no | expression | Credit ID. |
-| `owner_id` | no | user | Owner ID. |
-| `passcode` | no | text | Passcode. |
-| `stripe_coupon` | no | text | Stripe Coupon. |
+| `credit_id` | no | expression | The credit's id. The selectors are tried in this order: credit_id, stripe_coupon, passcode. |
+| `owner_id` | no | user | Keep the credit only when this user owns it. It narrows a lookup by one of the other inputs and selects nothing by itself. Takes an id. |
+| `passcode` | no | text | The passcode the credit is redeemed with. |
+| `stripe_coupon` | no | text | The id of the credit's coupon in Stripe. |
+
+One of `credit_id`, `stripe_coupon` and `passcode` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `credit` | object | The credit object |
 <!-- reference:end action:credit.get -->
-
-One of `credit_id`, `owner_id`, `passcode` and `stripe_coupon` is required.
 
 ### `credit.invite.create`
 Create an invite to redeem a credit (e.g. a gift), optionally emailed to a recipient.
@@ -564,22 +564,22 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `credit_id` | yes | expression | Credit ID. |
-| `user_id` | no | user | User ID. |
-| `owner_id` | no | user | Owner ID. |
-| `owner_email` | no | text | Owner Email. |
-| `to` | no | expression | To (recipient email) |
-| `message` | no | text | Message. |
-| `auto_accept` | no | boolean | Auto Accept. |
-| `passcode` | no | text | Passcode. |
+| `credit_id` | yes | expression | The id of the credit the invite redeems. |
+| `user_id` | no | user | The id of the user who is invited. Required unless to is given. Takes an id. |
+| `owner_id` | no | user | The id of the user the invite is from: the credit's owner. Takes an id. |
+| `owner_email` | no | text | The email address of the user the invite is from, in place of owner_id. |
+| `to` | no | expression | Who is invited, when they are not yet a user: an email address, or { address, name }. The invite is emailed there. Required unless user_id is given. |
+| `message` | no | text | A note from the owner, shown in the invite. |
+| `auto_accept` | no | boolean | true: the invite is accepted at once, without the invited person doing anything. Default false. |
+| `passcode` | no | text | A passcode the invited person must give to redeem the invite. |
+
+One of `user_id` and `to` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `invite` | object | The credit invite object |
-| `invite_code` |  | The invite code |
+| `invite_code` | text | The invite code |
 <!-- reference:end action:credit.invite.create -->
-
-`to` is an email address or `{address, name}`. `owner_id` or `owner_email` names the credit's owner; `passcode` protects the invite.
 
 ### `feed.item.create`
 Publish a feed item for a user, audience, or distribution.
@@ -589,27 +589,27 @@ Effect: `write`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `channel` | no | text | Channel. One of `podcast`, `rss`. |
-| `user_id` | no | user | Publish into this user's personal feed. |
-| `audience_id` | no | audience | Publish into an audience feed. |
-| `application_id` | no | expression | Application ID. |
-| `title` | no | text | Title. |
-| `description` | no | text | Description. |
+| `channel` | yes | text | The feed the item goes into: podcast or rss. One of `podcast`, `rss`. |
+| `user_id` | no | user | Publish into this user's personal feed. Takes an id. |
+| `audience_id` | no | audience | Publish into an audience feed. Takes an id. |
+| `application_id` | no | expression | The id of the application whose feed the item goes into. Its feed token also signs a private enclosure when application is not given. |
+| `title` | no | text | The item's title. |
+| `description` | no | text | The item's description: the summary a feed reader shows. |
 | `content` | no | expression | Item content/body (e.g. rendered from a template). |
-| `enclosure_asset_id` | no | asset | Podcast enclosure — pick an uploaded audio/video asset. |
+| `enclosure_asset_id` | no | asset | Podcast enclosure — pick an uploaded audio/video asset. Takes an id. |
 | `application` | no | text | Application whose durable feed token signs a private enclosure's URL (id, name, slug, client id or integration type). Defaults to application_id. |
-| `author` | no | text | Author. |
+| `author` | no | text | The author's name. author_email adds their address. |
 | `expires_in` | no | text | Temporary item lifetime as a duration, e.g. "720h" or "30d". |
-| `expires_at` | no | text | Expires At (RFC3339) |
-| `link` | no | text | Link. |
+| `expires_at` | no | text | When the item leaves the feed, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Read only when expires_in is not given. Text that is not a time is ignored. |
+| `link` | no | text | The address the item links to. |
 | `guid` | no | text | Item id; auto-generated when omitted. |
-| `body` | no | json | Item Body (advanced RSS item) |
+| `body` | no | json | A whole RSS item as an object, for what the other inputs cannot say. The other inputs are laid over it. A value of another shape fails the step as invalid. |
 | `author_email` | no | text | The author's email address. Read only with author. Not offered in the step form. |
 
 | Output | Type | Description |
 |---|---|---|
 | `feed_item` | object | The created feed item |
-| `id` |  | The feed item ID |
+| `id` | text | The feed item ID |
 <!-- reference:end action:feed.item.create -->
 
 ### `distribution.get`
@@ -620,17 +620,17 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `distribution_id` | no | expression | Required unless latest is set. |
-| `channel` | no | text | Channel. One of `podcast`, `rss`. |
-| `latest` | no | boolean | Return the most recently published distribution. |
-| `last_published` | no | boolean | Last Published. |
+| `distribution_id` | unless `latest` | expression | The distribution's id. Required unless latest is given. |
+| `channel` | no | text | With latest or last_published: look only at distributions of this channel. One of `podcast`, `rss`. |
+| `latest` | no | boolean | true: load the most recently changed distribution that was published successfully, of channel when one is given. The step then needs no distribution_id. |
+| `last_published` | no | boolean | true: load the distribution with the latest publish time that is not in the future, of channel when one is given, whatever distribution_id says. The step must still give distribution_id or latest (latest: false will do). |
+
+`distribution_id` is required unless `latest` is given.
 
 | Output | Type | Description |
 |---|---|---|
 | `distribution` | object | The distribution object |
 <!-- reference:end action:distribution.get -->
-
-`distribution_id` is required unless `latest` is set. `last_published` returns the last published distribution.
 
 ### `distribution.render`
 Render a distribution's template into its final title and body — the same rendering the built-in channels do at publish time. Use this in a distribution-channel workflow so you hand finished content to the destination instead of re-implementing templating.
@@ -640,9 +640,9 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `distribution_id` | yes | expression | Usually ${{ trigger.distribution_id }}. |
-| `user_id` | no | user | Personalize the render for a recipient (unicast runs). |
-| `as_audience` | no | boolean | Render as a member of the distribution's audience and of every audience ranked below it, with no user data: hasAnyAudience/audiences blocks resolve for them. For content produced once per audience, such as narration audio. Can't be combined with user_id. |
+| `distribution_id` | yes | expression | Usually ${{ trigger.distribution_id }}. In a plugin channel's preview of a distribution that is not saved it holds nothing, and the distribution the run reads is rendered. |
+| `user_id` | no | user | Personalize the render for a recipient (unicast runs). Takes an id. |
+| `as_audience` | no | boolean | Render as a member of the distribution's audience and of every audience ranked below it, with no user data: hasAnyAudience/audiences blocks resolve for them. For content produced once per audience, such as narration audio. Can't be combined with user_id. The distribution must have an audience, or the step fails as invalid. |
 | `body` | no | expression | Render this body instead of the distribution's saved body (nothing is saved), e.g. a rewritten copy of it. |
 
 | Output | Type | Description |
@@ -650,8 +650,6 @@ Effect: `read`. Automations a publisher writes: yes.
 | `title` | text | The rendered title |
 | `body` | text | The rendered body |
 <!-- reference:end action:distribution.render -->
-
-With `as_audience` the distribution must have an audience.
 
 The template is the distribution's own (`template_id`, chosen in the channel's template menu; guide 6.8). A distribution **without a template** renders its
 own body (or the `body` override) as the template, so its template actions and
@@ -686,28 +684,28 @@ Effect: `write`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `channel` | no | text | Distribution channel (e.g. email, rss, podcast, or a custom channel). |
-| `audience_id` | no | audience | Required for built-in channels. |
-| `title` | no | text | Title. |
-| `body` | no | expression | Content body; required when no article_id is given. |
-| `article_id` | no | expression | Publish an existing article instead of an inline body. |
-| `template_id` | no | template | Template. |
-| `asset_id` | no | asset | Asset (podcast enclosure) |
-| `summary` | no | text | Summary. |
-| `description` | no | text | Description. |
-| `language` | no | text | Language. |
-| `status` | no | text | Status. One of `pending`, `scheduled`. |
-| `scheduled_at` | no | text | Scheduled At (RFC3339) |
+| `channel` | yes | text | The channel to publish on: email, sms, rss, podcast, or the name of a channel a plugin added to the site. |
+| `audience_id` | no | audience | The id of the audience the distribution is for. Required for Passport's own channels (email, sms, rss, podcast); a plugin's channel takes one when it says it needs it. Takes an id. |
+| `title` | no | text | The title: an email's subject, a feed item's title. |
+| `body` | unless `article_id` | expression | The content itself. Required unless article_id is given. |
+| `article_id` | no | expression | The id of an article to publish, in place of a body. |
+| `template_id` | no | template | The id of the template the distribution is rendered with. Left out, the distribution's own body is rendered as the template. Takes an id. |
+| `asset_id` | no | asset | The id of the media file the distribution carries: a podcast episode's audio or video. A podcast distribution with a scheduled_at must have one. Takes an id. |
+| `summary` | no | text | A short summary, shown where the channel shows one. |
+| `description` | no | text | A description, shown where the channel shows one. |
+| `language` | no | text | The language of the content, such as en. |
+| `status` | no | text | pending or scheduled, the only values taken. scheduled queues it to be published at scheduled_at. One of `pending`, `scheduled`. |
+| `scheduled_at` | no | text | When to publish, as RFC 3339 text, such as 2026-12-01T09:00:00Z. It must be in the future, and is needed when status is scheduled. Text that is not a time is ignored, as if left out. |
 | `settings` | no | json | Channel-specific settings (e.g. {"channel":"email","subject":"…"}). |
-| `context` | no | json | Context. |
+| `context` | no | json | A map kept with the distribution and read back as distribution.context: where a channel records what it made. A value that is not a map is ignored. |
+
+`body` is required unless `article_id` is given.
 
 | Output | Type | Description |
 |---|---|---|
 | `distribution` | object | The created distribution |
 | `id` | text | Distribution ID |
 <!-- reference:end action:distribution.create -->
-
-`channel` is required. `audience_id` is required for the built-in channels, and `body` unless `article_id` is given. `scheduled_at` is required by the queue when `status` is `scheduled`.
 
 ### `distribution.update`
 Update an existing distribution — retitle, reschedule, change status, or soft-delete.
@@ -717,20 +715,20 @@ Effect: `write`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `distribution_id` | no | expression | Distribution ID. |
-| `title` | no | text | Title. |
-| `body` | no | expression | Body. |
-| `summary` | no | text | Summary. |
-| `description` | no | text | Description. |
-| `language` | no | text | Language. |
-| `audience_id` | no | audience | Audience ID. |
-| `template_id` | no | template | Template. |
-| `asset_id` | no | asset | Asset. |
-| `article_id` | no | expression | Article ID. |
-| `status` | no | text | Status. One of `pending`, `scheduled`. |
-| `scheduled_at` | no | text | Scheduled At (RFC3339) |
-| `settings` | no | json | Channel Settings. |
-| `context` | no | json | Context. |
+| `distribution_id` | yes | expression | The id of the distribution to change. |
+| `title` | no | text | A new title. Left out, it stays. |
+| `body` | no | expression | A new body. Left out, it stays. |
+| `summary` | no | text | A new summary. Left out, it stays. |
+| `description` | no | text | A new description. Left out, it stays. |
+| `language` | no | text | A new language, such as en. Left out, it stays. |
+| `audience_id` | no | audience | The id of another audience to publish to. Left out, it stays. Takes an id. |
+| `template_id` | no | template | The id of another template to render with. Left out, it stays. Takes an id. |
+| `asset_id` | no | asset | The id of another media file to carry. Left out, it stays. Takes an id. |
+| `article_id` | no | expression | The id of another article to publish. Left out, it stays. |
+| `status` | no | text | pending or scheduled. pending cancels a publish that is queued; scheduled queues it for scheduled_at. One of `pending`, `scheduled`. |
+| `scheduled_at` | no | text | A new time to publish, as RFC 3339 text, such as 2026-12-01T09:00:00Z. It must be in the future. Text that is not a time is ignored. |
+| `settings` | no | json | The channel's settings for this distribution, as on distribution.create. A value of another shape fails the step as invalid. |
+| `context` | no | json | A map that replaces the distribution's whole context: keys left out are removed. To change one key, merge the others back in: merge({"my_id": id}, distribution.context). A context-only update is allowed while the distribution is being published. |
 | `deleted` | no | boolean | Soft-delete the distribution. |
 
 | Output | Type | Description |
@@ -739,7 +737,54 @@ Effect: `write`. Automations a publisher writes: yes.
 | `id` | text | Distribution ID |
 <!-- reference:end action:distribution.update -->
 
-`distribution_id` is required. `context` **replaces the whole map**: merge the existing keys back in, `${{ merge({"my_id": ...}, steps.load.outputs.distribution.context) }}` (the first argument wins). A context-only update is allowed while the distribution is publishing, so a channel can record ids during its own publish.
+In the `merge(...)` that `context` asks for, the first argument wins where keys repeat.
+
+### `distribution.deliveries`
+Reads the delivery log of a distribution on a `per_member` channel: one row
+for each member `publish` has run for, newest first. It is for a flow that
+must act on what was sent member by member, which `update`, `delete` and
+`status` otherwise never see: each of them runs once for the whole
+distribution ([6.5.9](../guide/06-channels.md#659-per-member-channels)).
+
+<!-- reference:begin action:distribution.deliveries -->
+Effect: `read`. Automations a publisher writes: no.
+
+| Input | Required | Type | Description |
+|---|---|---|---|
+| `distribution_id` | yes | expression | The distribution whose log to read, by id. In a channel flow this is usually ${{ trigger.distribution_id }}. |
+| `status` | no | text | Only the members with this status. One of `sent`, `skipped`, `failed`. |
+| `limit` | no | number | The most rows to return (default 100). |
+| `offset` | no | number | How many rows to pass over, for the next page. |
+
+| Output | Type | Description |
+|---|---|---|
+| `deliveries` | list | The rows: user_id, status (sent, skipped or failed), id (the message's id at the destination), note, attempts and at |
+| `count` | number | How many rows were returned |
+<!-- reference:end action:distribution.deliveries -->
+
+A call returns one page of the log; read a longer one page by page with
+`offset`.
+
+```yaml
+# channels/acme-mail.yaml: take back what was sent, member by member
+delete:
+  steps:
+    - id: sent
+      action: distribution.deliveries
+      with:
+        distribution_id: "${{ trigger.distribution_id }}"
+        status: sent
+    - id: recall
+      foreach: "${{ steps.sent.outputs.deliveries }}"
+      as: row
+      steps:
+        - id: one
+          action: acme-mail/message.recall
+          with:
+            message_id: "${{ loop.row.id }}"
+  returns:
+    status: deleted
+```
 
 ### `asset.create`
 Create an asset — import from a URL (fetched server-side), store an inline payload string (e.g. generated text/JSON), or store bytes given as base64 text (`payload_base64`).
@@ -749,21 +794,23 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `filename` | no | text | Filename. |
-| `mime_type` | no | text | e.g. image/png, audio/mpeg, application/json. |
+| `filename` | yes | text | The asset's file name, which is its address: /assets/<filename>. |
+| `mime_type` | no | text | The content type, such as image/png, audio/mpeg or application/json. Required with payload and payload_base64. |
 | `url` | no | text | Import the asset from this URL. |
 | `payload` | no | expression | Store this string as the asset body (alternative to url). |
 | `payload_base64` | no | expression | Store the decoded bytes of this base64 text as the asset body. Not with url or payload. |
-| `public` | no | boolean | Public. |
-| `audiences` | no | list | Make the asset protected: only members of at least one of these audiences, and staff, may fetch it. Not with public. This is how a variant of a virtual asset (asset.virtual) is made. |
-| `description` | no | text | Description. |
-| `type` | no | text | Type. |
-| `size` | no | number | Size (bytes) |
-| `content_duration` | no | text | For audio/video assets. |
-| `categories` | no | list | Category IDs. |
-| `expires_at` | no | text | Expires At (RFC3339) |
+| `public` | no | boolean | true: anyone may fetch the asset. Default false: a private asset. Not with audiences. |
+| `audiences` | no | list | Make the asset protected: only members of at least one of these audiences, and admins, may fetch it. Not with public. This is how a variant of a virtual asset (asset.virtual) is made. |
+| `description` | no | text | A description, shown in the asset library. |
+| `type` | no | text | The kind of asset, such as media. |
+| `size` | no | number | The size in bytes. Worked out from payload and payload_base64, so give it only with url when it is known. With none of url, payload and payload_base64 it is required, and the step then only reserves an asset that waits for an upload. |
+| `content_duration` | no | text | For audio and video: how long it plays, as text. A feed shows it with the enclosure. |
+| `categories` | no | list | A list of the ids of the categories the asset is filed under. |
+| `expires_at` | no | text | When the asset expires, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Left out, it does not. Text that is not a time is ignored. |
 | `local` | no | boolean | Store the asset in the database instead of object storage. |
-| `metadata` | no | json | Metadata. |
+| `metadata` | no | json | A map kept with the asset and read back as asset.metadata. A value that is not a map is ignored. |
+
+One of `url`, `payload` and `payload_base64` is required.
 
 | Output | Type | Description |
 |---|---|---|
@@ -771,7 +818,7 @@ Effect: `write`. Automations a publisher writes: no.
 | `id` | text | Asset ID |
 <!-- reference:end action:asset.create -->
 
-One of `url`, `payload` and `payload_base64` is required, and only one. `audiences` with `public: true` fails the step as `invalid`; it is how a variant of a virtual asset ([`asset.virtual`](#assetvirtual)) is made. `size` is worked out for an inline `payload`.
+`audiences` with `public: true` fails the step as `invalid`. A variant of a virtual asset is put together with [`asset.virtual`](#assetvirtual).
 
 ### `asset.update`
 Update an asset's metadata (description, filename, visibility, expiry, categories).
@@ -781,25 +828,23 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `asset_id` | no | expression | Asset ID. |
-| `description` | no | text | Description. |
-| `filename` | no | text | Filename. |
-| `mime_type` | no | text | MIME Type. |
-| `type` | no | text | Type. |
-| `url` | no | text | Source URL. |
-| `public` | no | boolean | Public. |
-| `size` | no | number | Size (bytes) |
-| `categories` | no | list | Category IDs. |
-| `expires_at` | no | text | Expires At (RFC3339) |
-| `metadata` | no | json | Metadata. |
+| `asset_id` | yes | expression | The id of the asset to change. |
+| `description` | no | text | A new description. Left out, it stays. |
+| `filename` | no | text | A new file name. Left out, it stays. |
+| `mime_type` | no | text | A new content type. Left out, it stays. |
+| `type` | no | text | A new kind of asset. Left out, it stays. |
+| `url` | no | text | A new source address for the asset, a full URL. Left out, it stays. |
+| `public` | no | boolean | true makes the asset public, false takes that back. Left out, it stays. |
+| `size` | no | number | A new size in bytes. Left out, it stays. |
+| `categories` | no | list | A list of category ids that replaces the asset's. Left out, they stay. |
+| `expires_at` | no | text | A new time at which the asset expires, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Text that is not a time is ignored. |
+| `metadata` | no | json | A map of metadata to set on the asset. A value that is not a map is ignored. |
 
 | Output | Type | Description |
 |---|---|---|
 | `asset` | object | The updated asset |
 | `id` | text | Asset ID |
 <!-- reference:end action:asset.update -->
-
-`asset_id` is required.
 
 ### `asset.get`
 Load an asset by ID (or filename), optionally resolving a public URL.
@@ -809,18 +854,18 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `asset_id` | no | asset | Asset ID. |
-| `filename` | no | text | Look up by filename instead of ID. |
-| `link` | no | boolean | Populate a resolvable public URL on the asset. |
+| `asset_id` | no | asset | The asset's id. Give this or filename, not both. Takes an id. |
+| `filename` | no | text | The asset's file name, in place of its id. Give this or asset_id, not both. |
+| `link` | no | boolean | true: put an address a third party can fetch in asset.link. A private asset's is signed with the feed token of application. Default false. |
 | `application` | no | text | With link: the application (id, name, slug, client id or integration type) whose durable feed token signs a private asset's URL — as its podcast/RSS feed does. Not needed for public assets. |
+
+Exactly one of `asset_id` and `filename` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `asset` | object | The asset object |
 | `id` | text | Asset ID |
 <!-- reference:end action:asset.get -->
-
-One of `asset_id` and `filename` is required. `application` is read with `link`, for a private asset.
 
 With `link: true`, `asset.link` is a URL a third party can fetch. Public assets
 get a plain URL. A private asset is signed the way that application's
@@ -851,7 +896,7 @@ Effect: `destructive`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `asset_id` | yes | asset | Asset ID. |
+| `asset_id` | yes | asset | The id of the asset to delete. One that is a variant or the default of a virtual asset is refused as conflict. Takes an id. |
 
 | Output | Type | Description |
 |---|---|---|
@@ -880,17 +925,19 @@ Effect: `write`. Automations a publisher writes: no.
 | `asset_ids` | no | list | The parts, in order. Use this or filenames. |
 | `filenames` | no | list | The parts by filename, in order. Use this or asset_ids. |
 | `filename` | yes | text | The joined asset's filename. |
-| `overwrite` | no | boolean | Replace an existing asset with this filename, keeping its id. |
-| `delete_sources` | no | boolean | Delete the parts once the joined asset is written. |
+| `overwrite` | no | boolean | true: replace an existing asset with this filename, keeping its id. Default false: an existing one fails the step. |
+| `delete_sources` | no | boolean | true: delete the parts once the joined asset is written. The joined asset itself is never deleted. Default false. |
 | `mime_type` | no | text | Defaults to the first part's. |
-| `description` | no | text | Description. |
-| `public` | no | boolean | Public. |
-| `audiences` | no | list | Make the joined asset protected: only members of at least one of these audiences, and staff, may fetch it. Not with public. An overwrite that names none keeps the asset's. |
-| `type` | no | text | Type. |
-| `categories` | no | list | Category IDs. |
-| `metadata` | no | json | Metadata. |
+| `description` | no | text | A description for the joined asset, shown in the asset library. |
+| `public` | no | boolean | true: anyone may fetch the joined asset. Default false. Not with audiences. |
+| `audiences` | no | list | Make the joined asset protected: only members of at least one of these audiences, and admins, may fetch it. Not with public. An overwrite that names none keeps the asset's. |
+| `type` | no | text | The kind of asset, such as media. |
+| `categories` | no | list | A list of the ids of the categories the joined asset is filed under. |
+| `metadata` | no | json | A map kept with the joined asset. A value that is not a map is ignored. |
 | `lead_in` | no | text | MP3 only: silence before the first part, in seconds (0.5) or as a duration ("500ms"), at most 10s. Works with a single part too. |
-| `max_size` | no | number | Fail if the joined file is larger (default 200 MiB). |
+| `max_size` | no | number | Fail if the joined file is larger (default 200 MiB). Default `209715200`. |
+
+Exactly one of `asset_ids` and `filenames` is required.
 
 | Output | Type | Description |
 |---|---|---|
@@ -901,7 +948,7 @@ Effect: `write`. Automations a publisher writes: no.
 | `deleted` | list | IDs of the parts deleted |
 <!-- reference:end action:asset.concat -->
 
-One of `asset_ids` and `filenames` is required. `overwrite` is `false` by default. `delete_sources` never deletes the joined asset itself. `description`, `public`, `type`, `categories` and `metadata` are as for `asset.create`. `lead_in` is rounded up to whole frames.
+`lead_in` is rounded up to whole frames.
 
 At most 500 parts. MP3 parts should share a sample rate and channel layout,
 e.g. pieces of one text read by one voice in one output format:
@@ -933,7 +980,7 @@ for each audience. Each variant is a protected asset (one created with
 `audiences`) for one audience. A member gets the variant of the best-ranked
 audience they are in (the site's audience rank order, unranked audiences last),
 and the default when they are in none; with no default they are answered as for
-a missing asset. Staff and application tokens get the first variant, or the one
+a missing asset. Admins and application tokens get the first variant, or the one
 for the audience named with `?as_audience=<audience id>` on the address. A
 virtual asset that already has the filename is given the variants (they replace
 what it had) and keeps its ID, so the step is safe to run twice.
@@ -943,11 +990,13 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `filename` | yes | text | The virtual asset's filename, which is its address (/assets/<filename>). `name` is accepted as well. Also read as `name`. |
+| `filename` | yes | text | The virtual asset's file name, which is its address: /assets/<filename>. Also read as `name`. |
 | `variants` | no | json | A list of { asset_id, audience_id }: a protected asset and the audience it is for. One variant per audience; every asset of one content type and protected by its audience. |
-| `default` | no | asset | The asset a member of none of the variants' audiences gets. It is checked as any asset is, so a private asset is the usual choice. Without one they are answered as for a missing asset. |
-| `description` | no | text | Description. |
+| `default` | no | asset | The asset a member of none of the variants' audiences gets. It is checked as any asset is, so a private asset is the usual choice. Without one they are answered as for a missing asset. Takes an id. |
+| `description` | no | text | A description, shown in the asset library. |
 | `mime_type` | no | text | Not needed: the content type is the variants'. Given, it must be theirs. |
+
+One of `variants` and `default` is required.
 
 | Output | Type | Description |
 |---|---|---|
@@ -956,7 +1005,7 @@ Effect: `write`. Automations a publisher writes: no.
 | `url` | text | The virtual asset's address, without a token |
 <!-- reference:end action:asset.virtual -->
 
-`variants` or a `default` is required. The `asset` output has `virtual: true` and its `variants`. Each reader fetches `url` with their own token, as a feed's enclosure link does.
+The `asset` output has `virtual: true`. Each reader fetches `url` with their own token, as a feed's enclosure link does.
 
 A variant must be a protected asset of the site (not public, with audiences)
 that names its `audience_id` among its audiences. One variant per audience, each
@@ -970,8 +1019,7 @@ While an asset is a variant or a default it cannot be deleted, made public,
 given audiences that leave its variant's audience out, or change content type
 (`conflict`); replacing its file with an overwrite is allowed. An audience a
 variant is for cannot be deleted. Nothing a member is given carries a variant's
-ID. Effect class `write`; it is not one of the built-ins a publisher's own
-automation may use.
+ID.
 
 ```yaml
 # One file per audience, then one asset that gives each member theirs
@@ -983,7 +1031,7 @@ automation may use.
     response_asset:
       filename: "narration-${{ trigger.distribution_id }}-paid.mp3"
       overwrite: true
-      audiences: ["${{ vars.paid_audience }}"]     # protected: Paid members and staff only
+      audiences: ["${{ vars.paid_audience }}"]     # protected: Paid members and admins only
 - id: free_audio
   action: http.post
   with:
@@ -1011,15 +1059,13 @@ Effect: `read`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `article_id` | no | expression | Article ID. |
+| `article_id` | yes | expression | The article's id. |
 
 | Output | Type | Description |
 |---|---|---|
 | `article` | object | The article object |
 | `id` | text | Article ID |
 <!-- reference:end action:article.get -->
-
-`article_id` is required.
 
 ### `entitlement.get`
 Load an entitlement by ID, by `subscription_id`, or by `user_id` + `plan_id` (most recent).
@@ -1029,18 +1075,18 @@ Effect: `read`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `entitlement_id` | no | expression | Entitlement ID. |
+| `entitlement_id` | no | expression | The entitlement's id. Required unless subscription_id, or user_id with plan_id, is given. |
 | `subscription_id` | no | expression | Look up the subscription's entitlement. |
-| `user_id` | no | user | With plan_id, the user's entitlement to a plan. |
-| `plan_id` | no | expression | Plan ID. |
+| `user_id` | no | user | With plan_id: the id of the user whose most recent entitlement to that plan is loaded. Without plan_id it selects nothing. Takes an id. |
+| `plan_id` | no | expression | With user_id: the plan the entitlement is to. |
+
+One of `entitlement_id`, `subscription_id` and `user_id` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `entitlement` | object | The entitlement object |
 | `id` | text | Entitlement ID |
 <!-- reference:end action:entitlement.get -->
-
-One selector is required: `entitlement_id`, `subscription_id`, or `user_id` with `plan_id`.
 
 ### `entitlement.create`
 Grant an entitlement, typically tied to a user + plan, or a subscription.
@@ -1050,23 +1096,23 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `user_id` | no | user | User ID. |
-| `plan_id` | no | expression | Plan ID. |
-| `price_id` | no | expression | Price ID. |
-| `subscription_id` | no | expression | Subscription ID. |
-| `application_id` | no | expression | Application ID. |
-| `stripe_invoice` | no | text | Stripe Invoice. |
-| `expires_at` | no | text | Expires At (RFC3339) |
-| `categories` | no | json | Categories. |
-| `metadata` | no | json | Metadata. |
+| `user_id` | no | user | The id of the user who is granted the entitlement. Required unless application_id is given. Takes an id. |
+| `plan_id` | no | expression | The id of the plan the entitlement is to. |
+| `price_id` | no | expression | The id of the price the entitlement was bought at, when there is one. |
+| `subscription_id` | no | expression | The id of the subscription the entitlement comes from, when there is one. |
+| `application_id` | no | expression | The id of the application that is granted the entitlement, in place of a user. Required unless user_id is given. |
+| `stripe_invoice` | no | text | The id of the Stripe invoice that paid for it (in_...), when there is one. |
+| `expires_at` | no | text | When the entitlement ends, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Left out, it does not end. Text that is not a time is ignored. |
+| `categories` | no | json | A list of entitlement category objects: the categories the entitlement opens. A value of another shape fails the step as invalid. |
+| `metadata` | no | json | A map kept with the entitlement. A value that is not a map is ignored. |
+
+One of `user_id` and `application_id` is required.
 
 | Output | Type | Description |
 |---|---|---|
 | `entitlement` | object | The created entitlement |
 | `id` | text | Entitlement ID |
 <!-- reference:end action:entitlement.create -->
-
-`plan_id` or `price_id` is what the entitlement grants, `subscription_id` the subscription behind it and `application_id` the application that owns it.
 
 ### `entitlement.update`
 Update an entitlement — activate/deactivate, change expiry, categories, or metadata.
@@ -1076,19 +1122,17 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `entitlement_id` | no | expression | Entitlement ID. |
-| `active` | no | boolean | Active. |
-| `expires_at` | no | text | Expires At (RFC3339) |
-| `categories` | no | json | Categories. |
-| `metadata` | no | json | Metadata. |
+| `entitlement_id` | yes | expression | The id of the entitlement to change. |
+| `active` | no | boolean | Whether the entitlement is active: false turns it off, true on again. Left out, it stays. |
+| `expires_at` | no | text | A new time at which the entitlement ends, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Text that is not a time is ignored. |
+| `categories` | no | json | A list of category objects that replaces the entitlement's. A value of another shape fails the step as invalid. |
+| `metadata` | no | json | A map of metadata to set on the entitlement. A value that is not a map is ignored. |
 
 | Output | Type | Description |
 |---|---|---|
 | `entitlement` | object | The updated entitlement |
 | `id` | text | Entitlement ID |
 <!-- reference:end action:entitlement.update -->
-
-`entitlement_id` is required.
 
 ### `entitlement.delete`
 Revoke an entitlement.
@@ -1098,16 +1142,14 @@ Effect: `destructive`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `entitlement_id` | no | expression | Entitlement ID. |
-| `force` | no | boolean | Remove even a paid entitlement (normally protected). |
+| `entitlement_id` | yes | expression | The id of the entitlement to revoke. |
+| `force` | no | boolean | true: remove even an entitlement that was paid for, which is otherwise refused. Default false. |
 
 | Output | Type | Description |
 |---|---|---|
 | `deleted` | boolean | Deleted |
 | `id` | text | Entitlement ID |
 <!-- reference:end action:entitlement.delete -->
-
-`entitlement_id` is required.
 
 ## HTTP
 
@@ -1123,32 +1165,34 @@ Effect: `external`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `url` | yes | expression | URL. |
-| `headers` | no | json | Headers. |
-| `query` | no | json | Query Params. |
+| `url` | yes | expression | The address to call, http or https. In a plugin its host must be one of the manifest's allowed_hosts; otherwise one on the site's allow list. |
+| `headers` | no | json | A map of request headers, such as { Authorization: "Bearer ${{ secrets.api_token }}" }. Left out, none besides the Content-Type the body sets. |
+| `query` | no | json | A map of query parameters, each written as text. One replaces a parameter of the same name in the url. |
 | `body` | no | json | An object or list is sent as JSON; text is sent as it is (set Content-Type yourself). Ignored for GET/DELETE. Only one of body, form, body_base64 and multipart. |
 | `form` | no | json | A map of fields sent as application/x-www-form-urlencoded. A list repeats the field, an object is sent as JSON text, a null value is left out. Not for GET/DELETE. |
 | `body_base64` | no | expression | Base64 text; the decoded bytes are sent as the body. Content-Type defaults to application/octet-stream; set it in headers. Not for GET/DELETE. |
 | `multipart` | no | json | Sent as multipart/form-data: { fields: {name: value}, files: [{ name, asset_id, filename, content_type }] }. Each file is an asset of this instance, streamed from storage; filename and content_type default to the asset's. Not for GET/DELETE. |
-| `timeout` | no | text | Timeout. Default `30s`. |
-| `retries` | no | number | Retries. Default `3`. |
-| `expect_status` | no | json | List of status codes to treat as success. |
+| `timeout` | no | text | How long one attempt may take, as a Go duration such as 45s or 15m. One longer than the default is honoured. Default `30s`. |
+| `retries` | no | number | The total number of attempts, the first one counted. A further attempt is made after a transport error or a 5xx response, and each one that reaches a paid API is billed. Less than 1 is 1. Default `3`. |
+| `expect_status` | no | json | A list of further status codes to treat as success, such as [404]: the step does not fail on them, and ok is true for them too. Left out, a 4xx or 5xx response fails the step. |
 | `response_encoding` | no | text | How outputs.body is read: auto (JSON parsed, anything else as text) or base64 (the raw bytes as base64 text, for a small binary response). An error response is always read as auto. One of `auto`, `base64`. Default `auto`. |
 | `max_response_size` | no | number | The largest response read into outputs.body (default 10 MiB); a larger one fails the step and none of it is returned. A response_asset body has its own max_size. Default `10485760`. |
-| `response_asset` | no | json | Store a 2xx response body as an asset instead of returning it in outputs.body (for files such as audio or PDFs). Keys: filename (required), mime_type (defaults to the response Content-Type), public, audiences (audience ids that make the asset protected: their members and staff only; not with public), type, description, categories, metadata, overwrite (replace the asset with the same filename, keeping its id), max_size (bytes, default 200 MiB). The body is written only after it has fully arrived. Error responses are returned in outputs.body as usual. |
+| `response_asset` | no | json | Store a 2xx response body as an asset instead of returning it in outputs.body (for files such as audio or PDFs). Keys: filename (required), mime_type (defaults to the response Content-Type), public, audiences (audience ids that make the asset protected: their members and admins only; not with public), type, description, categories, metadata, overwrite (replace the asset with the same filename, keeping its id), max_size (bytes, default 200 MiB). The body is written only after it has fully arrived. Error responses are returned in outputs.body as usual. |
+
+At most one of `body`, `form`, `body_base64` and `multipart` may be given.
 
 | Output | Type | Description |
 |---|---|---|
-| `status` |  | HTTP status code |
-| `body` |  | Response body: parsed JSON or text, or base64 text with response_encoding: base64; not set with response_asset |
-| `headers` |  | Response headers |
-| `ok` |  | True for a 2xx response |
+| `status` | number | HTTP status code |
+| `body` | any | Response body: parsed JSON or text, or base64 text with response_encoding: base64; not set with response_asset |
+| `headers` | object | Response headers |
+| `ok` | boolean | True for a 2xx response |
 | `asset` | object | With response_asset: the stored asset |
-| `asset_id` |  | With response_asset: the stored asset's ID |
-| `size` |  | With response_asset: the stored body size in bytes |
+| `asset_id` | text | With response_asset: the stored asset's ID |
+| `size` | number | With response_asset: the stored body size in bytes |
 <!-- reference:end action:http.get -->
 
-`headers` is a map, such as `{ Authorization: "Bearer ${{ secrets.api_token }}" }`. `timeout` is a Go duration; values longer than the default are honored (`15m`). `retries` is the total number of attempts, made for transport errors and 5xx responses; every attempt that reaches a paid API is billed. `expect_status` lists further status codes treated as success, such as `[404]`, and `ok` is then `true` for them too. With `response_asset`, an `overwrite` keeps the asset's id and link, and one that names no `audiences` keeps the ones the asset has; an MP3's duration is read into the asset's metadata.
+With `response_asset`, an `overwrite` keeps the asset's link as well as its id, and one that names no `audiences` keeps the ones the asset has; an MP3's duration is read into the asset's metadata.
 
 A 4xx/5xx response (not in `expect_status`) fails the step; the response body is
 in `steps.<id>.error.detail.body`. Binary bodies can't travel in `body` (they'd
@@ -1165,12 +1209,12 @@ Effect: `control`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `message` | yes | text | Message. |
-| `level` | no | text | Defaults to info. A debug message only appears when the run is in debug mode. One of `info`, `warn`, `error`, `debug`. |
+| `message` | yes | text | The text to write to the run's log. |
+| `level` | no | text | Defaults to info. A debug message only appears when the run is in debug mode. One of `info`, `warn`, `error`, `debug`. Default `info`. |
 
 | Output | Type | Description |
 |---|---|---|
-| `message` |  | The logged message |
+| `message` | text | The logged message |
 <!-- reference:end action:log -->
 
 ### `sleep`
@@ -1181,11 +1225,11 @@ Effect: `control`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `duration` | yes | text | Duration. Default `5s`. |
+| `duration` | yes | text | How long to pause, as a Go duration such as 5s or 1m30s. More than 90s is 90s; zero or less does not pause. For example `5s`. |
 
 | Output | Type | Description |
 |---|---|---|
-| `slept` |  | Actual duration slept |
+| `slept` | text | Actual duration slept |
 <!-- reference:end action:sleep -->
 
 ### `set-output`
@@ -1194,12 +1238,10 @@ Records its `with:` inputs as this step's outputs, exposing values downstream.
 <!-- reference:begin action:set-output -->
 Effect: `control`. Automations a publisher writes: yes.
 
-No named inputs.
+Inputs: any keys. Each one is echoed as an output of the same name, with the value it was given.
 
-No named outputs.
+Outputs: one for each key given, of the same name.
 <!-- reference:end action:set-output -->
-
-Every key under `with:` becomes an output of the same name.
 
 ### `vars.set`
 Writes its `with:` inputs into the shared run `vars` context (readable later as `${{ vars.<key> }}`).
@@ -1207,12 +1249,10 @@ Writes its `with:` inputs into the shared run `vars` context (readable later as 
 <!-- reference:begin action:vars.set -->
 Effect: `control`. Automations a publisher writes: yes.
 
-No named inputs.
+Inputs: any keys. Each one is written to vars under the same name, and echoed as an output.
 
-No named outputs.
+Outputs: one for each key given, of the same name.
 <!-- reference:end action:vars.set -->
-
-Every key under `with:` is written to `vars` and returned as an output of the same name.
 
 ### `event.emit`
 Emits an atomic event, enabling workflow chaining. Suppressed inside a silent run.
@@ -1222,16 +1262,16 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `name` | yes | text | Event Name. |
-| `source` | no | text | Source. Default `workflow`. |
-| `body` | no | json | Body. |
-| `user_id` | no | user | User ID. |
+| `name` | yes | text | The event's name, such as order.shipped. Automations that listen for it are started. |
+| `source` | no | text | Who the event is from: what a trigger's source is matched against. Default `workflow`. |
+| `body` | no | json | The event's body, any value: what a run it starts reads as trigger.body. |
+| `user_id` | no | user | The id of the user the event is about: what a run it starts reads as trigger.user_id. Takes an id. |
 
 | Output | Type | Description |
 |---|---|---|
-| `emitted` |  | Whether the event was emitted |
-| `event_id` |  | The emitted event ID |
-| `suppressed` |  | True if suppressed in a silent run |
+| `emitted` | boolean | Whether the event was emitted |
+| `event_id` | text | The emitted event ID |
+| `suppressed` | boolean | True if suppressed in a silent run |
 <!-- reference:end action:event.emit -->
 
 ### `workflow.run`
@@ -1244,22 +1284,24 @@ Effect: `write`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `workflow` | yes | expression | Target workflow ID or slug. |
+| `workflow` | unless `automation` | expression | The id or the slug of the workflow to run. |
 | `automation` | no | string | In a plugin's own automation or channel, in place of workflow: the key of an automation of the same plugin. |
 | `name` | no | string | With automation: which one, by its short name, when the definition was added more than once. |
 | `inputs` | no | json | Passed to the child as its inputs (this is how you hand it context). |
-| `async` | no | boolean | Run async (don't wait) On = fire-and-forget. Off = wait for the child and read its outputs. |
-| `run_at` | no | expression | Run at. Async only. Schedule the child for later: a duration like 24h, 15m, 90s — or a date. Can be an expression. |
+| `async` | no | boolean | true: start the child and go on without waiting. Default false: wait for the child and read its outputs and steps. On = fire-and-forget. Off = wait for the child and read its outputs. |
+| `run_at` | no | expression | With async: when to start the child, as RFC 3339 text or a duration from now such as 24h, 15m or 90s. Anything else fails the step as invalid. Left out, now. Async only. Schedule the child for later: a duration like 24h, 15m, 90s — or a date. Can be an expression. |
+
+At most one of `workflow` and `automation` may be given. `workflow` is required unless `automation` is given.
 
 | Output | Type | Description |
 |---|---|---|
-| `triggered` |  | Whether the child run started |
-| `async` |  | Whether it ran fire-and-forget |
-| `run_id` |  | Child workflow run ID |
-| `workflow_id` |  | Child workflow ID |
-| `outputs` |  | The child's named outputs (synchronous only) |
-| `steps` |  | The child's step results (synchronous only) |
-| `reason` |  | Reason if not triggered |
+| `triggered` | boolean | Whether the child run started |
+| `async` | boolean | Whether it ran fire-and-forget |
+| `run_id` | text | Child workflow run ID |
+| `workflow_id` | text | Child workflow ID |
+| `outputs` | object | The child's named outputs (synchronous only) |
+| `steps` | object | The child's step results (synchronous only) |
+| `reason` | text | Reason if not triggered |
 <!-- reference:end action:workflow.run -->
 
 ```yaml
@@ -1294,12 +1336,10 @@ Effect: `control`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `reason` | no | text | Reason. Default `workflow exited`. |
+| `reason` | no | text | Why the run stops, written to the run's log. Default `workflow exited`. |
 
-No named outputs.
+No outputs: the run ends at this step.
 <!-- reference:end action:workflow.exit -->
-
-Returns no outputs (the run ends).
 
 ### `workflow.fail`
 Ends the run as **failed** with `reason` as its error. Unlike an action error,
@@ -1312,9 +1352,9 @@ Effect: `control`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `reason` | yes | text | Reason. Default `why the run can't continue`. |
+| `reason` | yes | text | Why the run cannot go on: the run's error, and what a failed publish shows. For example `why the run can't continue`. |
 
-No named outputs.
+No outputs: the run ends at this step.
 <!-- reference:end action:workflow.fail -->
 
 ```yaml
@@ -1337,15 +1377,15 @@ Effect: `control`. Automations a publisher writes: yes.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `duration` | no | expression | Duration. How long to wait — e.g. 3d, 72h, 15m, 90s. Can be an expression. |
-| `until` | no | expression | Until. Or wait until an exact time (RFC3339). Can be an expression like ${{ trigger.body.ends_at }}. |
+| `duration` | no | expression | How long to wait, such as 3d, 72h, 15m or 90s: a Go duration, or a number of days ending in d. At most 90 days. Read only when until is not given. How long to wait — e.g. 3d, 72h, 15m, 90s. Can be an expression. |
+| `until` | no | expression | The time to wait until, as RFC 3339 text, such as 2026-12-01T09:00:00Z. Not more than 90 days from now; a time already past does not wait, and waited is false. Or wait until an exact time (RFC3339). Can be an expression like ${{ trigger.body.ends_at }}. |
+
+One of `duration` and `until` is required.
 
 | Output | Type | Description |
 |---|---|---|
-| `waited` |  | False when the time was already in the past (no wait) |
+| `waited` | boolean | False when the time was already in the past (no wait) |
 <!-- reference:end action:wait -->
-
-One of `duration` and `until` is required. A duration may use a day suffix (`3d`).
 
 ```yaml
 - id: send-welcome
@@ -1366,9 +1406,57 @@ One of `duration` and `until` is required. A duration may use a day suffix (`3d`
 
 # Expression Functions
 
-The functions an expression may call are not listed on this page. The
-function reference is [chapter 8](../guide/08-functions.md): every function
-Passport adds, by group, with its arguments, what it returns and the server
-that first has it, and the functions of the expression language that remain
-available. Its tables are generated from the engine by the same command as
-this page's.
+The functions Passport adds are not listed on this page. The function
+reference is [chapter 8](../guide/08-functions.md): every function Passport
+adds, by group, with its arguments, what it returns and the server that
+first has it, and the names of the functions of the expression language
+that remain available. Its tables are generated from the engine by the same
+command as this page's.
+
+The expression language's own functions, in full. Those that walk a list
+take `#` as the element:
+
+<!-- reference:begin language-functions -->
+| Function | Returns | Description | Example |
+|---|---|---|---|
+| `all(list, predicate)` | boolean | Whether the predicate holds for every item. | `all([1, 2, 3], # > 0)` gives `true` |
+| `any(list, predicate)` | boolean | Whether the predicate holds for at least one item. | `any([1, 2, 3], # > 2)` gives `true` |
+| `bitand(a, b)` | integer | The bits set in both integers. | `bitand(6, 3)` gives `2` |
+| `bitnand(a, b)` | integer | The bits of a that are not set in b. | `bitnand(6, 3)` gives `4` |
+| `bitnot(a)` | integer | Every bit of the integer turned over. | `bitnot(0)` gives `-1` |
+| `bitor(a, b)` | integer | The bits set in either integer. | `bitor(6, 3)` gives `7` |
+| `bitshl(a, n)` | integer | a with its bits moved n places to the left. | `bitshl(1, 4)` gives `16` |
+| `bitshr(a, n)` | integer | a with its bits moved n places to the right, its sign kept. | `bitshr(16, 2)` gives `4` |
+| `bitushr(a, n)` | integer | a with its bits moved n places to the right, zeros coming in. | `bitushr(16, 2)` gives `4` |
+| `bitxor(a, b)` | integer | The bits set in one integer and not the other. | `bitxor(6, 3)` gives `5` |
+| `concat(lists…)` | list | The lists as one list, one after another. | `concat([1], [2, 3])` gives `[1,2,3]` |
+| `count(list, predicate?)` | integer | How many items the predicate holds for; without one, how many are true. | `count([1, 2, 3], # > 1)` gives `2` |
+| `filter(list, predicate)` | list | The items the predicate holds for. | `filter([1, 2, 3], # > 1)` gives `[2,3]` |
+| `find(list, predicate)` | any | The first item the predicate holds for, or nil. | `find([1, 2, 3], # > 1)` gives `2` |
+| `findIndex(list, predicate)` | integer | The position, from 0, of the first item the predicate holds for, or nil. | `findIndex([1, 2, 3], # > 1)` gives `1` |
+| `findLast(list, predicate)` | any | The last item the predicate holds for, or nil. | `findLast([1, 2, 3], # > 1)` gives `3` |
+| `findLastIndex(list, predicate)` | integer | The position, from 0, of the last item the predicate holds for, or nil. | `findLastIndex([1, 2, 3], # > 1)` gives `2` |
+| `float(value)` | number | A number, or text that holds one, as a number with a fraction. Text that holds none is an error; toFloat gives 0 instead. | `float("1.5")` gives `1.5` |
+| `fromBase64(s)` | text | The text that standard base64 holds, as base64Decode gives. | `fromBase64("aGk=")` gives `"hi"` |
+| `fromPairs(list)` | map | A list of [key, value] pairs as a map. | `fromPairs([["a", 1]])` gives `{"a":1}` |
+| `get(value, key)` | any | The item of a list at a position, or the value of a map under a key; nil when there is none. | `get({"a": 1}, "a")` gives `1` |
+| `groupBy(list, expression)` | map | The items in lists, under what the expression gives for each. | `groupBy([{"k": "a", "n": 1}, {"k": "a", "n": 2}], #.k)` gives `{"a":[{"k":"a","n":1},{"k":"a","n":2}]}` |
+| `int(value)` | integer | A number, or text that holds one, as an integer. Text that holds none is an error; toInt gives 0 instead. | `int("42")` gives `42` |
+| `lastIndexOf(s, sub)` | integer | The byte position of the last sub in s, or -1. | `lastIndexOf("a-b-c", "-")` gives `3` |
+| `map(list, expression)` | list | The expression worked out for each item. | `map([1, 2], # * 2)` gives `[2,4]` |
+| `mean(list)` | number | The average of the numbers. | `mean([1, 2, 3])` gives `2` |
+| `median(list)` | number | The middle one of the numbers. | `median([1, 5, 3])` gives `3` |
+| `none(list, predicate)` | boolean | Whether the predicate holds for no item. | `none([1, 2, 3], # > 3)` gives `true` |
+| `one(list, predicate)` | boolean | Whether the predicate holds for exactly one item. | `one([1, 2, 3], # > 2)` gives `true` |
+| `reduce(list, expression, initial?)` | any | One value from the whole list: the expression is worked out for each item, with #acc the value so far and # the item. Without an initial value the first item starts it. | `reduce([1, 2, 3], #acc + #, 0)` gives `6` |
+| `sort(list, order?)` | list | The list in ascending order, or descending with "desc". | `sort([3, 1, 2])` gives `[1,2,3]` |
+| `sortBy(list, expression, order?)` | list | The list ordered by what the expression gives for each item, ascending, or descending with "desc". | `sortBy([{"n": 2}, {"n": 1}], #.n)` gives `[{"n":1},{"n":2}]` |
+| `splitAfter(s, sep, n?)` | list | The pieces of s after each sep, each keeping its sep; at most n pieces when n is given. | `splitAfter("a,b", ",")` gives `["a,","b"]` |
+| `string(value)` | text | The value as text. | `string(42)` gives `"42"` |
+| `sum(list, expression?)` | number | The numbers added up; with an expression, what it gives for each item. | `sum([1, 2, 3])` gives `6` |
+| `take(list, n)` | list | The first n items. | `take([1, 2, 3], 2)` gives `[1,2]` |
+| `timezone(name)` | any | The time zone with that IANA name, for the language's own date functions. | `timezone("Europe/Paris")` gives a value such as `"Europe/Paris"` |
+| `toBase64(s)` | text | s in standard base64, as base64Encode gives. | `toBase64("hi")` gives `"aGk="` |
+| `toPairs(map)` | list | A map as a list of [key, value] pairs. | `toPairs({"a": 1})` gives `[["a",1]]` |
+| `type(value)` | text | The kind of a value: nil, bool, int, uint, float, string, array or map. | `type("a")` gives `"string"` |
+<!-- reference:end language-functions -->

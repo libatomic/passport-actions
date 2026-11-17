@@ -21,62 +21,48 @@ notes under each table.
 ## 8.1 Text
 
 <!-- reference:begin functions:text -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `trim(s)` | text | s without leading and trailing white space. | 2.0.0 |
-| `trimPrefix(s, prefix)` | text | s without that prefix, or s as it is when it does not start with it. | 2.0.0 |
-| `trimSuffix(s, suffix)` | text | s without that suffix, or s as it is when it does not end with it. | 2.0.0 |
-| `upper(s)` | text | s in upper case. | 2.0.0 |
-| `lower(s)` | text | s in lower case. | 2.0.0 |
-| `title(s)` | text | s in all upper case, as upper gives. Kept for format 1; for a title use titleCase. | 2.0.0 |
-| `titleCase(s)` | text | The first letter of each word in upper case, the rest left as written. A word starts at the beginning, after white space, and after an opening bracket, a quotation mark, a dash or a slash. | 2.3.0 |
-| `camelCase(s)` | text | s with each word run together and its first letter in upper case, the first word's too: hello world, hello_world and helloWorld all give HelloWorld. | 2.0.0 |
-| `kebabCase(s)` | text | s in lower case with a hyphen between words: hello world and helloWorld give hello-world. | 2.0.0 |
-| `snakeCase(s)` | text | s in lower case with an underscore between words: hello world and helloWorld give hello_world. | 2.0.0 |
-| `slugify(s)` | text | s in lower case with accents removed and every run of anything that is not a letter or digit as one hyphen, trimmed. Text in a script with no Latin form gives empty text. | 2.3.0 |
-| `replace(s, old, new)` | text | s with every old replaced by new. | 2.0.0 |
-| `replaceEach(text, rules, opts?)` | text | text with a list of replacements applied in order. Each rule is a map; opts names its keys and behaviour: find and replace (the key names, find and replace by default), literal (no regular expression), word (whole words only) and ignoreCase. | 2.1.4 |
-| `contains(s, sub)` | boolean | Whether s holds sub. | 2.0.0 |
-| `hasPrefix(s, prefix)` | boolean | Whether s starts with prefix. | 2.0.0 |
-| `hasSuffix(s, suffix)` | boolean | Whether s ends with suffix. | 2.0.0 |
-| `containsAny(s, subs…)` | boolean | Whether s holds any of them. They are given one by one, as lists, or both. | 2.0.0 |
-| `hasPrefixAny(s, prefixes…)` | boolean | Whether s starts with any of them. They are given one by one, as lists, or both. | 2.0.0 |
-| `hasSuffixAny(s, suffixes…)` | boolean | Whether s ends with any of them. They are given one by one, as lists, or both. | 2.0.0 |
-| `split(s, sep)` | list | The pieces of s between each sep. | 2.0.0 |
-| `join(list, sep)` | text | The items of list as one text with sep between them. An item that is not text is written as text; nil gives empty text. | 2.0.0 |
-| `repeat(s, n)` | text | s n times. | 2.0.0 |
-| `indexOf(s, sub)` | integer | The byte position of the first sub in s, or -1. | 2.0.0 |
-| `substr(s, start, end)` | text | The bytes of s from start up to, not including, end. | 2.0.0 |
-| `truncate(s, n)` | text | At most the first n bytes of s. | 2.0.0 |
-| `padLeft(s, n, pad?)` | text | s padded on the left to n characters with pad, a space when left out. | 2.3.0 |
-| `padRight(s, n, pad?)` | text | s padded on the right to n characters with pad, a space when left out. | 2.3.0 |
-| `indent(n, s)` | text | s with each line indented by n spaces. The count comes first. | 2.0.0 |
-| `quote(s)` | text | s in double quotes, escaped. | 2.0.0 |
-| `plural(n, singular, plural)` | text | singular when n is 1, plural otherwise. | 2.0.0 |
-| `len(v)` | integer | The bytes of a text, or the items of a list or map. Not characters. | 2.0.0 |
-| `emailLocal(email)` | text | The part of an email address before the @. | 2.0.0 |
-| `emailDomain(email)` | text | The part of an email address after the @. | 2.0.0 |
-| `isEmail(s)` | boolean | Whether s is written as an email address. | 2.0.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `trim(s)` | text | s without leading and trailing white space. | `trim(" hi ")` gives `"hi"` | 2.0.0 |
+| `trimPrefix(s, prefix)` | text | s without that prefix, or s as it is when it does not start with it. | `trimPrefix("v1.2", "v")` gives `"1.2"` | 2.0.0 |
+| `trimSuffix(s, suffix)` | text | s without that suffix, or s as it is when it does not end with it. | `trimSuffix("a.mp3", ".mp3")` gives `"a"` | 2.0.0 |
+| `upper(s)` | text | s in upper case. | `upper("hello")` gives `"HELLO"` | 2.0.0 |
+| `lower(s)` | text | s in lower case. | `lower("Hello")` gives `"hello"` | 2.0.0 |
+| `title(s)` | text | s with every letter in upper case, exactly as upper gives: title("hello world") is HELLO WORLD. It does not capitalise words; for that use titleCase. | `title("hello world")` gives `"HELLO WORLD"` | 2.0.0 |
+| `titleCase(s)` | text | The first letter of each word in upper case, the rest left as written. A word starts at the beginning, after white space, and after an opening bracket, a quotation mark, a dash or a slash. An apostrophe inside a word does not start a new one: o'neil mcDonald gives O'neil McDonald. | `titleCase("o'neil mcDonald")` gives `"O'neil McDonald"` | 2.3.0 |
+| `camelCase(s)` | text | s with each word run together and its first letter in upper case, the first word's too: hello world, hello_world and helloWorld all give HelloWorld. | `camelCase("hello world")` gives `"HelloWorld"` | 2.0.0 |
+| `kebabCase(s)` | text | s in lower case with a hyphen between words: hello world and helloWorld give hello-world. | `kebabCase("helloWorld")` gives `"hello-world"` | 2.0.0 |
+| `snakeCase(s)` | text | s in lower case with an underscore between words: hello world and helloWorld give hello_world. | `snakeCase("hello world")` gives `"hello_world"` | 2.0.0 |
+| `slugify(s)` | text | s in lower case with accents removed and every run of anything that is not a letter or digit as one hyphen, trimmed. Text in a script with no Latin form gives empty text. | `slugify("Été 2026!")` gives `"ete-2026"` | 2.3.0 |
+| `replace(s, old, new)` | text | s with every old replaced by new. | `replace("a-b-c", "-", "+")` gives `"a+b+c"` | 2.0.0 |
+| `replaceEach(text, rules, opts?)` | text | text with a list of replacements applied in order, each to the result of the ones before it. Each rule is a map; opts names its keys and behaviour: find and replace (the names of a rule's two keys, find and replace by default), literal, word and ignoreCase. Without literal, a rule's find is an RE2 pattern and ${1} in its replace is the first group; with it, find is matched as plain text and replace inserted as it is. word puts a word boundary where find starts or ends with a letter, digit or _. A rule with an empty find is skipped; a pattern that is not valid is an error. | `replaceEach("Dr. Who", [{"find": "Dr.", "replace": "Doctor"}], {"literal": true})` gives `"Doctor Who"` | 2.1.4 |
+| `contains(s, sub)` | boolean | Whether s holds sub. It is written as the language's operator, s contains sub: contains is the operator's name, so the call contains(s, sub) is not read as a function and does not parse. | `"hello" contains "ell"` gives `true` | 2.0.0 |
+| `hasPrefix(s, prefix)` | boolean | Whether s starts with prefix. | `hasPrefix("hello", "he")` gives `true` | 2.0.0 |
+| `hasSuffix(s, suffix)` | boolean | Whether s ends with suffix. | `hasSuffix("a.mp3", ".mp3")` gives `true` | 2.0.0 |
+| `containsAny(s, subs…)` | boolean | Whether s holds any of them. They are given one by one, as lists, or both. | `containsAny("hello", "x", "ell")` gives `true` | 2.0.0 |
+| `hasPrefixAny(s, prefixes…)` | boolean | Whether s starts with any of them. They are given one by one, as lists, or both. | `hasPrefixAny("https://a", ["http://", "https://"])` gives `true` | 2.0.0 |
+| `hasSuffixAny(s, suffixes…)` | boolean | Whether s ends with any of them. They are given one by one, as lists, or both. | `hasSuffixAny("a.mp3", ".wav", ".mp3")` gives `true` | 2.0.0 |
+| `split(s, sep)` | list | The pieces of s between each sep. | `split("a,b,c", ",")` gives `["a","b","c"]` | 2.0.0 |
+| `join(list, sep)` | text | The items of list as one text with sep between them. An item that is not text is written as text; nil gives empty text. | `join(["a", "b"], ", ")` gives `"a, b"` | 2.0.0 |
+| `repeat(s, n)` | text | s n times. | `repeat("ab", 3)` gives `"ababab"` | 2.0.0 |
+| `indexOf(s, sub)` | integer | The position of the first sub in s, counted in bytes from 0, or -1. A letter with an accent is two bytes: indexOf("été", "t") is 2. | `indexOf("été", "t")` gives `2` | 2.0.0 |
+| `substr(s, start, end)` | text | The bytes of s from start up to, not including, end. Positions count bytes, not characters, so cutting inside a letter with an accent gives broken text. | `substr("hello", 1, 3)` gives `"el"` | 2.0.0 |
+| `truncate(s, n)` | text | At most the first n bytes of s. It counts bytes, not characters, and may cut a letter with an accent in two. | `truncate("hello", 2)` gives `"he"` | 2.0.0 |
+| `padLeft(s, n, pad?)` | text | s padded on the left to n characters with pad, a space when left out. | `padLeft("7", 3, "0")` gives `"007"` | 2.3.0 |
+| `padRight(s, n, pad?)` | text | s padded on the right to n characters with pad, a space when left out. | `padRight("ab", 4, ".")` gives `"ab.."` | 2.3.0 |
+| `indent(n, s)` | text | s with each line indented by n spaces. The count comes first. | `indent(2, "a")` gives `" a"` | 2.0.0 |
+| `quote(s)` | text | s in double quotes, escaped. | `quote("hi")` gives `"\"hi\""` | 2.0.0 |
+| `plural(n, singular, plural)` | text | singular when n is 1, plural otherwise. | `plural(2, "item", "items")` gives `"items"` | 2.0.0 |
+| `len(v)` | integer | The number of bytes of a text, or of items of a list or map. For text that is not the number of characters: len("été") is 5. nil gives 0. | `len("été")` gives `5` | 2.0.0 |
+| `emailLocal(email)` | text | The part of an email address before the @. | `emailLocal("ann@example.com")` gives `"ann"` | 2.0.0 |
+| `emailDomain(email)` | text | The part of an email address after the @. | `emailDomain("ann@example.com")` gives `"example.com"` | 2.0.0 |
+| `isEmail(s)` | boolean | Whether s is written as an email address. | `isEmail("ann@example.com")` gives `true` | 2.0.0 |
 <!-- reference:end functions:text -->
 
-- `title` gives all upper case (`title("hello world")` is `HELLO WORLD`). It is
-  kept for v1; for a title use `titleCase`.
-- `titleCase`: `o'neil mcDonald` gives `O'neil McDonald`. An apostrophe inside
-  a word does not start a new one, and letters after the first are left as
-  written.
-- `camelCase` puts the first word's first letter in upper case too:
-  `camelCase("hello world")` is `HelloWorld`.
-- `slugify`: `ß æ œ ø þ ł` and the like become `ss ae oe o th l`, and
-  `"Été 2026!"` gives `ete-2026`.
-- `len`, `substr`, `truncate` and `indexOf` count **bytes**, not characters:
-  `len("été")` is 5. `padLeft`, `padRight` and `chunkText` count characters.
-- `indent` takes the count first: `indent(2, text)`.
-- `replaceEach`: without `literal`, `find` is an RE2 pattern and `${1}` in
-  `replace` is its first group; with it, `find` is matched as plain text and
-  `replace` inserted as it is. `word` puts a word boundary where `find`
-  starts or ends with a letter, digit or `_`. Each rule is applied to the
-  result of the ones before it; a rule with an empty `find` is skipped, and a
-  pattern that is not valid fails the step.
+- `title` is kept for v1.
+- `slugify`: `ß æ œ ø þ ł` and the like become `ss ae oe o th l`.
+- `replaceEach` with a list of rules a publisher keeps in a setting, whose
+  keys `opts` names:
 
   ```yaml
   text: >-
@@ -89,12 +75,12 @@ notes under each table.
 RE2 syntax. No look-behind.
 
 <!-- reference:begin functions:regular-expressions -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `regexMatch(pattern, s)` | boolean | Whether s matches the pattern (RE2 syntax). The pattern comes first. | 2.0.0 |
-| `regexFind(pattern, s)` | text | The first match of the pattern in s, or empty text. | 2.0.0 |
-| `regexReplace(pattern, s, replacement)` | text | s with every match replaced; $1 is the first group and $$ a literal $. | 2.0.0 |
-| `regexQuote(s)` | text | s escaped so that it can be used inside a pattern. | 2.1.4 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `regexMatch(pattern, s)` | boolean | Whether s matches the pattern (RE2 syntax). The pattern comes first. | `regexMatch("^[0-9]+$", "2026")` gives `true` | 2.0.0 |
+| `regexFind(pattern, s)` | text | The first match of the pattern in s, or empty text. | `regexFind("[0-9]+", "order 42 of 7")` gives `"42"` | 2.0.0 |
+| `regexReplace(pattern, s, replacement)` | text | s with every match replaced; $1 is the first group and $$ a literal $. | `regexReplace("([a-z]+)@", "ann@example.com", "$1 at ")` gives `"ann at example.com"` | 2.0.0 |
+| `regexQuote(s)` | text | s escaped so that it can be used inside a pattern. | `regexQuote("a.b")` gives `"a\\.b"` | 2.1.4 |
 <!-- reference:end functions:regular-expressions -->
 
 Note the order: the pattern comes first.
@@ -102,22 +88,16 @@ Note the order: the pattern comes first.
 ## 8.3 HTML and long text
 
 <!-- reference:begin functions:html-and-long-text -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `htmlText(html, selectors…)` | text | The readable text of HTML, one paragraph per block, separated by blank lines. Scripts, styles and anything marked data-text="skip" are dropped, as are elements that match the CSS selectors given. | 2.1.4 |
-| `chunkText(text, max)` | list | text as a list of pieces, each at most max characters, split between paragraphs, then sentences, then words. | 2.1.4 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `htmlText(html, selectors…)` | text | The readable text of HTML, one paragraph per block, separated by blank lines. A heading and a list item end with a full stop, and a link is reduced to its text. Markup that is not content is always dropped (head, script, style, noscript, template, svg, canvas, form controls, iframe, object, embed), as is anything marked data-text="skip" and every element that matches a CSS selector given. The selectors may be given one by one or as one comma-separated text. | `htmlText("<h1>News</h1><p>Hello <a href=\"/x\">there</a></p>")` gives `"News.\n\nHello there"` | 2.1.4 |
+| `chunkText(text, max)` | list | text as a list of pieces, each at most max characters (characters, not bytes), split between paragraphs, then sentences, then words. Paragraphs that fit together are packed into one piece, joined by a blank line; a single word longer than max is cut. Each piece is trimmed, and empty text gives an empty list. | `chunkText("One two. Three four.", 12)` gives `["One two.","Three four."]` | 2.1.4 |
 <!-- reference:end functions:html-and-long-text -->
 
-- `htmlText` ends headings and list items with a full stop and reduces a link
-  to its text. What it always drops is markup that is not content: `head`,
-  `script`, `style`, `noscript`, `template`, `svg`, `canvas`, form controls,
-  `iframe`, `object` and `embed`. The selectors may be given as one
-  comma-separated string: `htmlText(body, "img, figure, table, pre, .no-audio")`.
-- `chunkText` packs paragraphs that fit together into one piece, joined by a
-  blank line, so there are as few pieces as the breaks allow; a single word
-  longer than `max` is cut. Each piece is trimmed, and empty text gives an
-  empty list. `max` counts characters, not bytes as `len` does: leave some
-  headroom under a vendor's limit if it may count differently.
+- `htmlText` with its selectors as one comma-separated string:
+  `htmlText(body, "img, figure, table, pre, .no-audio")`.
+- `chunkText`: leave some headroom under a vendor's limit if the vendor may
+  count differently (bytes, say).
 
 ## 8.4 Encoding
 
@@ -125,20 +105,20 @@ Binary never travels as raw text ([chapter 9](09-files-and-binary.md)). These
 are how it is carried.
 
 <!-- reference:begin functions:encoding -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `base64Encode(s)` | text | s in standard base64. | 2.0.0 |
-| `base64Decode(s)` | text | The text that standard base64 holds. | 2.0.0 |
-| `base64UrlEncode(s)` | text | s in URL-safe base64 with no padding, as a JWT segment is written. | 2.3.0 |
-| `base64UrlDecode(s)` | text | The text that URL-safe base64 holds, with or without padding. | 2.3.0 |
-| `hexEncode(s)` | text | s in lower-case hex. | 2.3.0 |
-| `hexDecode(s)` | text | The text that hex holds. | 2.3.0 |
-| `urlEncode(s)` | text | s escaped for a query string. | 2.0.0 |
-| `urlDecode(s)` | text | s with query-string escaping undone. | 2.0.0 |
-| `formEncode(map)` | text | A map as a=1&b=two with keys sorted and values escaped: an application/x-www-form-urlencoded body or a query string. A list value repeats its key; a nil value is written key=. | 2.3.0 |
-| `toJSON(v)` | text | v as JSON text. | 2.0.0 |
-| `fromJSON(s)` | any | The value the JSON text describes. | 2.0.0 |
-| `urlParse(url)` | map | The parts of an address: { scheme, host, path, query, fragment }. | 2.0.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `base64Encode(s)` | text | s in standard base64. | `base64Encode("hi")` gives `"aGk="` | 2.0.0 |
+| `base64Decode(s)` | text | The text that standard base64 holds. | `base64Decode("aGk=")` gives `"hi"` | 2.0.0 |
+| `base64UrlEncode(s)` | text | s in URL-safe base64 with no padding, as a JWT segment is written. | `base64UrlEncode("hi?")` gives `"aGk_"` | 2.3.0 |
+| `base64UrlDecode(s)` | text | The text that URL-safe base64 holds, with or without padding. | `base64UrlDecode("aGk_")` gives `"hi?"` | 2.3.0 |
+| `hexEncode(s)` | text | s in lower-case hex. | `hexEncode("hi")` gives `"6869"` | 2.3.0 |
+| `hexDecode(s)` | text | The text that hex holds. | `hexDecode("6869")` gives `"hi"` | 2.3.0 |
+| `urlEncode(s)` | text | s escaped for a query string. | `urlEncode("a b&c")` gives `"a+b%26c"` | 2.0.0 |
+| `urlDecode(s)` | text | s with query-string escaping undone. | `urlDecode("a+b%26c")` gives `"a b&c"` | 2.0.0 |
+| `formEncode(map)` | text | A map as a=1&b=two with keys sorted and values escaped: an application/x-www-form-urlencoded body or a query string. A list value repeats its key; a nil value is written key=. | `formEncode({"b": "two", "a": 1})` gives `"a=1&b=two"` | 2.3.0 |
+| `toJSON(v)` | text | v as JSON text. | `toJSON({"a": 1})` gives `"{\"a\":1}"` | 2.0.0 |
+| `fromJSON(s)` | any | The value the JSON text describes. | `fromJSON("{\"a\": [1, 2]}")` gives `{"a":[1,2]}` | 2.0.0 |
+| `urlParse(url)` | map | The parts of an address: { scheme, host, path, query, fragment }. | `urlParse("https://example.com/a?b=1#c")` gives `{"fragment":"c","host":"example.com","path":"/a","query":"b=1","scheme":"https"}` | 2.0.0 |
 <!-- reference:end functions:encoding -->
 
 ## 8.5 Hashing and signing
@@ -146,18 +126,17 @@ are how it is carried.
 Each returns lower-case hex unless an encoding is given.
 
 <!-- reference:begin functions:hashing-and-signing -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `sha256(s)` | text | The SHA-256 digest of s, as lower-case hex. | 2.1.4 |
-| `sha1(s)` | text | The SHA-1 digest of s, as lower-case hex. For vendors that require it, not for security. | 2.3.0 |
-| `sha512(s)` | text | The SHA-512 digest of s, as lower-case hex. | 2.3.0 |
-| `md5(s)` | text | The MD5 digest of s, as lower-case hex. For vendors that require it, not for security. | 2.3.0 |
-| `crc32(s)` | integer | The CRC-32 (IEEE) checksum of s as an integer. | 2.3.0 |
-| `hmac(algorithm, key, data, encoding?)` | text | The HMAC of data with sha1, sha256 or sha512, as hex, or as the encoding given: hex, base64 or base64url (no padding). | 2.3.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `sha256(s)` | text | The SHA-256 digest of s, as lower-case hex. | `sha256("abc")` gives `"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"` | 2.1.4 |
+| `sha1(s)` | text | The SHA-1 digest of s, as lower-case hex. For vendors that require it, not for security. | `sha1("abc")` gives `"a9993e364706816aba3e25717850c26c9cd0d89d"` | 2.3.0 |
+| `sha512(s)` | text | The SHA-512 digest of s, as lower-case hex. | `sha512("abc")` gives `"ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"` | 2.3.0 |
+| `md5(s)` | text | The MD5 digest of s, as lower-case hex. For vendors that require it, not for security. | `md5("abc")` gives `"900150983cd24fb0d6963f7d28e17f72"` | 2.3.0 |
+| `crc32(s)` | integer | The CRC-32 (IEEE) checksum of s as an integer. | `crc32("123456789")` gives `3421780262` | 2.3.0 |
+| `hmac(algorithm, key, data, encoding?)` | text | The HMAC of data with sha1, sha256 or sha512, as hex, or as the encoding given: hex, base64 or base64url (no padding). | `hmac("sha256", "Jefe", "what do ya want for nothing?")` gives `"5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"` | 2.3.0 |
 <!-- reference:end functions:hashing-and-signing -->
 
-`crc32("123456789")` is `3421780262`. `hmac` takes the encoding as an
-optional fourth argument:
+`hmac` with an encoding:
 
 ```yaml
 headers:
@@ -167,10 +146,10 @@ headers:
 ## 8.6 Compression
 
 <!-- reference:begin functions:compression -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `gzip(text)` | text | text gzipped, as base64. At most 1 MiB of text. | 2.3.0 |
-| `gunzip(base64)` | text | The text inside gzipped base64. At most 1 MiB of text comes out. | 2.3.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `gzip(text)` | text | text gzipped, as base64. At most 1 MiB of text. | `gunzip(gzip("hello"))` gives `"hello"` | 2.3.0 |
+| `gunzip(base64)` | text | The text inside gzipped base64. At most 1 MiB of text comes out. | `gunzip(gzip("hello"))` gives `"hello"` | 2.3.0 |
 <!-- reference:end functions:compression -->
 
 Both are limited to 1 MiB (1,048,576 bytes) of uncompressed text and fail
@@ -180,45 +159,43 @@ unpack into a huge one. Larger data goes through an asset.
 ## 8.7 Numbers
 
 <!-- reference:begin functions:numbers -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `add(a, b)` | number | a + b. | 2.0.0 |
-| `sub(a, b)` | number | a - b. | 2.0.0 |
-| `mul(a, b)` | number | a * b. | 2.0.0 |
-| `div(a, b)` | number | a / b. | 2.0.0 |
-| `mod(a, b)` | integer | The remainder of a / b, both integers. | 2.0.0 |
-| `max(a, b)` | number | The larger of the two. | 2.0.0 |
-| `min(a, b)` | number | The smaller of the two. | 2.0.0 |
-| `ceil(n)` | number | n rounded up to a whole number. | 2.0.0 |
-| `floor(n)` | number | n rounded down to a whole number. | 2.0.0 |
-| `abs(n)` | number | n without its sign. | 2.0.0 |
-| `round(n, places)` | number | n rounded to that many decimal places. | 2.0.0 |
-| `formatNumber(n, places)` | text | n as text with comma thousands separators and that many decimals: 1,234.50. A value that rounds to zero has no minus sign. | 2.3.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `add(a, b)` | number | a + b, as a number. The operator + does the same. | `add(2, 3)` gives `5` | 2.0.0 |
+| `sub(a, b)` | number | a - b, as a number. The operator - does the same. | `sub(5, 3)` gives `2` | 2.0.0 |
+| `mul(a, b)` | number | a * b, as a number. The operator * does the same. | `mul(4, 2.5)` gives `10` | 2.0.0 |
+| `div(a, b)` | number | a / b, as a number, with its fraction: div(7, 2) is 3.5. The operator / does the same. | `div(7, 2)` gives `3.5` | 2.0.0 |
+| `mod(a, b)` | integer | The remainder of a / b, both integers. The operator % does the same. | `mod(7, 3)` gives `1` | 2.0.0 |
+| `max(a, b)` | number | The larger of the two. | `max(3, 7)` gives `7` | 2.0.0 |
+| `min(a, b)` | number | The smaller of the two. | `min(3, 7)` gives `3` | 2.0.0 |
+| `ceil(n)` | number | n rounded up to a whole number. | `ceil(1.2)` gives `2` | 2.0.0 |
+| `floor(n)` | number | n rounded down to a whole number. | `floor(1.8)` gives `1` | 2.0.0 |
+| `abs(n)` | number | n without its sign. | `abs(-3)` gives `3` | 2.0.0 |
+| `round(n, places)` | number | n rounded to that many decimal places. | `round(3.14159, 2)` gives `3.14` | 2.0.0 |
+| `formatNumber(n, places)` | text | n as text with comma thousands separators and that many decimals: 1,234.50. A value that rounds to zero has no minus sign. | `formatNumber(1234.5, 2)` gives `"1,234.50"` | 2.3.0 |
 <!-- reference:end functions:numbers -->
-
-The operators `+ - * /` do what `add`, `sub`, `mul` and `div` do.
 
 ## 8.8 Lists and maps
 
 <!-- reference:begin functions:lists-and-maps -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `list(items…)` | list | A list of the arguments. | 2.0.0 |
-| `first(list)` | any | The first item, or nil for an empty list. | 2.0.0 |
-| `last(list)` | any | The last item, or nil for an empty list. | 2.0.0 |
-| `slice(list, start, end?)` | list | The items from start up to, not including, end; to the end of the list when end is left out. | 2.0.0 |
-| `uniq(list)` | list | The list with each value once, in the order first seen. | 2.0.0 |
-| `compact(list)` | list | The list without its empty values. | 2.0.0 |
-| `flatten(list)` | list | A list of lists as one list. | 2.0.0 |
-| `reverse(list)` | list | The list in the opposite order. | 2.0.0 |
-| `sortAlpha(list)` | list | The list as text, sorted alphabetically. | 2.0.0 |
-| `keys(map)` | list | The keys of a map. | 2.0.0 |
-| `values(map)` | list | The values of a map. | 2.0.0 |
-| `hasKey(map, key)` | boolean | Whether the map has that key. | 2.0.0 |
-| `dig(map, keys…)` | any | The value at that path of keys, or nil. | 2.0.0 |
-| `merge(a, others…)` | map | One map of them all. The first argument wins where keys repeat. | 2.0.0 |
-| `pick(map, keys…)` | map | The map with only those keys. The keys may also be given as one list. | 2.3.0 |
-| `omit(map, keys…)` | map | The map without those keys. The keys may also be given as one list. | 2.3.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `list(items…)` | list | A list of the arguments. | `list(1, 2)` gives `[1,2]` | 2.0.0 |
+| `first(list)` | any | The first item, or nil for an empty list. | `first([1, 2, 3])` gives `1` | 2.0.0 |
+| `last(list)` | any | The last item, or nil for an empty list. | `last([1, 2, 3])` gives `3` | 2.0.0 |
+| `slice(list, start, end?)` | list | The items from start up to, not including, end; to the end of the list when end is left out. | `slice([1, 2, 3, 4], 1, 3)` gives `[2,3]` | 2.0.0 |
+| `uniq(list)` | list | The list with each value once, in the order first seen. | `uniq(["a", "b", "a"])` gives `["a","b"]` | 2.0.0 |
+| `compact(list)` | list | The list without its empty values. | `compact(["a", "", "b"])` gives `["a","b"]` | 2.0.0 |
+| `flatten(list)` | list | A list of lists as one list. | `flatten([[1, 2], [3]])` gives `[1,2,3]` | 2.0.0 |
+| `reverse(list)` | list | The list in the opposite order. | `reverse([1, 2, 3])` gives `[3,2,1]` | 2.0.0 |
+| `sortAlpha(list)` | list | The list as text, sorted alphabetically. | `sortAlpha(["b", "a"])` gives `["a","b"]` | 2.0.0 |
+| `keys(map)` | list | The keys of a map. | `keys({"a": 1})` gives `["a"]` | 2.0.0 |
+| `values(map)` | list | The values of a map. | `values({"a": 1})` gives `[1]` | 2.0.0 |
+| `hasKey(map, key)` | boolean | Whether the map has that key. | `hasKey({"a": 1}, "a")` gives `true` | 2.0.0 |
+| `dig(map, keys…)` | any | The value at that path of keys, or nil. | `dig({"a": {"b": 2}}, "a", "b")` gives `2` | 2.0.0 |
+| `merge(a, others…)` | map | One map of them all. The first argument wins where keys repeat. | `merge({"a": 1}, {"a": 2, "b": 3})` gives `{"a":1,"b":3}` | 2.0.0 |
+| `pick(map, keys…)` | map | The map with only those keys. The keys may also be given as one list. | `pick({"a": 1, "b": 2}, "a")` gives `{"a":1}` | 2.3.0 |
+| `omit(map, keys…)` | map | The map without those keys. The keys may also be given as one list. | `omit({"a": 1, "b": 2}, "a")` gives `{"b":2}` | 2.3.0 |
 <!-- reference:end functions:lists-and-maps -->
 
 The expression language's own functions that Passport does not replace are
@@ -226,29 +203,29 @@ there as well. Those that walk a list (`map`, `filter`, `find`, `all`, `any`,
 `none`, `one`, `count`, `sortBy`, `groupBy`, `reduce`, …) take `#` as the
 element:
 
-<!-- reference:begin language-functions -->
+<!-- reference:begin language-function-names -->
 `all`, `any`, `bitand`, `bitnand`, `bitnot`, `bitor`, `bitshl`, `bitshr`, `bitushr`, `bitxor`, `concat`, `count`, `filter`, `find`, `findIndex`, `findLast`, `findLastIndex`, `float`, `fromBase64`, `fromPairs`, `get`, `groupBy`, `int`, `lastIndexOf`, `map`, `mean`, `median`, `none`, `one`, `reduce`, `sort`, `sortBy`, `splitAfter`, `string`, `sum`, `take`, `timezone`, `toBase64`, `toPairs`, `type`
-<!-- reference:end language-functions -->
+<!-- reference:end language-function-names -->
+
+What each of them takes and returns, with an example, is in
+[reference/BUILTINS.md](../reference/BUILTINS.md#expression-functions).
 
 ## 8.9 Types and fallbacks
 
 <!-- reference:begin functions:types-and-fallbacks -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `toString(v)` | text | v as text. | 2.0.0 |
-| `toInt(v)` | integer | v as an integer; 0 when it is not one. | 2.0.0 |
-| `toFloat(v)` | number | v as a number; 0 when it is not one. | 2.0.0 |
-| `toBool(v)` | boolean | v as a boolean; false when it is not one. | 2.0.0 |
-| `empty(v)` | boolean | True for nil, empty text, 0, false, and an empty list or map. | 2.0.0 |
-| `default(fallback, v)` | any | v, or fallback when v is empty. The fallback comes first. | 2.0.0 |
-| `coalesce(values…)` | any | The first that is not empty, or nil when all are. An empty list or map counts as empty. | 2.0.0 |
-| `ternary(cond, ifTrue, ifFalse)` | any | ifTrue when cond holds, ifFalse otherwise. The language's cond ? a : b does the same. | 2.0.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `toString(v)` | text | v as text. | `toString(42)` gives `"42"` | 2.0.0 |
+| `toInt(v)` | integer | v as an integer; 0 when it is not one. | `toInt("42")` gives `42` | 2.0.0 |
+| `toFloat(v)` | number | v as a number; 0 when it is not one. | `toFloat("1.5")` gives `1.5` | 2.0.0 |
+| `toBool(v)` | boolean | v as a boolean; false when it is not one. | `toBool("true")` gives `true` | 2.0.0 |
+| `empty(v)` | boolean | True for nil, empty text, 0, false, and an empty list or map. | `empty("")` gives `true` | 2.0.0 |
+| `default(fallback, v)` | any | v, or fallback when v is empty. The fallback is the first argument, the value the second: default("Guest", user.profile.name). | `default("Guest", "")` gives `"Guest"` | 2.0.0 |
+| `coalesce(values…)` | any | The first that is not empty, or nil when all are. An empty list or map counts as empty, so coalesce(x, list()) is nil when x is missing: for a list, or an empty one, write x ?? []. | `coalesce("", nil, "x")` gives `"x"` | 2.0.0 |
+| `ternary(cond, ifTrue, ifFalse)` | any | ifTrue when cond holds, ifFalse otherwise. The language's cond ? a : b does the same. | `ternary(true, "a", "b")` gives `"a"` | 2.0.0 |
 <!-- reference:end functions:types-and-fallbacks -->
 
-- `default` takes the **fallback first**: `default("Guest", user.profile.name)`.
-- `coalesce` counts an empty list or map as empty, so `coalesce(x, list())`
-  is nil when `x` is missing: for "a list, or an empty one" write `x ?? []`.
-- Prefer `cond ? a : b` to `ternary`.
+Prefer `cond ? a : b` to `ternary`.
 
 ## 8.10 Dates and time
 
@@ -256,25 +233,25 @@ Times are RFC 3339 text (`2026-11-14T15:04:05Z`). Layouts are Go layouts:
 the reference time `2006-01-02 15:04:05` written the way you want it.
 
 <!-- reference:begin functions:dates-and-time -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `now()` | text | The current time, as RFC 3339 text in UTC. | 2.0.0 |
-| `unixEpoch()` | integer | The current time as seconds since 1970. | 2.0.0 |
-| `date(layout, value)` | text | value (a time, RFC 3339 text or Unix seconds) written in a Go layout. A missing value gives empty text. | 2.0.0 |
-| `dateParse(layout, text)` | text | The RFC 3339 time (UTC) that text written in layout means. Empty text gives empty text; text that does not fit the layout is an error. | 2.3.0 |
-| `dateAdd(value, duration)` | text | value moved by a duration such as 24h or -90m, as RFC 3339 text. An empty value gives empty text. | 2.3.0 |
-| `dateDiff(a, b)` | integer | Whole seconds from a to b, negative when b is earlier. An error when either is not a time. | 2.3.0 |
-| `duration(s)` | text | A duration in its normal form: 90m to 1h30m0s. | 2.0.0 |
-| `fromNow(value)` | text | How far value is from now, in words: in 3 days, 2 hours ago. A missing value gives empty text. | 2.0.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `now()` | text | The current time, as RFC 3339 text in UTC. | `now()` gives a value such as `"2026-11-14T15:04:05Z"` | 2.0.0 |
+| `unixEpoch()` | integer | The current time as seconds since 1970. | `unixEpoch()` gives a value such as `1794668645` | 2.0.0 |
+| `date(layout, value)` | text | value (a time, RFC 3339 text or Unix seconds) written in a Go layout. A missing value gives empty text. | `date("2006-01-02", "2026-11-14T15:04:05Z")` gives `"2026-11-14"` | 2.0.0 |
+| `dateParse(layout, text)` | text | The RFC 3339 time (UTC) that text written in layout means. Empty text gives empty text; text that does not fit the layout is an error. | `dateParse("2006-01-02", "2026-11-14")` gives `"2026-11-14T00:00:00Z"` | 2.3.0 |
+| `dateAdd(value, duration)` | text | value moved by a duration such as 24h or -90m, as RFC 3339 text. An empty value gives empty text. | `dateAdd("2026-11-14T00:00:00Z", "24h")` gives `"2026-11-15T00:00:00Z"` | 2.3.0 |
+| `dateDiff(a, b)` | integer | Whole seconds from a to b, negative when b is earlier. An error when either is not a time. | `dateDiff("2026-11-14T00:00:00Z", "2026-11-14T01:00:00Z")` gives `3600` | 2.3.0 |
+| `duration(s)` | text | A duration in its normal form: 90m to 1h30m0s. | `duration("90m")` gives `"1h30m0s"` | 2.0.0 |
+| `fromNow(value)` | text | How far value is from now, in words: in 3 days, 2 hours ago. A missing value gives empty text. | `fromNow(dateAdd(now(), "72h"))` gives a value such as `"in 3 days"` | 2.0.0 |
 <!-- reference:end functions:dates-and-time -->
 
 ## 8.11 Identifiers
 
 <!-- reference:begin functions:identifiers -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `uuid()` | text | A new random UUID. On a dry run: 00000000-0000-4000-8000-000000000000. | 2.3.0 |
-| `randomString(n)` | text | n random letters and digits, n up to 1,024. On a dry run: the letter a, n times. | 2.3.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `uuid()` | text | A new random UUID. On a dry run: 00000000-0000-4000-8000-000000000000. | `uuid()` gives a value such as `"0b0e9c5e-7f0c-4d3a-9a51-3f2a6a1c9e77"` | 2.3.0 |
+| `randomString(n)` | text | n random letters and digits, n up to 1,024. On a dry run: the letter a, n times. | `randomString(8)` gives a value such as `"k3VbQ9xZ"` | 2.3.0 |
 <!-- reference:end functions:identifiers -->
 
 Both give a different value each time. On a dry run they are fixed
@@ -286,12 +263,12 @@ These work on the run's current member, `user` ([7.6](07-steps-and-expressions.m
 load one with `user.get` first.
 
 <!-- reference:begin functions:the-site-and-its-members -->
-| Function | Returns | Description | Since |
-|---|---|---|---|
-| `publicURL(paths…)` | text | An address on the publisher's site, with the paths joined onto it. Needs a run: it is not there where a form is worked out. | 2.0.0 |
-| `tokenURL(url)` | text | That address with a signed token that lets the run's current member in without signing in. Needs a run: it is not there where a form is worked out. | 2.0.0 |
-| `isSubscriber()` | boolean | Whether the run's current member has an active paid subscription. Needs a run: it is not there where a form is worked out. | 2.0.0 |
-| `hasAudience(name)` | boolean | Whether the run's current member is in the audience with that name. Needs a run: it is not there where a form is worked out. | 2.0.0 |
+| Function | Returns | Description | Example | Since |
+|---|---|---|---|---|
+| `publicURL(paths…)` | text | An address on the publisher's site, with the paths joined onto it. Needs a run: it is not there where a form is worked out. | `publicURL("/verify")` gives a value such as `"https://news.example.com/verify"` | 2.0.0 |
+| `tokenURL(url)` | text | That address with a signed token that lets the run's current member in without signing in. Needs a run: it is not there where a form is worked out. | `tokenURL(publicURL("/confirm"))` gives a value such as `"https://news.example.com/confirm?token=..."` | 2.0.0 |
+| `isSubscriber()` | boolean | Whether the run's current member has an active paid subscription. Needs a run: it is not there where a form is worked out. | `isSubscriber()` gives a value such as `true` | 2.0.0 |
+| `hasAudience(name)` | boolean | Whether the run's current member is in the audience with that name. Needs a run: it is not there where a form is worked out. | `hasAudience("Paid")` gives a value such as `true` | 2.0.0 |
 <!-- reference:end functions:the-site-and-its-members -->
 
 `publicURL("/verify")` is an address on the publisher's site;

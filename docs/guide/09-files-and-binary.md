@@ -408,17 +408,15 @@ fetch of the audio is answered as a missing file.
 
 ## 9.8 Limits
 
-| | Limit |
-|---|---|
-| `response_asset`, `asset.concat` | 200 MiB by default (`max_size`); `asset.concat` up to 500 parts |
-| A response returned in `body` | 10 MiB by default (`max_response_size`) |
-| A virtual asset | 64 variants, one per audience |
-| `gzip` / `gunzip` | 1 MiB of text |
-| A webhook's multipart field | 1 MiB |
-
-Every number the engine holds a run and a package to, files or not. This
-table is generated from the engine (`passport-plugin reference`; do not edit
-it by hand):
+Every number the engine holds a run and a package to, files or not. The
+rows that matter for files are `http_response_size` (a response returned in
+`body`), `http_response_asset_size` (`response_asset`), the three
+`asset_concat_…` rows, `asset_audiences`, `virtual_asset_variants` (one
+variant per audience), `gzip_size`, `webhook_multipart_field_size` and
+`package_asset_size`. The two response sizes and `asset_concat_size` are
+defaults a step may change (`max_response_size`, `max_size`). This table is
+generated from the engine (`passport-plugin reference`; do not edit it by
+hand):
 
 <!-- reference:begin limits -->
 | Limit | Value | What it bounds |
@@ -432,6 +430,16 @@ it by hand):
 | `http_response_size` | 10 MiB | The largest response an http step reads into outputs.body when it gives no max_response_size. |
 | `http_response_asset_size` | 200 MiB | The largest response an http step stores with response_asset when it gives no max_size. |
 | `asset_concat_parts` | 500 | The most assets one asset.concat joins. |
+| `asset_concat_size` | 200 MiB | The largest file asset.concat writes when it gives no max_size. |
+| `asset_concat_lead_in` | 10 seconds | The longest silence asset.concat puts before an MP3 with lead_in. |
+| `asset_audiences` | 64 | The most audiences one protected asset names. |
+| `virtual_asset_variants` | 64 | The most variants one virtual asset has (asset.virtual). |
+| `sendmail_audience_recipients` | 25 | The most members a sendmail step sends to when it names an audience (to_audience, audience_id). |
+| `sleep_duration` | 90 seconds | The longest a sleep step pauses; a longer duration is cut to it. |
+| `wait_duration` | 90 days | The furthest ahead a wait step may resume the run; a longer wait fails the step. |
+| `schedule_interval` | 1 minute | The shortest interval a schedule trigger may ask for. |
+| `run_retention` | 180 days | The longest an automation's retention may keep its run history. |
+| `package_size` | 1 MiB | The largest package a site installs, all its files together. |
 | `audience_view_members` | 10000 | The most members audience.view returns when it gives no max. |
 | `gzip_size` | 1 MiB | The most uncompressed text gzip takes and gunzip gives back. |
 | `random_string_length` | 1024 characters | The longest text randomString makes. |
