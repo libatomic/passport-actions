@@ -1,0 +1,152 @@
+name: narration.create
+version: 1.0.0
+title: Read a text to one protected MP3
+description: Reads a prepared text in a voice, one ElevenLabs request per piece, and joins the audio into one MP3 that only one audience's members and staff can fetch. Billed.
+help: |
+  Takes the pieces `narration.text` returns. Each piece is read with
+  `speech.create` and stored as `<file name>-part-<n>.mp3`; the pieces (even
+  one) are then joined into the MP3, after half a second of silence, and
+  deleted. The pieces and the MP3 are protected assets for the audience.
+
+  With an MP3 of that file name already there, it is replaced and keeps its
+  id and link. It is only replaced once every piece has been read, so a
+  failure partway leaves the last MP3 as it was.
+
+  Every request that reaches ElevenLabs is billed.
+category: ElevenLabs
+inputs:
+  type: object
+  required: [chunks, voice_id, model_id, filename, audience_id]
+  properties:
+    chunks:
+      type: array
+      title: Pieces
+      description: The text to read, in pieces of at most one request each, in order.
+      minItems: 1
+      maxItems: 100
+      items: { type: string, minLength: 1 }
+    voice_id:
+      type: string
+      title: Voice
+      description: An ElevenLabs voice id.
+      minLength: 1
+    model_id:
+      type: string
+      title: Model
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
+    filename:
+      type: string
+      title: Asset file name
+      description: Name it after what does not change, so a later run replaces it.
+      pattern: "\\.mp3$"
+      ui: { placeholder: narration-article-audience.mp3 }
+    audience_id:
+      type: string
+      format: passport.audience
+      title: Audience
+      description: The MP3 is a protected asset for this audience, its members and staff only.
+    description:
+      type: string
+      title: Asset description
+    narration:
+      type: object
+      title: Narration details
+      description: Stored on the asset as metadata.narration, to tell what it was made from. The audience and the number of requests are added.
+      properties:
+        article_id: { type: string, title: Article }
+        voice_id:   { type: string, title: Voice }
+        model_id:   { type: string, title: Model }
+        text_hash:  { type: string, title: Hash of the spoken text }
+outputs:
+  type: object
+  required: [asset_id]
+  properties:
+    asset_id:
+      type: string
+      format: passport.asset
+      title: Asset
+      description: The MP3, a protected asset.
+    size:
+      type: integer
+      title: Size
+      description: Bytes.
+    requests:
+      type: integer
+      title: Requests
+      description: How many ElevenLabs requests the text was read in.
+    characters_billed:
+      type: integer
+      title: Characters billed
+      description: What ElevenLabs charged, summed across the requests. 0 when it did not say.
+returns:
+  asset_id: "${{ steps.join.outputs.asset_id }}"
+  size: "${{ toInt(steps.join.outputs.size ?? 0) }}"
+  requests: "${{ len(inputs.chunks) }}"
+  characters_billed: "${{ toInt(vars.billed ?? 0) }}"
+steps:
+  # One row per piece. previous and next give the voice the text around a
+  # piece so the joins sound continuous; nil for the first and last piece (a
+  # nil `with:` value is an absent input). speech.create leaves them out for
+  # eleven_v3 and eleven_v4, which do not take them.
+  - id: plan
+    action: set-output
+    with:
+      parts: >-
+        ${{ let chunks = inputs.chunks; let n = len(chunks);
+        let base = trimSuffix(inputs.filename, ".mp3");
+        map(chunks, ({"text": #, "index": #index + 1,
+        "filename": base + "-part-" + toString(#index + 1) + ".mp3",
+        "previous": #index > 0 ? chunks[#index - 1] : nil,
+        "next": #index < n - 1 ? chunks[#index + 1] : nil})) }}
+      narration: >-
+        ${{ merge({"audience_id": toString(inputs.audience_id), "requests": len(inputs.chunks)},
+        inputs.narration ?? {}) }}
+
+  # Each piece's MP3 goes straight into the asset store, never into the run
+  # output. A piece is protected like the MP3 it becomes, so it is no easier
+  # to fetch while the run is going.
+  - id: generate
+    foreach: "${{ steps.plan.outputs.parts }}"
+    as: part
+    max: 100
+    steps:
+      - id: tts
+        action: elevenlabs/speech.create
+        with:
+          voice_id: "${{ inputs.voice_id }}"
+          model_id: "${{ inputs.model_id }}"
+          text: "${{ loop.part.text }}"
+          previous_text: "${{ loop.part.previous }}"
+          next_text: "${{ loop.part.next }}"
+          filename: "${{ loop.part.filename }}"
+          overwrite: true
+          audiences: ["${{ inputs.audience_id }}"]
+          description: >-
+            ${{ (inputs.description ?? "Narration")
+            + (len(inputs.chunks) > 1 ? ", part " + toString(loop.part.index) + " of " + toString(len(inputs.chunks)) : "") }}
+          narration: "${{ steps.plan.outputs.narration }}"
+      # what ElevenLabs billed, summed across the requests
+      - id: tally
+        action: vars.set
+        with:
+          billed: >-
+            ${{ toInt(vars.billed ?? 0) + steps.tts.outputs.characters_billed }}
+
+  # Join the pieces (even one) into the MP3, after half a second of silence
+  # so a player or headset that takes a moment to start does not clip the
+  # first words (the models drop a pause tag at the very start), and delete
+  # the pieces. Protected: audiences, and public left off.
+  - id: join
+    action: asset.concat
+    with:
+      filenames: >-
+        ${{ map(steps.plan.outputs.parts, .filename) }}
+      filename: "${{ inputs.filename }}"
+      lead_in: 0.5
+      overwrite: true
+      delete_sources: true
+      mime_type: audio/mpeg
+      audiences: ["${{ inputs.audience_id }}"]
+      description: "${{ inputs.description ?? 'Narration' }}"
+      metadata:
+        narration: "${{ steps.plan.outputs.narration }}"

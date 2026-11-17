@@ -7,12 +7,16 @@ dashboard.
 ## What you get
 
 - **Create Audio Narration**, on an article's **Extensions** menu. Running it
-  reads the article aloud as one audience sees it and saves the result as a
-  private MP3 in the site's assets. Restricted sections the audience cannot
-  access are replaced by a short spoken note.
+  reads the article aloud once for each audience you choose, as that
+  audience sees it: restricted sections the audience cannot access are
+  replaced by a short spoken note.
+- **One narration asset that gives each member their version.** Each
+  audience's MP3 is protected: only that audience's members (and staff) can
+  fetch it. The MP3s are filed as the versions of a single narration, with
+  one id and one address. Whoever plays it gets the MP3 for their audience.
 - **A narration editor** in its form: the article's body as the paragraphs
   that will be read, each editable or switched off; restricted sections
-  marked as read or not read for the chosen audience; "Spoken text" to see
+  marked as read or not read for the "Preview as" audience; "Spoken text" to see
   exactly what will be read; a play button to hear a paragraph in the voice;
   right-click a word to set its pronunciation; a list of the voice tags the
   model understands.
@@ -46,39 +50,78 @@ Narration is not a channel. It makes an asset; a channel then publishes it
 ## Creating a narration
 
 1. Open the article and choose **Extensions, Create Audio Narration**.
-2. Pick the **Audience** the narration is for, and the **Voice** if there is
-   a menu.
+2. Under **Make audio for**, pick every audience that should get its own
+   version, and the **Voice** if there is a menu. **Preview as** picks the
+   one audience the editor marks restricted sections for and "Spoken text"
+   is shown for; left empty, "Spoken text" uses the first audience chosen.
 3. Under **What is read**, change a paragraph's wording, switch paragraphs
    off, give a restricted section its own "Read instead" line, play a
    paragraph, or open **Spoken text**.
 4. Run it. The page shows the run's progress and then the narration as a
    player. The article's page keeps a list of the narrations made for it.
 
-**One narration per audience.** Run it once for each audience that should
-get its own version. Each audience keeps its own MP3.
+**Who hears which version.**
 
-**Running it again** for the same article and audience replaces that MP3 in
-place: it keeps its id and link, so whatever already uses it plays the new
-audio. The form opens with what was read last time; **Start from the
-record** goes back to the article's current body. A run always reads again
-and is always billed, even when nothing changed.
+- A member of one of the audiences gets that audience's version.
+- A member of several gets the version of the best-ranked one, in the order
+  the site's audiences are ranked. A version read for an audience includes
+  what the audiences ranked below it may see, so the better version is never
+  missing anything the lower one has. An unranked audience is read as itself
+  alone.
+- A member in none of the audiences gets no audio: the narration answers
+  them as a file that does not exist. If everyone should hear something,
+  include your widest audience under **Make audio for**.
+- Staff hear the best-ranked audience's version.
 
-A run fails, with the reason shown, when there is nothing to read for the
-audience or the text is longer than "Longest article to read".
+**Running it again** for the same article reads every chosen audience again
+and replaces their MP3s. The narration keeps its id and link, so whatever
+already uses it plays the new audio. The form opens with what was read last
+time; **Start from the record** goes back to the article's current body. A
+run always reads again and is always billed, even when nothing changed.
 
-The MP3 is named `narration-<article id>-<audience id>.mp3`. The name has
-nothing in it that can change, which is what lets a later run replace it.
-Its description is "Narration of" and the article's title.
+**Leaving an audience out of a later run** takes its version out of the
+narration: its members no longer get audio from it. That audience's MP3 is
+not deleted. It stays under Assets as a protected file, for that audience
+only, until you delete it there.
+
+A run fails, with the reason shown, when for one of the audiences there is
+nothing to read or the text is longer than "Longest article to read". The
+reason names the audience. The check is made for every audience before
+anything is read, so such a run sends nothing to ElevenLabs and is not
+billed. A run that fails later (ElevenLabs refuses a request, say) leaves
+the narration and the versions it had not reached as they were.
+
+Files:
+
+| File | Name |
+|---|---|
+| The narration | `narration-<article id>.mp3` |
+| Each audience's MP3 | `narration-<article id>-<audience id>.mp3` |
+
+The names have nothing in them that can change, which is what lets a later
+run replace them. The narration's description is "Narration of" and the
+article's title; each MP3's adds the audience's name.
 
 ## Publishing a narration
 
-For now the publisher does this by hand: create a podcast distribution for
-the article and its audience and pick the narration's asset as its audio.
-The asset is private, and there is one per audience: pick the one made for
-the distribution's audience.
+Create a podcast distribution for the article and pick the narration (the
+asset named `narration-<article id>.mp3`, not one of the per-audience MP3s)
+as its audio. Every reader's feed carries the same address for the episode,
+and each reader's podcast app is given the MP3 for their audience when it
+fetches the audio. One distribution serves every audience the narration was
+made for; a reader in none of them sees the episode and cannot fetch its
+audio.
+
+A feed states an episode's size and duration once, from one version, chosen
+when the episode is written: for a distribution sent to an audience, that
+audience's version. A reader who gets another version (they are also in a
+better-ranked audience) sees that stated duration and hears a file of a
+different length. Podcast apps treat both numbers as hints.
 
 Nothing publishes or withdraws a narration automatically, and deleting an
-article does not delete its narrations: remove them under Assets.
+article does not delete its narration or the MP3s: remove them under
+Assets, the narration first (an MP3 cannot be deleted while it is one of a
+narration's versions).
 
 ## Settings
 
@@ -88,7 +131,7 @@ article does not delete its narrations: remove them under Assets.
 | | Default voice name | What the Voice menu calls the default voice |
 | | Other voices | Voices the form offers instead, each chosen from your account's voices and given a name. With none, the form has no Voice menu |
 | | Model | Quality, cost and which voice tags work. Each request carries at most 40,000 characters on Flash v2.5 and Turbo v2.5, 10,000 on Multilingual v2 and v4, 5,000 on v3; a longer article is read in several requests and joined |
-| | Longest article to read | A run fails above this many characters. 0 reads any length |
+| | Longest article to read | A run fails, before anything is read, when the text for any one audience is longer than this many characters. 0 reads any length |
 | What is read | Read around the article | A template around the text from the form. `{{ .script }}` is where that text goes. It is not shown in the editor; "Spoken text" includes it |
 | | Spoken note for restricted sections | Read once in place of sections the audience cannot access. Empty skips them silently |
 | | Page parts to skip | CSS selectors that are not read |
@@ -99,11 +142,11 @@ article does not delete its narrations: remove them under Assets.
 
 | Request | Result |
 |---|---|
-| Run | Renders the form's text for the audience, generates the MP3 (in several requests for a long article, joined), saves it as a private asset and hands back the asset, its file name, the characters read and billed, and the number of requests |
-| Spoken text (preview) | Returns the text that would be read, its length and the limit. Changes nothing; not billed |
+| Run | For each audience chosen: renders the form's text as that audience, generates the MP3 (in several requests for a long article, joined) and saves it as a protected asset. Then files the MP3s as the versions of one narration. Hands back the narration, its file name, what was read and billed for each audience, and the totals |
+| Spoken text (preview) | Returns the text that would be read for the "Preview as" audience (or the first one chosen), its length and the limit. Changes nothing; not billed |
 | A paragraph's play button (preview) | Reads that paragraph, at most 2,000 characters, and returns the audio. Saves nothing; billed |
 
-The asset's metadata (`metadata.narration`) records the article, audience,
+Each MP3's metadata (`metadata.narration`) records the article, audience,
 voice, model, number of requests and a hash of the spoken text.
 
 ## Voice tags
@@ -124,12 +167,14 @@ out. Tags are suggestions; not every voice responds to every tag.
 |---|---|
 | `plugin.yaml` | Manifest; the shared API key |
 | `automations/narrate.yaml` | The Create Audio Narration extension: settings, the form, the steps |
+| `actions/narration.text.yaml` | The text a voice reads for one audience: render, pronunciations, cleanup, voice tags, pieces |
+| `actions/narration.create.yaml` | One audience's MP3: every piece read and joined, as a protected asset |
 | `actions/speech.create.yaml` | One text-to-speech request, stored as an MP3 asset |
 | `actions/speech.sample.yaml` | A short sample returned as base64, for previews |
 | `actions/voices.list.yaml` | The account's voices |
 | `actions/usage.get.yaml` | Plan and characters used |
 | `automations/list-voices.yaml` | The List ElevenLabs voices tool (under Tools; never added) |
 | `automations/ping.yaml` | Test connection |
-| `tests/narrate.yaml` | Dry-run cases |
+| `tests/narrate.yaml`, `tests/narration.text.yaml`, `tests/narration.create.yaml` | Dry-run cases |
 
 Converted from v1; see [MIGRATION.md](MIGRATION.md).

@@ -1,0 +1,31 @@
+# Test cases for actions/narration.create.yaml. Dry runs: the ElevenLabs
+# request inside speech.create (http.post) and asset.concat are sampled.
+# Never put a real API key here.
+cases:
+  - name: Two pieces are read and joined into one MP3
+    secrets: { api_key: test }
+    inputs:
+      chunks: ["The first piece.", "The second piece."]
+      voice_id: JBFqnCBsd6RMkjVDRZzb
+      model_id: eleven_flash_v2_5
+      filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+      audience_id: Au7kep6QbWZm8q5XEjgT2
+      description: Narration of Fishing the Ozarks for Paid
+      narration:
+        article_id: Ar3oep6QbWZm8q5XEjgS5
+        voice_id: JBFqnCBsd6RMkjVDRZzb
+        model_id: eleven_flash_v2_5
+    samples:
+      actions:
+        # speech.create's request, one per piece
+        http.post:
+          - { status: 200, ok: true, headers: { Character-Cost: "16" }, asset_id: As1aep6QbWZm8q5XEjgP1, size: 20100 }
+          - { status: 200, ok: true, headers: { Character-Cost: "17" }, asset_id: As1bep6QbWZm8q5XEjgP2, size: 21100 }
+        asset.concat: { asset_id: As2bep6QbWZm8q5XEjgN7, size: 45296, parts: 2, deleted: [As1aep6QbWZm8q5XEjgP1, As1bep6QbWZm8q5XEjgP2] }
+    expect:
+      status: success
+      outputs:
+        asset_id: As2bep6QbWZm8q5XEjgN7
+        size: 45296
+        requests: 2
+        characters_billed: 33

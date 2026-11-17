@@ -430,6 +430,19 @@ Restricted sections then resolve as they would for a member of that
 audience, a replacement line is kept where a section is not read, and what
 was switched off is dropped by `htmlText`.
 
+"As an audience" means that audience **and every audience ranked below it**
+in the site's audience rank order, so what a lower tier may read is in what
+a higher tier gets. Unranked audiences are below every ranked one. An
+unranked audience has nothing below it and renders as itself alone, and an
+audience ranked above is never included. With Founding, Paid and Free ranked
+1, 2 and 3, a render as Paid shows the sections for Paid and for Free, and
+not the one for Founding. On a site that has ranked nothing, a render as an
+audience is that audience only.
+
+To make one result per audience and hand members a single file, render once
+for each audience and file the results as the variants of a virtual asset
+([9.7](09-files-and-binary.md#97-protected-and-virtual-assets)).
+
 **What it hands back.** Declare `outputs` and `returns`. The admin shows the
 result when the run ends, each output by its `title` and drawn by its
 `format`: a `passport.asset` as a player or a download link, another

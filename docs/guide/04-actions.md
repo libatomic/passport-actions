@@ -34,7 +34,7 @@ Complete inputs and outputs for each are in
 |---|---|---|
 | `control` | Shapes the run; touches nothing | `set-output`, `vars.set`, `log`, `sleep`, `wait`, `transmute`, `workflow.exit`, `workflow.fail` |
 | `read` | Reads Passport data | `user.get`, `plan.get`, `option.get`, `subscription.get`, `credit.get`, `distribution.get`, `distribution.render`, `asset.get`, `application.get`, `article.get`, `entitlement.get`, `job.get`, `audience.get`, `audience.view`, `template.render` |
-| `write` | Creates or changes Passport data | `user.create`, `user.update`, `user.audienceRefresh`, `user.feed.invalidate`, `instance.cache.flush`, `feed.item.create`, `credit.invite.create`, `distribution.create`, `distribution.update`, `asset.create`, `asset.update`, `asset.concat`, `entitlement.create`, `entitlement.update`, `event.emit`, `workflow.run`, `job.create` |
+| `write` | Creates or changes Passport data | `user.create`, `user.update`, `user.audienceRefresh`, `user.feed.invalidate`, `instance.cache.flush`, `feed.item.create`, `credit.invite.create`, `distribution.create`, `distribution.update`, `asset.create`, `asset.update`, `asset.concat`, `asset.virtual`, `entitlement.create`, `entitlement.update`, `event.emit`, `workflow.run`, `job.create` |
 | `notify` | Sends a message to a person | `sendmail`, `sendsms` |
 | `external` | Calls another system | `http.get`, `http.post`, `http.put`, `http.patch`, `http.delete` |
 | `destructive` | Removes Passport data | `entitlement.delete`, `asset.delete` |
@@ -60,7 +60,8 @@ The ones you will use most:
 | Save a file a vendor returns | `http.*` with `response_asset` | See [chapter 9](09-files-and-binary.md) |
 | Look up the member an event is about | `user.get` | |
 | Read the distribution being published | `distribution.get` | |
-| Render the body for a channel | `distribution.render` | `as_audience: true` renders once as a member of the distribution's audience |
+| Render the body for a channel | `distribution.render` | `as_audience: true` renders once as a member of the distribution's audience and of every audience ranked below it |
+| Keep a file for some audiences only, or one file per audience | `audiences` on the step that creates the asset; `asset.virtual` | See [9.7](09-files-and-binary.md#97-protected-and-virtual-assets) |
 | Record what was published | `distribution.update` | Only `context`, and it **replaces** the map: merge the old keys back in |
 | Stop early, successfully | `workflow.exit` | |
 | Stop as failed, with a reason the publisher sees | `workflow.fail` | Not caught by `on_error` or `continue-on-error` |

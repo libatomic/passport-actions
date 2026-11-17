@@ -1,0 +1,230 @@
+name: narration.text
+version: 1.0.0
+title: Prepare the text to read
+description: Turns an article's HTML into the text a voice reads, as one audience gets it, in pieces of one request each. Reads only; nothing is sent to ElevenLabs.
+help: |
+  Give `body` (HTML with its template tags) to have it rendered as a member
+  of `audience_id` and of every audience ranked below it, with the article
+  as `.article`. Or give `sample`, plain text that is read as it is: the
+  body is then not rendered.
+
+  Either way the text then goes through the pronunciations, the built-in
+  cleanup of numbers and symbols, and the voice tags for the model, and is
+  cut into pieces of at most one request each, between paragraphs, then
+  sentences.
+
+  A fallback paragraph (`data-narration="fallback"`) that the render leaves
+  in more than once is read once.
+category: ElevenLabs
+inputs:
+  type: object
+  required: [model_id]
+  properties:
+    body:
+      type: string
+      format: html
+      title: Body
+      description: The HTML to read, with its template tags. Rendered for the audience, then turned into text.
+    sample:
+      type: string
+      title: Sample
+      description: Plain text to read in place of the body, such as one paragraph. It is not rendered.
+      ui: { widget: textarea, rows: 3 }
+    article_id:
+      type: string
+      format: passport.article
+      title: Article
+      description: The body is rendered with this article as .article.
+    audience_id:
+      type: string
+      format: passport.audience
+      title: Audience
+      description: The body is rendered as a member of this audience and of every audience ranked below it. Left out, as nobody in particular.
+    model_id:
+      type: string
+      title: Model
+      description: Decides how much one request carries and which voice tags are kept.
+      enum: [eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2, eleven_v3, eleven_v4]
+    skip_parts:
+      type: array
+      title: Page parts to skip
+      description: CSS selectors for parts of the body that are not read.
+      default: []
+      items: { type: string, minLength: 1 }
+    pronunciations:
+      type: array
+      title: Pronunciations
+      description: Each term is replaced by its "say as" text, whole words, same capitalization.
+      default: []
+      items:
+        type: object
+        required: [term]
+        properties:
+          term: { type: string, title: Term, minLength: 1 }
+          say_as: { type: string, title: Say as }
+    text_cleanup:
+      type: boolean
+      title: Clean up numbers and symbols
+      description: Read money, percentages, scores and common abbreviations the way a broadcaster would.
+      default: true
+outputs:
+  type: object
+  required: [text, characters, chunks, requests]
+  properties:
+    text:
+      type: string
+      title: Spoken text
+      description: Everything that would be read.
+    characters:
+      type: integer
+      title: Characters
+      description: The length of the spoken text, in bytes, so accented letters and curly quotes count more than once.
+    chunks:
+      type: array
+      title: Pieces
+      description: The spoken text in pieces of at most one request each.
+      items: { type: string }
+    requests:
+      type: integer
+      title: Requests
+      description: How many pieces there are.
+returns:
+  text: "${{ steps.tags.outputs.text }}"
+  characters: "${{ steps.measure.outputs.characters }}"
+  chunks: "${{ steps.pieces.outputs.chunks }}"
+  requests: "${{ len(steps.pieces.outputs.chunks) }}"
+steps:
+  # The rewrite rules, as plain values: an expression cannot hold some of
+  # these patterns (guide 7.8).
+  - id: rules
+    action: set-output
+    with:
+      # Built-in cleanup (the cleanup step), applied in order by
+      # replaceEach: find is an RE2 pattern, ${1} its first group.
+      cleanup:
+        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', replace: '${1} million dollars' }
+        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', replace: '${1} billion dollars' }
+        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', replace: '${1} thousand dollars' }
+        - { find: '(\d)\s?%', replace: '${1} percent' }
+        - { find: '\bNo\.\s?(\d)', replace: 'number ${1}' }
+        - { find: '#(\d)', replace: 'number ${1}' }
+        - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', replace: '${1} foot ${2}' }
+        - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', replace: '${1} ${2}' }
+        - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', replace: '${1} to ${2}' }
+        - { find: '\bvs\.?(\s)', replace: 'versus${1}' }
+        - { find: '\s&\s', replace: ' and ' }
+        - { find: '\be\.g\.', replace: 'for example' }
+        - { find: '\bi\.e\.', replace: 'that is' }
+        - { find: '\betc\.', replace: 'et cetera' }
+        - { find: '\bJr\.', replace: 'Junior' }
+        - { find: '\bSr\.', replace: 'Senior' }
+      # Voice tags typed into the text, applied by the tags step. eleven_v3
+      # and eleven_v4 read square-bracket tags themselves (no SSML); a
+      # set-length pause becomes a plain one.
+      tags_v3:
+        - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '[pause]' }
+      # The other models take SSML breaks (at most 3s) and nothing else:
+      # pauses become breaks, the v3-only tags are left out (only these
+      # words, so other bracketed text in an article is still read).
+      tags_other:
+        - { find: '\[short pause\]', replace: '<break time="0.5s" />' }
+        - { find: '\[long pause\]', replace: '<break time="2s" />' }
+        - { find: '\[pauses?\]', replace: '<break time="1s" />' }
+        - { find: '\[pause\s+([0-2](?:\.\d+)?|3(?:\.0+)?)\s*s\]', replace: '<break time="${1}s" />' }
+        - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '<break time="3s" />' }
+        - { find: '\s*\[(?:whispers?|whispering|sighs?|exhales(?: sharply)?|inhales deeply|clears throat|laughs(?: harder)?|laughing|starts laughing|chuckles|giggles|crying|muttering|excited(?:ly)?|happy|sad|angry|annoyed|curious|surprised|thoughtful|sarcastic|mischievously|sympathetic|reassuring|professional|deadpan|dramatically|applause|clapping|gulps|swallows|sings|singing|strong [a-z -]+ accent)\]', replace: '' }
+
+  - id: source
+    action: set-output
+    with:
+      sample: "${{ trim(inputs.sample ?? '') }}"
+
+  # 1. Render the body as a member of the audience (and of every audience
+  #    ranked below it), with the article as .article: blocks the audience
+  #    can see render their content, the others render their else branch.
+  #    Reads only; a preview may run it.
+  - id: render
+    if: "${{ steps.source.outputs.sample == '' }}"
+    action: template.render
+    with:
+      body: "${{ inputs.body ?? '' }}"
+      article_id: "${{ inputs.article_id }}"
+      audience_id: "${{ inputs.audience_id }}"
+
+  # 2. Several hidden blocks would repeat the fallback; keep the first and
+  #    mark the rest data-text="skip" (htmlText always drops it).
+  - id: html
+    if: "${{ steps.source.outputs.sample == '' }}"
+    action: set-output
+    with:
+      html: >-
+        ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
+        len(parts) < 3 ? steps.render.outputs.body
+        : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
+
+  # 3. The text that is read. htmlText takes the selectors as one
+  #    comma-separated group. A sample is read as it is.
+  - id: speech
+    action: set-output
+    with:
+      text: >-
+        ${{ steps.source.outputs.sample != "" ? steps.source.outputs.sample
+        : trim(htmlText(steps.html.outputs.html, join(inputs.skip_parts, ", "))) }}
+
+  # Future: an AI normalization step ("rewrite this as a broadcaster would
+  # read it": numbers, symbols, abbreviations, the long tail the built-in
+  # cleanup misses) goes here, between speech and pronounce, so the editors'
+  # pronunciations still apply after it. When it is on, skip the cleanup
+  # step.
+
+  # 4. Pronunciations: replace each term with its "say as" text, as written
+  #    (same capitalization), whole words.
+  - id: pronounce
+    action: set-output
+    with:
+      text: >-
+        ${{ replaceEach(steps.speech.outputs.text, inputs.pronunciations,
+        {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
+
+  # 5. Built-in cleanup of numbers, symbols and abbreviations, after the
+  #    pronunciations so an editor's rule for the same text wins.
+  - id: cleanup
+    action: set-output
+    with:
+      text: >-
+        ${{ inputs.text_cleanup
+        ? replaceEach(steps.pronounce.outputs.text, steps.rules.outputs.cleanup)
+        : steps.pronounce.outputs.text }}
+
+  # 6. Voice tags typed into the text ([pause], [whispers], …): kept for
+  #    eleven_v3 and eleven_v4, turned into breaks or left out for the other
+  #    models.
+  - id: tags
+    action: set-output
+    with:
+      text: >-
+        ${{ trim(replaceEach(steps.cleanup.outputs.text,
+        inputs.model_id in ["eleven_v3", "eleven_v4"] ? steps.rules.outputs.tags_v3 : steps.rules.outputs.tags_other,
+        {"ignoreCase": true})) }}
+
+  - id: measure
+    action: set-output
+    with:
+      # len() counts bytes, so accented letters and curly quotes count more
+      # than once: a limit on this errs on the safe side.
+      characters: >-
+        ${{ len(steps.tags.outputs.text) }}
+      # The most one request may carry, per ElevenLabs' /v1/models. Pieces
+      # are cut a little shorter, as ElevenLabs may count some characters
+      # differently.
+      request_limit: >-
+        ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
+        "eleven_multilingual_v2": 10000, "eleven_v3": 5000, "eleven_v4": 10000}[inputs.model_id] ?? 10000 }}
+
+  # 7. The text in pieces of at most one request each, broken between
+  #    paragraphs, then sentences.
+  - id: pieces
+    action: set-output
+    with:
+      chunks: >-
+        ${{ chunkText(steps.tags.outputs.text, toInt(steps.measure.outputs.request_limit * 95 / 100)) }}

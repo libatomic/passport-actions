@@ -1,21 +1,38 @@
 version: 1.0.0
 name: Create audio narration
 description: >-
-  Reads an article aloud with an ElevenLabs voice, as one audience sees it,
-  and saves the narration as a private MP3. Running it again for the same
-  article and audience replaces that MP3.
+  Reads an article aloud with an ElevenLabs voice, once for each audience
+  chosen, and files the MP3s as one narration that gives each member the
+  version for their audience. Running it again for the same article replaces
+  them.
 help: |
   **Run it from an article.** On an article's page, choose **Create Audio
-  Narration** from the Extensions menu, pick the audience and the voice,
-  adjust what is read, and run it. The result is an MP3 in the site's assets.
+  Narration** from the Extensions menu, pick who to make audio for and the
+  voice, adjust what is read, and run it. The result is one narration in
+  the site's assets.
 
-  **One narration per audience.** A narration is read as a member of the
-  chosen audience hears it: restricted sections the audience can see are
-  read, and the others are replaced by a short spoken note. Run it once for
-  each audience that should get its own version; each run keeps its own MP3.
+  **One narration, a version per audience.** The article is read once for
+  each audience under "Make audio for", as a member of that audience hears
+  it: restricted sections the audience can see are read, and the others are
+  replaced by a short spoken note. Each version is an MP3 only that
+  audience's members can fetch. The narration itself is a single asset:
+  whoever plays it gets the version for their audience.
 
-  **Running it again** for the same article and audience replaces that MP3
-  and keeps its id and link. The form opens with what was read last time.
+  **Who hears which.** A member of several of the audiences gets the version
+  of the best-ranked one (the order under Audiences). A version read for an
+  audience includes what the audiences ranked below it can see. A member in
+  none of the audiences gets no audio, so include your widest audience if
+  everyone should hear something.
+
+  **Preview as** picks the one audience the editor marks restricted sections
+  for, and the one "Spoken text" is shown for. Left empty, it is the first
+  audience under "Make audio for".
+
+  **Running it again** for the same article reads every chosen audience
+  again and replaces their MP3s. The narration keeps its id and link, so a
+  podcast distribution that uses it plays the new audio. The form opens with
+  what was read last time. An audience left out of a later run is no longer
+  part of the narration; its MP3 stays under Assets, for that audience only.
 
   **Voices.** There is a default voice. List other voices and the form gets
   a Voice menu.
@@ -26,11 +43,12 @@ help: |
   sounds. The editor's Voice tags button lists them for the model.
 
   **Long articles** are read in several requests and the audio joined into
-  one MP3. The MP3 is only replaced once every piece has been read.
+  one MP3. An MP3 is only replaced once every piece has been read.
 
-  **Cost.** ElevenLabs bills every request: every run, and every paragraph
-  played from the form. "Longest article to read" caps what one narration
-  can cost.
+  **Cost.** ElevenLabs bills every request: every audience of every run, and
+  every paragraph played from the form. "Longest article to read" caps what
+  one version can cost; a run that would go over it for any audience reads
+  nothing.
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
 
 extension:
@@ -125,7 +143,7 @@ settings:
     max_characters:
       type: integer
       title: Longest article to read
-      description: A run fails when the text to read is longer than this, to cap what one narration can cost. 0 reads any length.
+      description: A run fails, before anything is read, when the text for any one audience is longer than this. It caps what one version of a narration can cost. 0 reads any length.
       minimum: 0
       default: 0
       ui: { suffix: characters }
@@ -136,7 +154,7 @@ settings:
       description: What is read before and after the text chosen in the form, as a template. Without the placeholder, the text is read after it.
       help: |
         `{{ .script }}` marks where the text from the form goes (the
-        article's body, as edited there), rendered for the chosen audience.
+        article's body, as edited there), rendered for each audience.
         The rest can use the usual template data and functions, such as
         `{{ .article.title }}` and `timeFormat`.
 
@@ -228,8 +246,8 @@ settings:
       - section: Voice
         description: >-
           The default voice, other voices a narration can pick, the model,
-          and the longest article to read (to cap what one narration can
-          cost).
+          and the longest article to read (to cap what one version of a
+          narration can cost).
         rows:
           - [voice_id, voice_name]
           - [voices]
@@ -254,13 +272,30 @@ settings:
 # of the last run on the article (guide 5.7), so edited text is still there.
 inputs:
   type: object
-  required: [audience]
+  required: [audiences]
   properties:
-    audience:
+    audiences:
+      type: array
+      title: Make audio for
+      description: The article is read once for each of these audiences, as its members hear it. Each member then gets the version for their audience.
+      help: |
+        A member of several of these audiences gets the version of the
+        best-ranked one. A member in none of them gets no audio.
+      minItems: 1
+      # a narration holds at most 64 versions
+      maxItems: 64
+      uniqueItems: true
+      items: { type: string, format: passport.audience }
+    # The paragraph editor marks restricted sections for one audience, and
+    # its audience hint names one passport.audience field (guide 2.6), so
+    # the list above cannot serve. A default cannot follow another field of
+    # the form (guide 2.10), so this one is optional and the steps fall
+    # back to the first audience chosen.
+    preview_audience:
       type: string
       format: passport.audience
-      title: Audience
-      description: Who this narration is for. It is read as a member of this audience hears it, and each audience keeps its own MP3.
+      title: Preview as
+      description: The audience the editor below marks restricted sections for, and the one "Spoken text" is shown for. Left empty, "Spoken text" uses the first audience under "Make audio for".
     voice:
       type: string
       title: Voice
@@ -293,8 +328,8 @@ inputs:
         widget: paragraphs
         paragraphs:
           # Restricted sections are marked as read or not read for the
-          # audience chosen above.
-          audience: audience
+          # "Preview as" audience.
+          audience: preview_audience
           # Keep the body as the web shows it: each isChannel "web" block
           # (passport-wp's full web view beside the shorter distribution
           # view) is reduced to its web branch.
@@ -397,28 +432,43 @@ outputs:
       type: string
       format: passport.asset
       title: Narration
-      description: The MP3, a private asset. Pick it on a podcast distribution to publish it.
+      description: One asset that gives each member the version for their audience. Pick it on a podcast distribution to publish it.
     filename:
       type: string
       title: File name
-      description: Named after the article and the audience, so a later run for the same two replaces it.
+      description: Named after the article, so a later run keeps the same narration.
+    versions:
+      type: array
+      title: Versions
+      description: What was read for each audience.
+      items:
+        type: object
+        properties:
+          audience_id: { type: string, format: passport.audience, title: Audience }
+          audience: { type: string, title: Audience name }
+          filename: { type: string, title: File name }
+          characters: { type: integer, title: Characters read }
+          characters_billed: { type: integer, title: Characters billed }
+          requests: { type: integer, title: Requests }
     characters:
       type: integer
       title: Characters read
+      description: Across every version.
     characters_billed:
       type: integer
       title: Characters billed
-      description: What ElevenLabs charged for this run. 0 when it did not say.
+      description: What ElevenLabs charged for this run, across every version. 0 when it did not say.
     requests:
       type: integer
       title: Requests
-      description: How many ElevenLabs requests the text was read in.
+      description: How many ElevenLabs requests the run made.
 returns:
-  asset_id: "${{ steps.join.outputs.asset_id }}"
+  asset_id: "${{ steps.virtual.outputs.asset_id }}"
   filename: "${{ steps.name.outputs.filename }}"
-  characters: "${{ steps.measure.outputs.characters }}"
-  characters_billed: "${{ toInt(vars.narration_billed ?? 0) }}"
-  requests: "${{ steps.pieces.outputs.requests }}"
+  versions: "${{ vars.results }}"
+  characters: "${{ sum(map(vars.results, .characters)) }}"
+  characters_billed: "${{ sum(map(vars.results, .characters_billed)) }}"
+  requests: "${{ sum(map(vars.results, .requests)) }}"
 
 steps:
   # What this run does: "run", or for a preview "text" (what would be read:
@@ -479,40 +529,6 @@ steps:
       # The text's own document wrapper (<html>, <head>…</head>, <body>),
       # removed so the template can go in front of it.
       doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
-      # Built-in cleanup (the cleanup step), applied in order by
-      # replaceEach: find is an RE2 pattern, ${1} its first group.
-      cleanup:
-        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:M|million)\b', replace: '${1} million dollars' }
-        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:B|billion)\b', replace: '${1} billion dollars' }
-        - { find: '\$(\d[\d,]*(?:\.\d+)?)\s?(?:K|thousand)\b', replace: '${1} thousand dollars' }
-        - { find: '(\d)\s?%', replace: '${1} percent' }
-        - { find: '\bNo\.\s?(\d)', replace: 'number ${1}' }
-        - { find: '#(\d)', replace: 'number ${1}' }
-        - { find: '(\d)[''’′]\s?(\d{1,2})(?:["”″]|[''’]{2})', replace: '${1} foot ${2}' }
-        - { find: '\b((?:19|20)\d\d)[-–](\d\d)\b', replace: '${1} ${2}' }
-        - { find: '\b(\d{1,3})\s?[-–]\s?(\d{1,3})\b', replace: '${1} to ${2}' }
-        - { find: '\bvs\.?(\s)', replace: 'versus${1}' }
-        - { find: '\s&\s', replace: ' and ' }
-        - { find: '\be\.g\.', replace: 'for example' }
-        - { find: '\bi\.e\.', replace: 'that is' }
-        - { find: '\betc\.', replace: 'et cetera' }
-        - { find: '\bJr\.', replace: 'Junior' }
-        - { find: '\bSr\.', replace: 'Senior' }
-      # Voice tags typed into the text (the editor's tags hint lists them),
-      # applied by the tags step. eleven_v3 and eleven_v4 read square-bracket
-      # tags themselves (no SSML); a set-length pause becomes a plain one.
-      tags_v3:
-        - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '[pause]' }
-      # The other models take SSML breaks (at most 3s) and nothing else:
-      # pauses become breaks, the v3-only tags are left out (only these
-      # words, so other bracketed text in an article is still read).
-      tags_other:
-        - { find: '\[short pause\]', replace: '<break time="0.5s" />' }
-        - { find: '\[long pause\]', replace: '<break time="2s" />' }
-        - { find: '\[pauses?\]', replace: '<break time="1s" />' }
-        - { find: '\[pause\s+([0-2](?:\.\d+)?|3(?:\.0+)?)\s*s\]', replace: '<break time="${1}s" />' }
-        - { find: '\[pause\s+\d+(?:\.\d+)?\s*s\]', replace: '<break time="3s" />' }
-        - { find: '\s*\[(?:whispers?|whispering|sighs?|exhales(?: sharply)?|inhales deeply|clears throat|laughs(?: harder)?|laughing|starts laughing|chuckles|giggles|crying|muttering|excited(?:ly)?|happy|sad|angry|annoyed|curious|surprised|thoughtful|sarcastic|mischievously|sympathetic|reassuring|professional|deadpan|dramatically|applause|clapping|gulps|swallows|sings|singing|strong [a-z -]+ accent)\]', replace: '' }
 
   # The form's text: in a preview, as it is on screen. Left alone, it is the
   # article's body (the field's default).
@@ -550,268 +566,221 @@ steps:
         ? regexReplace(steps.blocks.outputs.body_pattern, automation.settings.template, replace(body, "$", "$$"))
         : automation.settings.template + body }}
 
-  # 3. Render it as a member of the chosen audience, with the article as
-  #    .article: blocks the audience can see render their content, the
-  #    others render the fallback. Reads only; a preview may run it.
-  - id: render
-    if: >-
-      ${{ steps.mode.outputs.mode != "listen" }}
-    action: template.render
-    with:
-      body: "${{ steps.compose.outputs.body }}"
-      article_id: "${{ article.id }}"
-      audience_id: "${{ inputs.audience }}"
-
-  # 4. Several hidden blocks would repeat the fallback; keep the first and
-  #    mark the rest data-text="skip" (htmlText always drops it). Then turn
-  #    the HTML into the text that is read. A listen preview reads its sample
-  #    instead.
-  - id: text
-    if: >-
-      ${{ steps.mode.outputs.mode != "listen" }}
+  # Who is read for. The form refuses an empty or repeated list; a preview
+  # is not held to it. The preview audience is "Preview as", else the first
+  # audience chosen, else none (the text is then rendered for nobody in
+  # particular).
+  - id: who
     action: set-output
     with:
-      html: >-
-        ${{ let parts = split(steps.render.outputs.body, "data-narration=\"fallback\"");
-        len(parts) < 3 ? steps.render.outputs.body
-        : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
+      audiences: >-
+        ${{ filter(map(inputs.audiences ?? [], trim(toString(#))), # != "") }}
+      preview: >-
+        ${{ let chosen = filter(map(inputs.audiences ?? [], trim(toString(#))), # != "");
+        trim(toString(inputs.preview_audience ?? "")) != "" ? trim(toString(inputs.preview_audience))
+        : len(chosen) > 0 ? chosen[0] : nil }}
 
-  # skip_parts is a list; htmlText takes the selectors as one comma-separated
-  # group, as v1 passed them.
-  - id: speech
-    action: set-output
-    with:
-      text: >-
-        ${{ steps.mode.outputs.mode == "listen" ? trim(trigger.preview.sample)
-        : trim(htmlText(steps.text.outputs.html, join(automation.settings.skip_parts, ", "))) }}
+  # 3. From here the text depends on the audience. narration.text renders
+  #    the composed body as a member of one audience (and of every audience
+  #    ranked below it), turns it into the text that is read, applies the
+  #    pronunciations, the cleanup and the voice tags, and cuts it into
+  #    pieces of one request each. It reads only, so a preview may run it.
+  #    While a pronunciation is being edited in the form, a preview's
+  #    automation.settings holds the unsaved list (guide 5.7).
 
-  # Future: an AI normalization step ("rewrite this as a broadcaster would
-  # read it": numbers, symbols, abbreviations, the long tail the built-in
-  # cleanup misses) goes here, between speech and pronounce, so the editors'
-  # pronunciations still apply after it. When it is on, skip the cleanup
-  # step.
-
-  # 5. Pronunciations: replace each term with its "say as" text, as written
-  #    (same capitalization), whole words. While a pronunciation is being
-  #    edited in the form, a preview's automation.settings holds the unsaved
-  #    list (guide 5.7).
-  - id: pronounce
-    action: set-output
-    with:
-      text: >-
-        ${{ replaceEach(steps.speech.outputs.text, automation.settings.pronunciations ?? [],
-        {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
-
-  # 6. Built-in cleanup of numbers, symbols and abbreviations (the blocks
-  #    step's cleanup list), after the pronunciations so an editor's rule for
-  #    the same text wins.
-  - id: cleanup
-    action: set-output
-    with:
-      text: >-
-        ${{ automation.settings.text_cleanup
-        ? replaceEach(steps.pronounce.outputs.text, steps.blocks.outputs.cleanup)
-        : steps.pronounce.outputs.text }}
-
-  # 7. Voice tags typed into the text ([pause], [whispers], …): kept for
-  #    eleven_v3 and eleven_v4, turned into breaks or left out for the other
-  #    models.
-  - id: tags
-    action: set-output
-    with:
-      text: >-
-        ${{ trim(replaceEach(steps.cleanup.outputs.text,
-        automation.settings.model_id in ["eleven_v3", "eleven_v4"] ? steps.blocks.outputs.tags_v3 : steps.blocks.outputs.tags_other,
-        {"ignoreCase": true})) }}
-
-  - id: measure
-    action: set-output
-    with:
-      # len() counts bytes, so accented letters and curly quotes count more
-      # than once: max_characters errs on the safe side.
-      characters: >-
-        ${{ len(steps.tags.outputs.text) }}
-      # The most one request may carry, per ElevenLabs' /v1/models. Pieces
-      # are cut a little shorter, as ElevenLabs may count some characters
-      # differently.
-      request_limit: >-
-        ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
-        "eleven_multilingual_v2": 10000, "eleven_v3": 5000, "eleven_v4": 10000}[automation.settings.model_id] ?? 10000 }}
-      # Kept on the asset (metadata.narration.text_hash) to tell what it was
-      # made from. A run never skips on it: a person asked for this run.
-      hash: >-
-        ${{ sha256(steps.tags.outputs.text + "|" + steps.voice.outputs.id + "|" + automation.settings.model_id) }}
-
-  # The text in pieces of at most one request each, broken between
-  # paragraphs, then sentences.
-  - id: pieces
-    action: set-output
-    with:
-      chunks: >-
-        ${{ chunkText(steps.tags.outputs.text, toInt(steps.measure.outputs.request_limit * 95 / 100)) }}
-      requests: >-
-        ${{ len(chunkText(steps.tags.outputs.text, toInt(steps.measure.outputs.request_limit * 95 / 100))) }}
-
-  # PREVIEW (text): return what a run would read. Changes nothing.
+  # PREVIEW (text): return what a run would read for the preview audience.
+  # Changes nothing.
   - id: preview-text
     if: >-
       ${{ steps.mode.outputs.mode == "text" }}
     then:
+      - id: preview-spoken
+        action: elevenlabs/narration.text
+        with:
+          body: "${{ steps.compose.outputs.body }}"
+          article_id: "${{ toString(article.id) }}"
+          audience_id: "${{ steps.who.outputs.preview }}"
+          model_id: "${{ automation.settings.model_id }}"
+          skip_parts: "${{ automation.settings.skip_parts }}"
+          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+          text_cleanup: "${{ automation.settings.text_cleanup }}"
       - id: previewed
         action: set-output
         with:
           done: true
         outputs:
-          text: "${{ steps.tags.outputs.text }}"
-          characters: "${{ steps.measure.outputs.characters }}"
+          text: "${{ steps.preview-spoken.outputs.text }}"
+          characters: "${{ steps.preview-spoken.outputs.characters }}"
           # the editor flags text over limit; 0 is no limit
           limit: "${{ automation.settings.max_characters }}"
-          requests: "${{ steps.pieces.outputs.requests }}"
+          requests: "${{ steps.preview-spoken.outputs.requests }}"
           note: >-
-            ${{ steps.pieces.outputs.requests > 1 ? "Read in " + toString(steps.pieces.outputs.requests)
+            ${{ steps.preview-spoken.outputs.requests > 1 ? "Read in " + toString(steps.preview-spoken.outputs.requests)
             + " requests to " + automation.settings.model_id + ", joined into one MP3" : "" }}
       - id: preview-text-done
         action: workflow.exit
         with:
-          reason: "previewed ${{ steps.measure.outputs.characters }} characters"
+          reason: "previewed ${{ steps.preview-spoken.outputs.characters }} characters"
 
   # PREVIEW (listen): read the sample in the voice and return the MP3 as
-  # base64. Nothing is saved; billed.
+  # base64. The sample is a paragraph's text as the editor shows it, so it
+  # is not rendered and no audience is needed. Nothing is saved; billed.
   - id: preview-listen
     if: >-
       ${{ steps.mode.outputs.mode == "listen" }}
     then:
+      - id: sample-spoken
+        action: elevenlabs/narration.text
+        with:
+          sample: "${{ trigger.preview.sample }}"
+          model_id: "${{ automation.settings.model_id }}"
+          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+          text_cleanup: "${{ automation.settings.text_cleanup }}"
       - id: sample-too-long
         if: >-
-          ${{ steps.measure.outputs.characters > 2000 }}
+          ${{ steps.sample-spoken.outputs.characters > 2000 }}
         action: workflow.fail
         with:
-          reason: "A sample is at most 2,000 characters; this one is ${{ steps.measure.outputs.characters }}."
+          reason: "A sample is at most 2,000 characters; this one is ${{ steps.sample-spoken.outputs.characters }}."
       - id: sample
         action: elevenlabs/speech.sample
         with:
           voice_id: "${{ steps.voice.outputs.id }}"
           model_id: "${{ automation.settings.model_id }}"
-          text: "${{ steps.tags.outputs.text }}"
+          text: "${{ steps.sample-spoken.outputs.text }}"
         outputs:
           audio: "${{ steps.sample.outputs.audio }}"
           audio_type: "${{ steps.sample.outputs.audio_type }}"
-          text: "${{ steps.tags.outputs.text }}"
+          text: "${{ steps.sample-spoken.outputs.text }}"
       - id: preview-listen-done
         action: workflow.exit
         with:
-          reason: "read a ${{ steps.measure.outputs.characters }}-character sample"
+          reason: "read a ${{ steps.sample-spoken.outputs.characters }}-character sample"
 
   # RUN. Both previews ended above, so nothing below runs in one.
   #
-  # A run fails, with the reason shown to the person who ran it, when no
-  # audience was given, there is nothing to read, or the text is longer than
-  # max_characters.
-  - id: no-audience
-    if: >-
-      ${{ trim(toString(inputs.audience ?? "")) == "" }}
-    action: workflow.fail
-    with:
-      reason: "Choose the audience this narration is for."
-
-  - id: empty
-    if: >-
-      ${{ steps.measure.outputs.characters == 0 }}
-    action: workflow.fail
-    with:
-      reason: "There is no text to read for this audience. Check the text, the paragraphs switched off and the audience."
-
-  - id: too-long
-    if: >-
-      ${{ automation.settings.max_characters > 0 && steps.measure.outputs.characters > automation.settings.max_characters }}
-    action: workflow.fail
-    with:
-      reason: >-
-        ${{ "The text is " + toString(steps.measure.outputs.characters)
-        + " characters, over the limit of " + toString(automation.settings.max_characters)
-        + " (Longest article to read). Shorten the text or raise the limit." }}
-
-  # The narration's file name: the article and the audience, and nothing that
-  # can change (not the title, not the voice), so a second run for the same
-  # two replaces the first MP3 and keeps its id and link. Each audience has
-  # its own file.
+  # A run without an audience never gets here: the form requires one, and
+  # inputs supplied any other way are held to the same schema. A run fails,
+  # with the reason shown to the person who ran it, when for any audience
+  # there is nothing to read or the text is longer than max_characters.
+  # The narration's file name: the article, and nothing that can change (not
+  # the title, not the voice), so a second run finds the same narration and
+  # keeps its id and link. Each audience's MP3 adds the audience's id.
   - id: name
     action: set-output
     with:
       base: >-
-        ${{ "narration-" + toString(article.id) + "-" + toString(inputs.audience) }}
+        ${{ "narration-" + toString(article.id) }}
       filename: >-
-        ${{ "narration-" + toString(article.id) + "-" + toString(inputs.audience) + ".mp3" }}
+        ${{ "narration-" + toString(article.id) + ".mp3" }}
 
-  # 8. Generate, one request per piece. Each piece's MP3 goes straight into
-  #    the asset store, never into the run output, as <name>-part-<n>.mp3;
-  #    the join below makes them (even one) the narration. overwrite keeps
-  #    the asset's id across runs, and an asset is only written once its
-  #    whole file has arrived, so a run that fails partway leaves the last
-  #    narration as it was. Every request that reaches ElevenLabs is billed.
-  #
-  #    previous and next give the voice the text around a piece so the joins
-  #    sound continuous; nil for the first and last piece (a nil `with:`
-  #    value is an absent input). speech.create leaves them out for
-  #    eleven_v3 and eleven_v4, which do not take them.
-  - id: plan
-    action: set-output
-    with:
-      parts: >-
-        ${{ let chunks = steps.pieces.outputs.chunks; let n = len(chunks);
-        let base = steps.name.outputs.base;
-        map(chunks, ({"text": #, "index": #index + 1,
-        "filename": base + "-part-" + toString(#index + 1) + ".mp3",
-        "previous": #index > 0 ? chunks[#index - 1] : nil,
-        "next": #index < n - 1 ? chunks[#index + 1] : nil})) }}
-      narration:
-        article_id: "${{ toString(article.id) }}"
-        audience_id: "${{ toString(inputs.audience) }}"
-        voice_id: "${{ steps.voice.outputs.id }}"
-        model_id: "${{ automation.settings.model_id }}"
-        text_hash: "${{ steps.measure.outputs.hash }}"
-        requests: "${{ steps.pieces.outputs.requests }}"
-
-  - id: generate
-    foreach: "${{ steps.plan.outputs.parts }}"
-    as: part
-    max: 100
+  # 4. Prepare the text for every audience before anything is read, so a
+  #    run that cannot finish (nothing to read for one audience, or over the
+  #    limit) fails with nothing sent to ElevenLabs and nothing billed.
+  - id: prepare
+    foreach: "${{ steps.who.outputs.audiences }}"
+    as: audience
     steps:
-      - id: tts
-        action: elevenlabs/speech.create
+      # the audience's name, for reasons and descriptions a person reads
+      - id: named
+        action: audience.get
         with:
-          voice_id: "${{ steps.voice.outputs.id }}"
+          audience_id: "${{ loop.audience }}"
+      - id: spoken
+        action: elevenlabs/narration.text
+        with:
+          body: "${{ steps.compose.outputs.body }}"
+          article_id: "${{ toString(article.id) }}"
+          audience_id: "${{ loop.audience }}"
           model_id: "${{ automation.settings.model_id }}"
-          text: "${{ loop.part.text }}"
-          previous_text: "${{ loop.part.previous }}"
-          next_text: "${{ loop.part.next }}"
-          filename: "${{ loop.part.filename }}"
-          overwrite: true
-          description: >-
-            ${{ "Narration of " + toString(article.title ?? article.id)
-            + (steps.pieces.outputs.requests > 1 ? ", part " + toString(loop.part.index) + " of " + toString(steps.pieces.outputs.requests) : "") }}
-          narration: "${{ steps.plan.outputs.narration }}"
-      # what ElevenLabs billed, summed across the requests
-      - id: tally
+          skip_parts: "${{ automation.settings.skip_parts }}"
+          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+          text_cleanup: "${{ automation.settings.text_cleanup }}"
+      - id: empty
+        if: >-
+          ${{ steps.spoken.outputs.characters == 0 }}
+        action: workflow.fail
+        with:
+          reason: >-
+            ${{ "There is no text to read for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
+            + ". Check the text, the paragraphs switched off and the audiences. Nothing was read." }}
+      - id: too-long
+        if: >-
+          ${{ automation.settings.max_characters > 0 && steps.spoken.outputs.characters > automation.settings.max_characters }}
+        action: workflow.fail
+        with:
+          reason: >-
+            ${{ "The text for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
+            + " is " + toString(steps.spoken.outputs.characters)
+            + " characters, over the limit of " + toString(automation.settings.max_characters)
+            + " (Longest article to read). Shorten the text or raise the limit. Nothing was read." }}
+      - id: planned
         action: vars.set
         with:
-          narration_billed: >-
-            ${{ toInt(vars.narration_billed ?? 0) + steps.tts.outputs.characters_billed }}
+          versions: >-
+            ${{ concat(vars.versions ?? [], [({
+            "audience_id": toString(loop.audience),
+            "audience": toString(steps.named.outputs.audience?.name ?? loop.audience),
+            "filename": steps.name.outputs.base + "-" + toString(loop.audience) + ".mp3",
+            "chunks": steps.spoken.outputs.chunks,
+            "characters": steps.spoken.outputs.characters,
+            "text_hash": sha256(steps.spoken.outputs.text + "|" + steps.voice.outputs.id + "|" + automation.settings.model_id)
+            })]) }}
 
-  # Join the pieces (even one) into the narration, after half a second of
-  # silence so a player or headset that takes a moment to start does not
-  # clip the first words (the models drop a pause tag at the very start),
-  # and delete the pieces. Private: public is left off.
-  - id: join
-    action: asset.concat
+  # 5. Read each audience's text to its own MP3, a protected asset only that
+  #    audience's members (and staff) can fetch:
+  #    narration-<article id>-<audience id>.mp3. overwrite keeps the asset's
+  #    id across runs, and an MP3 is only replaced once every piece of it
+  #    has been read, so a run that fails partway leaves the versions it did
+  #    not reach, and the narration, as they were. Every request that
+  #    reaches ElevenLabs is billed.
+  #
+  #    text_hash is kept on the asset (metadata.narration) to tell what it
+  #    was made from. A run never skips on it: a person asked for this run.
+  - id: generate
+    foreach: "${{ vars.versions }}"
+    as: version
+    steps:
+      - id: narration
+        action: elevenlabs/narration.create
+        with:
+          chunks: "${{ loop.version.chunks }}"
+          voice_id: "${{ steps.voice.outputs.id }}"
+          model_id: "${{ automation.settings.model_id }}"
+          filename: "${{ loop.version.filename }}"
+          audience_id: "${{ loop.version.audience_id }}"
+          description: "Narration of ${{ article.title ?? article.id }} for ${{ loop.version.audience }}"
+          narration:
+            article_id: "${{ toString(article.id) }}"
+            voice_id: "${{ steps.voice.outputs.id }}"
+            model_id: "${{ automation.settings.model_id }}"
+            text_hash: "${{ loop.version.text_hash }}"
+      - id: made
+        action: vars.set
+        with:
+          variants: >-
+            ${{ concat(vars.variants ?? [], [({
+            "asset_id": steps.narration.outputs.asset_id,
+            "audience_id": loop.version.audience_id})]) }}
+          results: >-
+            ${{ concat(vars.results ?? [], [({
+            "audience_id": loop.version.audience_id,
+            "audience": loop.version.audience,
+            "filename": loop.version.filename,
+            "characters": loop.version.characters,
+            "characters_billed": steps.narration.outputs.characters_billed,
+            "requests": steps.narration.outputs.requests})]) }}
+
+  # 6. File the MP3s as the versions of one narration: a virtual asset,
+  #    narration-<article id>.mp3, that answers each member with the MP3 for
+  #    their audience. A narration that is already there is given this run's
+  #    versions in place of the ones it had and keeps its id and link. No
+  #    default: a member in none of the audiences gets no audio. An audience
+  #    left out of this run is no longer a version; its MP3 is left under
+  #    Assets, still for that audience only.
+  - id: virtual
+    action: asset.virtual
     with:
-      filenames: >-
-        ${{ map(steps.plan.outputs.parts, .filename) }}
       filename: "${{ steps.name.outputs.filename }}"
-      lead_in: 0.5
-      overwrite: true
-      delete_sources: true
-      mime_type: audio/mpeg
       description: "Narration of ${{ article.title ?? article.id }}"
-      metadata:
-        narration: "${{ steps.plan.outputs.narration }}"
+      variants: "${{ vars.variants }}"

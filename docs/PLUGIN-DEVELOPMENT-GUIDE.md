@@ -43,7 +43,7 @@ accepts today.
 | The distribution form ([6.4](guide/06-channels.md)) | Built in the engine; the admin's distribution page does not show it yet |
 | Extensions, previews and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
 | Templates a plugin ships and the channel template menu ([6.8](guide/06-channels.md#68-templates)) | Built, in review; the admin's template menu is not built |
-| Protected assets and audience ranking | Built. Virtual assets, and audiences on the steps that create assets: in progress |
+| Protected assets, virtual assets, audiences on the steps that create assets, and audience ranking ([9.7](guide/09-files-and-binary.md#97-protected-and-virtual-assets)) | Built |
 | Passport Studio for publishers, direct installs, the community registry ([1.7](guide/01-project-and-manifest.md#17-registries-and-where-a-plugin-can-go)) | Not built |
 | The publisher's admin pages for v2 plugins | Built: Plugins pages, forms with choices, the Extensions menu. Not yet checked against a live site |
 | Passport Studio: the new workbench, help-page editor, Form tab and Test panel | Built |

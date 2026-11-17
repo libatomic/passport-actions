@@ -1,8 +1,15 @@
 # Test cases for automations/narrate.yaml, the Create Audio Narration
 # extension. Dry runs only: every step that would reach ElevenLabs or read or
 # change Passport is sampled. Never put a real API key here.
+#
+# The plugin actions' own steps run for real (narration.text,
+# narration.create, speech.create), so what is sampled is the built-ins
+# inside them, under samples.actions: one entry per call, in order.
 cases:
-  - name: Create a narration
+  # Paid and Free: the article is rendered and read once for each, each MP3
+  # is a protected asset named after the article and the audience, and the
+  # two are filed as the variants of one virtual asset.
+  - name: Two audiences make two files and one narration
     settings: {}
     secrets: { api_key: test }
     automation:
@@ -24,108 +31,187 @@ cases:
       title: Fishing the Ozarks
       published_at: "2026-11-14T15:00:00Z"
       body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
-    # script is left out: it follows the article's body.
+    # script is left out: it follows the article's body. Preview as is left
+    # out too.
     inputs: &inputs
-      audience: Au7kep6QbWZm8q5XEjgT2
+      audiences: [Au7kep6QbWZm8q5XEjgT2, Au9zep6QbWZm8q5XEjgF4]
       voice: 21m00Tcm4TlvDq8ikWAM
-    samples:
+    samples: &two
       steps:
-        render:
-          body: "<p>Fishing the Ozarks was published on Saturday, November 14, 2026. [long pause]</p><p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
-        # tts runs inside the foreach: one entry per pass, the last repeated.
-        # Sampling the step that calls speech.create means the action's own
-        # http.post does not run.
-        tts:
-          - { asset_id: As1aep6QbWZm8q5XEjgP1, size: 48211, characters_billed: 118 }
-        join: &joined { asset_id: As2bep6QbWZm8q5XEjgN7, size: 52307, parts: 1, deleted: [As1aep6QbWZm8q5XEjgP1] }
+        # one entry per pass of the prepare loop
+        named:
+          - &paid { id: Au7kep6QbWZm8q5XEjgT2, audience: { id: Au7kep6QbWZm8q5XEjgT2, name: Paid } }
+          - &free { id: Au9zep6QbWZm8q5XEjgF4, audience: { id: Au9zep6QbWZm8q5XEjgF4, name: Free } }
+      actions:
+        # narration.text's render: as Paid, then as Free (the restricted
+        # section's else branch, twice)
+        template.render:
+          - body: "<p>Fishing the Ozarks was published on Saturday, November 14, 2026. [long pause]</p><p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+          - body: '<p>Wemby scored 30.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p>'
+        # speech.create's request, one per piece: Paid's, then Free's
+        http.post:
+          - { status: 200, ok: true, headers: { Character-Cost: "118" }, asset_id: As1aep6QbWZm8q5XEjgP1, size: 48211 }
+          - { status: 200, ok: true, headers: { Character-Cost: "96" }, asset_id: As4dep6QbWZm8q5XEjgK3, size: 40100 }
+        # narration.create's join: Paid's MP3, then Free's
+        asset.concat:
+          - { asset_id: As2bep6QbWZm8q5XEjgN7, size: 52307, parts: 1, deleted: [As1aep6QbWZm8q5XEjgP1] }
+          - { asset_id: As5eep6QbWZm8q5XEjgJ9, size: 44196, parts: 1, deleted: [As4dep6QbWZm8q5XEjgK3] }
+        asset.virtual: &narration
+          asset_id: As8hep6QbWZm8q5XEjgV1
+          url: https://example.test/assets/narration-Ar3oep6QbWZm8q5XEjgS5.mp3
     expect:
       status: success
       outputs:
-        asset_id: As2bep6QbWZm8q5XEjgN7
-        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
-        characters_billed: 118
-        requests: 1
+        asset_id: As8hep6QbWZm8q5XEjgV1
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5.mp3
+        versions:
+          - audience_id: Au7kep6QbWZm8q5XEjgT2
+            audience: Paid
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+            characters: 147
+            characters_billed: 118
+            requests: 1
+          - audience_id: Au9zep6QbWZm8q5XEjgF4
+            audience: Free
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au9zep6QbWZm8q5XEjgF4.mp3
+            characters: 100
+            characters_billed: 96
+            requests: 1
+        characters: 247
+        characters_billed: 214
+        requests: 2
       steps:
         mode: { outputs: { mode: run } }
         voice: { outputs: { id: 21m00Tcm4TlvDq8ikWAM } }
-        tags:
-          outputs:
-            text: |-
-              Fishing the Ozarks was published on Saturday, November 14, 2026. <break time="2s" />
-
-              Wem-bee scored 30 in a 112 to 108 win.
-
-              The team is number 1.
-      not_run: [previewed, sample, no-audience, empty, too-long]
-
-  # The same article and audience again, with the text edited in the form
-  # and another voice: the file name is the same, so the MP3 is replaced
-  # (overwrite keeps the asset's id, which the join sample stands in for).
-  - name: A second run replaces the first
-    secrets: { api_key: test }
-    automation: { settings: *settings }
-    record: *article
-    inputs:
-      audience: Au7kep6QbWZm8q5XEjgT2
-      voice: JBFqnCBsd6RMkjVDRZzb
-      script: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
-    samples:
-      steps:
-        render:
-          body: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
-        tts:
-          - { asset_id: As1aep6QbWZm8q5XEjgP1, size: 30110, characters_billed: 38 }
-        join: *joined
-    expect:
-      status: success
-      outputs:
-        asset_id: As2bep6QbWZm8q5XEjgN7
-        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
-      steps:
-        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
-        tags: { outputs: { text: Wem-bee scored 30 in a 112 to 108 win. } }
-        name: { outputs: { base: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2 } }
-
-  - name: Another audience gets its own file
-    secrets: { api_key: test }
-    automation: { settings: *settings }
-    record: *article
-    inputs: { audience: Au9zep6QbWZm8q5XEjgF4 }
-    samples:
-      steps:
-        render:
-          body: '<p>Wemby scored 30.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p>'
-        tts:
-          - { asset_id: As4dep6QbWZm8q5XEjgK3, size: 40100, characters_billed: 96 }
-        join: { asset_id: As5eep6QbWZm8q5XEjgJ9, size: 44196, parts: 1, deleted: [As4dep6QbWZm8q5XEjgK3] }
-    expect:
-      status: success
-      outputs:
-        asset_id: As5eep6QbWZm8q5XEjgJ9
-        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au9zep6QbWZm8q5XEjgF4.mp3
-      steps:
-        # no voice picked: the default
-        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
-        # the spoken note is read once, however many sections are hidden
-        tags:
+        # the last pass of each loop: Free
+        spoken:
           outputs:
             text: |-
               Wem-bee scored 30.
 
               The rest of this section is for subscribers. Subscribe to hear the full article.
+        narration: { outputs: { asset_id: As5eep6QbWZm8q5XEjgJ9, characters_billed: 96, requests: 1 } }
+        virtual: { outputs: { asset_id: As8hep6QbWZm8q5XEjgV1 } }
+      not_run: [previewed, sample, empty, too-long]
+
+  # The same article again: the virtual asset's file name is the same, so
+  # asset.virtual updates it and hands back the same id (which the sample
+  # stands in for), and each audience's MP3 is replaced under its own name.
+  - name: A second run keeps the narration
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    inputs:
+      audiences: [Au7kep6QbWZm8q5XEjgT2, Au9zep6QbWZm8q5XEjgF4]
+      voice: JBFqnCBsd6RMkjVDRZzb
+      script: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
+    samples:
+      steps:
+        named: [*paid, *free]
+      actions:
+        template.render:
+          - body: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
+        http.post:
+          - { status: 200, ok: true, headers: { Character-Cost: "38" }, asset_id: As1aep6QbWZm8q5XEjgP1, size: 30110 }
+        asset.concat:
+          - { asset_id: As2bep6QbWZm8q5XEjgN7, size: 34206, parts: 1, deleted: [As1aep6QbWZm8q5XEjgP1] }
+          - { asset_id: As5eep6QbWZm8q5XEjgJ9, size: 34206, parts: 1, deleted: [As4dep6QbWZm8q5XEjgK3] }
+        asset.virtual: *narration
+    expect:
+      status: success
+      outputs:
+        asset_id: As8hep6QbWZm8q5XEjgV1
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5.mp3
+        requests: 2
+      steps:
+        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
+        spoken: { outputs: { text: Wem-bee scored 30 in a 112 to 108 win. } }
+        name: { outputs: { base: narration-Ar3oep6QbWZm8q5XEjgS5 } }
+
+  # A later run for Paid alone: the narration keeps its id and now has one
+  # version. Free's MP3 is not touched by this run.
+  - name: A run with fewer audiences keeps the narration
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    inputs: { audiences: [Au7kep6QbWZm8q5XEjgT2] }
+    samples:
+      steps:
+        named: [*paid]
+      actions:
+        template.render:
+          - body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+        http.post:
+          - { status: 200, ok: true, headers: { Character-Cost: "60" }, asset_id: As1aep6QbWZm8q5XEjgP1, size: 30110 }
+        asset.concat:
+          - { asset_id: As2bep6QbWZm8q5XEjgN7, size: 34206, parts: 1, deleted: [As1aep6QbWZm8q5XEjgP1] }
+        asset.virtual: *narration
+    expect:
+      status: success
+      outputs:
+        asset_id: As8hep6QbWZm8q5XEjgV1
+        versions:
+          - audience_id: Au7kep6QbWZm8q5XEjgT2
+            audience: Paid
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+            characters: 61
+            characters_billed: 60
+            requests: 1
+        requests: 1
+      steps:
+        # no voice picked: the default
+        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
+
+  # Free's text fits and Paid's does not: the run fails naming Paid, before
+  # anything is read for either.
+  - name: One audience over the limit fails the run
+    secrets: { api_key: test }
+    automation:
+      settings:
+        voice_id: JBFqnCBsd6RMkjVDRZzb
+        model_id: eleven_flash_v2_5
+        max_characters: 30
+        text_cleanup: true
+    record: *article
+    inputs: { audiences: [Au9zep6QbWZm8q5XEjgF4, Au7kep6QbWZm8q5XEjgT2] }
+    samples:
+      steps:
+        named: [*free, *paid]
+      actions:
+        template.render:
+          - body: "<p>Wemby scored 30.</p>"
+          - body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+    expect:
+      status: failed
+      reason: The text for Paid is 59 characters, over the limit of 30
+      not_run: [narration, made, virtual]
+
+  # "Make audio for" is required: a run without it is refused before any
+  # step runs. (A preview is not held to it; see the sample preview below.)
+  - name: A run with no audience is refused
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    inputs: { voice: 21m00Tcm4TlvDq8ikWAM }
+    expect:
+      status: failed
+      reason: "inputs.audiences: is required"
+      not_run: [who, named, spoken, narration, virtual]
 
   - name: Preview the spoken text
     secrets: { api_key: test }
     automation: { settings: *settings }
     record: *article
     trigger: { action: preview }
-    # The form as it is on screen: an unsaved edit, no voice picked yet.
+    # The form as it is on screen: an unsaved edit, no voice picked yet, and
+    # Preview as set to an audience that is not the first one chosen.
     inputs:
-      audience: Au7kep6QbWZm8q5XEjgT2
+      audiences: [Au7kep6QbWZm8q5XEjgT2, Au9zep6QbWZm8q5XEjgF4]
+      preview_audience: Au9zep6QbWZm8q5XEjgF4
       script: "<p>An unsaved edit, 50% done.</p>"
     samples:
-      steps:
-        render:
+      actions:
+        template.render:
           body: "<p>An unsaved edit, 50% done.</p>"
     expect:
       status: success
@@ -135,7 +221,28 @@ cases:
         limit: 0
         requests: 1
         note: ""
-      not_run: [sample, name, plan, tts, join]
+      steps:
+        who: { outputs: { preview: Au9zep6QbWZm8q5XEjgF4 } }
+      not_run: [sample, name, named, spoken, narration, virtual]
+
+  - name: Spoken text without Preview as is the first audience's
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    trigger: { action: preview }
+    inputs:
+      audiences: [Au7kep6QbWZm8q5XEjgT2, Au9zep6QbWZm8q5XEjgF4]
+    samples:
+      actions:
+        template.render:
+          body: "<p>Wemby scored 30 in a 112-108 win.</p>"
+    expect:
+      status: success
+      outputs:
+        text: Wem-bee scored 30 in a 112 to 108 win.
+      steps:
+        who: { outputs: { preview: Au7kep6QbWZm8q5XEjgT2 } }
+      not_run: [sample, name, named, spoken, narration, virtual]
 
   - name: Preview a spoken sample
     secrets: { api_key: test }
@@ -145,7 +252,7 @@ cases:
       action: preview
       preview:
         sample: "Wemby vs. the field"
-    # A paragraph can be played before the audience is chosen.
+    # A paragraph can be played before any audience is chosen.
     inputs: { voice: 21m00Tcm4TlvDq8ikWAM }
     samples:
       steps:
@@ -158,7 +265,7 @@ cases:
         text: Wem-bee versus the field
       steps:
         voice: { outputs: { id: 21m00Tcm4TlvDq8ikWAM } }
-      not_run: [render, name, plan, tts, join]
+      not_run: [render, name, named, spoken, narration, virtual]
 
   - name: A sample over 2,000 characters is refused
     secrets: { api_key: test }
@@ -173,26 +280,7 @@ cases:
     expect:
       status: failed
       reason: A sample is at most 2,000 characters
-      not_run: [render, sample, name, plan, tts, join]
-
-  - name: Text over the limit is refused
-    secrets: { api_key: test }
-    automation:
-      settings:
-        voice_id: JBFqnCBsd6RMkjVDRZzb
-        model_id: eleven_flash_v2_5
-        max_characters: 20
-        text_cleanup: true
-    record: *article
-    inputs: *inputs
-    samples:
-      steps:
-        render:
-          body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
-    expect:
-      status: failed
-      reason: over the limit of 20
-      not_run: [name, plan, tts, join]
+      not_run: [render, sample, name, named, spoken, narration, virtual]
 
   - name: Not offered for an article with no body
     secrets: { api_key: test }

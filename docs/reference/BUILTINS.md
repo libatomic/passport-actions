@@ -20,6 +20,11 @@
 >   complete function list is [chapter 8](../guide/08-functions.md); the new
 >   `http.*` inputs are in [chapter 9](../guide/09-files-and-binary.md).
 > - Each action's effect class is in [chapter 4](../guide/04-actions.md#42-built-in-actions).
+> - Added since, for Passport 2.3.0: [`asset.virtual`](#assetvirtual), the
+>   `audiences` input of `asset.create`, `asset.concat` and `response_asset`,
+>   and what a render "as an audience" covers (`template.render`,
+>   `distribution.render`). The guide for them is
+>   [9.7](../guide/09-files-and-binary.md#97-protected-and-virtual-assets).
 
 # Workflow Builtins
 
@@ -37,7 +42,7 @@ Built-in **actions** and **expression functions** available to workflows.
   - [User](#user) — [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging) — [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
   - [Data & Templates](#data--templates) — [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [Commerce & Content](#commerce--content) — [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`asset.virtual`](#assetvirtual) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [HTTP](#http) — [`http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`](#httpget--httppost--httpput--httppatch--httpdelete)
   - [Utility & Flow Control](#utility--flow-control) — [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`workflow.fail`](#workflowfail) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)** — helpers for `${{ }}` blocks
@@ -304,7 +309,7 @@ Renders a template (by id or name) or a raw body against a context, returning th
 | `body` | template or body | Raw template body |
 | `data` / `context` | no | Render context object |
 | `article_id` | no | Render with this article as `.article`, as a distribution's render does (2.3.0) |
-| `audience_id` | no | Render as a member of this audience, with no user data: `hasAnyAudience` / `audiences` blocks resolve for it. Can't be combined with `user_id` (2.3.0) |
+| `audience_id` | no | Render as a member of this audience **and of every audience ranked below it**, with no user data: `hasAnyAudience` / `audiences` blocks resolve for them. Can't be combined with `user_id` (2.3.0). See [Rendering as an audience](#rendering-as-an-audience) |
 | `user_id` | no | User context |
 | `channel` | no | Channel override |
 | `transmute` | no | `true` atomicizes the rendered HTML via headless Chrome (inline styles, capture embeds, tokenize links). Needed by channels that post HTML to a system that can't run scripts (e.g. another ESP, a distribution trigger). Off by default. |
@@ -480,7 +485,7 @@ Render a distribution's template into its final title and body — the same rend
 |---|---|---|
 | `distribution_id` | yes | Usually `${{ trigger.distribution_id }}` |
 | `user_id` | no | Personalize the render for a recipient (unicast runs — `${{ trigger.user_id }}`) |
-| `as_audience` | no | Render **as a member of the distribution's audience**, with no user data: `hasAnyAudience` / `audiences` blocks resolve for that audience. For content made once per audience (narration audio, a per-tier summary). Can't be combined with `user_id` |
+| `as_audience` | no | Render **as a member of the distribution's audience and of every audience ranked below it**, with no user data: `hasAnyAudience` / `audiences` blocks resolve for them. For content made once per audience (narration audio, a per-tier summary). Can't be combined with `user_id`; the distribution must have an audience |
 | `body` | no | Render this body instead of the distribution's saved one (nothing is saved), e.g. a rewritten copy |
 
 | Output | Description |
@@ -492,6 +497,26 @@ The template is the distribution's own (`template_id`, chosen in the channel's t
 own body (or the `body` override) as the template, so its template actions and
 restricted-content blocks run with the article in context (`{{ .article.title }}`,
 `timeFormat`, …). To put text around the body, compose it into `body` first.
+
+#### Rendering as an audience
+
+A render made as an audience (`as_audience` here, `audience_id` on
+`template.render`) runs as that audience **and every audience ranked below
+it** in the site's audience rank order: `hasAnyAudience` is true when any
+listed audience is one of them, `audiences` when every listed audience is,
+and there is no user data (`isSubscriber` is false).
+
+- Ranked below is a larger rank number, or no rank: every unranked audience
+  is below every ranked one.
+- An unranked audience has nothing below it, the other unranked audiences
+  included: it renders as itself alone.
+- An audience ranked above is never included.
+
+With Founding, Paid and Free ranked 1, 2, 3 and Newsletter unranked: as
+Founding, all four; as Paid, Paid, Free and Newsletter; as Free, Free and
+Newsletter; as Newsletter, Newsletter only. On a site that has ranked
+nothing, a render as an audience is that audience only. A reader's own
+render (`user_id`) is unchanged: it is their real memberships.
 
 ### `distribution.create`
 Create a distribution — publish an article to a channel, or seed a custom-channel distribution from workflow data.
@@ -547,6 +572,7 @@ Create an asset — import from a URL (fetched server-side) or store an inline p
 | `url` | one of `url`/`payload` | Import the asset from this URL |
 | `payload` | one of `url`/`payload` | Store this string as the asset body |
 | `public` | no | Make the asset publicly accessible |
+| `audiences` | no | A list of audience IDs. Makes the asset **protected**: only members of at least one of them, and staff, may fetch it; anyone else is answered as for a missing asset. Not with `public: true` (the step fails as `invalid`). This is how a variant of a virtual asset ([`asset.virtual`](#assetvirtual)) is made |
 | `description` | no | Description |
 | `type` | no | Asset type |
 | `size` | no | Size in bytes (auto-computed for inline `payload`) |
@@ -613,6 +639,10 @@ it.
 ### `asset.delete`
 Delete an asset and its stored file. Whether it is still referenced elsewhere is
 the workflow's call; a channel's `delete` run typically removes the file it made.
+The one reference that is checked: an asset that is a variant or the default of
+a virtual asset is refused (`conflict`). Run [`asset.virtual`](#assetvirtual)
+with the new set first, then delete what it no longer names. Deleting a virtual
+asset leaves its variants' assets as they are.
 
 | Input | Required | Description |
 |---|---|---|
@@ -645,6 +675,7 @@ the first words.
 | `delete_sources` | no | Delete the parts once the joined asset is written (never the joined asset itself) |
 | `mime_type` | no | Defaults to the first part's |
 | `description`, `public`, `type`, `categories`, `metadata` | no | As for `asset.create` |
+| `audiences` | no | A list of audience IDs: the joined asset is protected, as on `asset.create`. Not with `public: true` |
 | `max_size` | no | Fail if the joined file is larger (default 200 MiB) |
 | `lead_in` | no | MP3 only: silence before the first part, in seconds (`0.5`) or as a duration (`"500ms"`), at most 10s; rounded up to whole frames |
 
@@ -678,6 +709,76 @@ e.g. pieces of one text read by one voice in one output format:
     filename: narration.mp3
     overwrite: true
     delete_sources: true
+```
+
+### `asset.virtual`
+Build a virtual asset: one ID, filename and address answered by a different file
+for each audience. Each variant is a protected asset (one created with
+`audiences`) for one audience. A member gets the variant of the best-ranked
+audience they are in (the site's audience rank order, unranked audiences last),
+and the default when they are in none; with no default they are answered as for
+a missing asset. Staff and application tokens get the first variant, or the one
+for the audience named with `?as_audience=<audience id>` on the address. A
+virtual asset that already has the filename is given the variants (they replace
+what it had) and keeps its ID, so the step is safe to run twice.
+
+| Input | Required | Description |
+|---|---|---|
+| `filename` | yes | The virtual asset's filename, which is its address (`/assets/<filename>`). `name` is accepted as well |
+| `variants` | variants or a default | A list of `{ asset_id, audience_id }`: a protected asset and the audience it is for |
+| `default` | variants or a default | An asset ID: what a member of none of the variants' audiences gets. It is checked as any asset is when it answers, so a private asset is the usual choice |
+| `description` | no | Description |
+| `mime_type` | no | Not needed: the content type is the variants'. Given, it must be theirs |
+
+| Output | Description |
+|---|---|
+| `asset` | The virtual asset, with `virtual: true` and its `variants` |
+| `asset_id` | Its ID: the same on every run for one filename |
+| `url` | Its address, without a token. Each reader fetches it with their own, as a feed's enclosure link does |
+
+A variant must be a protected asset of the site (not public, with audiences)
+that names its `audience_id` among its audiences. One variant per audience, each
+asset once, at most 64; every variant, and the default, of one content type;
+none of them a virtual asset. A set that breaks a rule fails the step as
+`invalid` and leaves the virtual asset as it was. A filename that a plain asset
+already has is refused (`conflict`): the step never turns a file into a virtual
+asset.
+
+While an asset is a variant or a default it cannot be deleted, made public,
+given audiences that leave its variant's audience out, or change content type
+(`conflict`); replacing its file with an overwrite is allowed. An audience a
+variant is for cannot be deleted. Nothing a member is given carries a variant's
+ID. Effect class `write`; it is not one of the built-ins a publisher's own
+automation may use.
+
+```yaml
+# One file per audience, then one asset that gives each member theirs
+- id: paid_audio
+  action: http.post
+  with:
+    url: https://api.example.com/v1/speech
+    body: { text: "${{ steps.paid_text.outputs.text }}" }
+    response_asset:
+      filename: "narration-${{ trigger.distribution_id }}-paid.mp3"
+      overwrite: true
+      audiences: ["${{ vars.paid_audience }}"]     # protected: Paid members and staff only
+- id: free_audio
+  action: http.post
+  with:
+    url: https://api.example.com/v1/speech
+    body: { text: "${{ steps.free_text.outputs.text }}" }
+    response_asset:
+      filename: "narration-${{ trigger.distribution_id }}-free.mp3"
+      overwrite: true
+      audiences: ["${{ vars.free_audience }}"]
+- id: narration
+  action: asset.virtual
+  with:
+    filename: "narration-${{ trigger.distribution_id }}.mp3"
+    variants:
+      - { asset_id: "${{ steps.paid_audio.outputs.asset_id }}", audience_id: "${{ vars.paid_audience }}" }
+      - { asset_id: "${{ steps.free_audio.outputs.asset_id }}", audience_id: "${{ vars.free_audience }}" }
+    # default: an asset id for members of neither audience (optional)
 ```
 
 ### `article.get`
@@ -770,7 +871,7 @@ hosts it finds). Prefer a recipe (`includes:`) for a vendor's calls.
 | `timeout` | no | Go duration (default `30s`; longer values are honored, e.g. `15m`) |
 | `retries` | no | Total attempts for transport errors and 5xx (default `3`). Every attempt that reaches a paid API is billed |
 | `expect_status` | no | Extra status codes treated as success, e.g. `[404]` |
-| `response_asset` | no | Store a 2xx body as an **asset** instead of returning it (files: audio, images, PDFs). Keys: `filename` (required), `mime_type` (default: the response type), `public`, `type`, `description`, `categories`, `metadata`, `overwrite` (replace the asset with that filename, **keeping its id and link**), `max_size` (bytes, default 200 MiB). The asset is written only once the whole body has arrived; an MP3's duration is read into its metadata |
+| `response_asset` | no | Store a 2xx body as an **asset** instead of returning it (files: audio, images, PDFs). Keys: `filename` (required), `mime_type` (default: the response type), `public`, `type`, `description`, `categories`, `metadata`, `audiences` (audience IDs that make the asset protected: their members and staff only; not with `public`; an `overwrite` that names none keeps the ones the asset has), `overwrite` (replace the asset with that filename, **keeping its id and link**), `max_size` (bytes, default 200 MiB). The asset is written only once the whole body has arrived; an MP3's duration is read into its metadata |
 
 | Output | Description |
 |---|---|

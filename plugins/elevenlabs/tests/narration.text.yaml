@@ -1,0 +1,67 @@
+# Test cases for actions/narration.text.yaml. Dry runs: template.render is
+# sampled, everything else (htmlText, the pronunciations, the cleanup, the
+# voice tags, chunkText) runs for real.
+cases:
+  - name: A body is rendered for the audience and turned into text
+    secrets: { api_key: test }
+    inputs:
+      body: "<p>{{ .article.title }}. [long pause]</p><p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+      article_id: Ar3oep6QbWZm8q5XEjgS5
+      audience_id: Au7kep6QbWZm8q5XEjgT2
+      model_id: eleven_flash_v2_5
+      pronunciations:
+        - { term: Wemby, say_as: Wem-bee }
+    samples:
+      actions:
+        template.render:
+          body: "<p>Fishing the Ozarks. [long pause]</p><p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+    expect:
+      status: success
+      outputs:
+        text: |-
+          Fishing the Ozarks. <break time="2s" />
+
+          Wem-bee scored 30 in a 112 to 108 win.
+
+          The team is number 1.
+        requests: 1
+
+  # The fallback for a hidden section is read once, however many sections
+  # the audience cannot see. eleven_v3 keeps the tags as typed.
+  - name: A repeated fallback is read once
+    secrets: { api_key: test }
+    inputs:
+      body: "<p>ignored: the render is sampled</p>"
+      audience_id: Au9zep6QbWZm8q5XEjgF4
+      model_id: eleven_v3
+      skip_parts: [figure]
+      text_cleanup: false
+    samples:
+      actions:
+        template.render:
+          body: '<p>[whispers] It was 50% done.</p><figure>A chart</figure><p data-narration="fallback">Subscribe to hear the rest.</p><p>More.</p><p data-narration="fallback">Subscribe to hear the rest.</p>'
+    expect:
+      status: success
+      outputs:
+        text: |-
+          [whispers] It was 50% done.
+
+          Subscribe to hear the rest.
+
+          More.
+
+  - name: A sample is read as it is, without a render
+    secrets: { api_key: test }
+    inputs:
+      sample: "Wemby vs. the field"
+      model_id: eleven_flash_v2_5
+      pronunciations:
+        - { term: Wemby, say_as: Wem-bee }
+    expect:
+      status: success
+      outputs:
+        text: Wem-bee versus the field
+        characters: 24
+        chunks: [Wem-bee versus the field]
+        requests: 1
+      not_run: [render, html]

@@ -236,7 +236,10 @@ The usual shape:
 1. **`delete`**: remove what was published (`continue-on-error: true` if it
    may already be gone), then `workflow.exit`.
 2. **Render** the body with `distribution.render`. `as_audience: true`
-   renders once as a member of the distribution's audience.
+   renders once as a member of the distribution's audience and of every
+   audience ranked below it in the site's audience rank order (an unranked
+   audience: itself alone; see
+   [5.7](05-automations.md#57-extensions)).
 3. **`preview`**: return what would be sent as `outputs`, then
    `workflow.exit`. Put `if: "${{ trigger.action != 'preview' }}"` on every
    step with a side effect as a backstop.

@@ -3,7 +3,8 @@ id: elevenlabs
 name: ElevenLabs Narration
 description: >-
   Reads articles aloud with an ElevenLabs voice. Adds Create Audio Narration
-  to an article's Extensions menu: running it saves the narration as an MP3.
+  to an article's Extensions menu: running it makes one narration that gives
+  each member the MP3 read for their audience.
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
 category: audio
 visibility: public

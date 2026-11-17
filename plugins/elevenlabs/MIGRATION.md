@@ -21,12 +21,28 @@ text pipeline (rewrite, compose, render, text, speech, pronounce, cleanup,
 tags, measure, pieces, generate, join) are carried over from the channel,
 which had them from v1, with the renames below.
 
+**16 November 2026: one narration, a version per audience** (PSPT-1013,
+PSPT-1058, epic PSPT-1050). A run now reads the article once for each
+audience chosen, saves each MP3 as a protected asset for its audience, and
+files them as the variants of one virtual asset, which is what the run hands
+back. The text pipeline from `render` to `pieces` moved, unchanged, into
+action `narration.text`, and the generate and join steps into action
+`narration.create`, so the extension can run them once per audience. The
+extension had not been released, so `narrate.yaml` was changed in place and
+is still 1.0.0; had it been, the change to its inputs would have been a new
+major file.
+
 **What has been run.** `passport-plugin check` (built from atomic `develop`)
-reports nothing, and every case in `tests/narrate.yaml` passes as a dry run.
-In a dry run the expressions and functions (`htmlText`, `replaceEach`,
-`chunkText`, the patterns) run for real; `template.render`, the ElevenLabs
-requests and `asset.concat` are answered from samples. Nothing has been run
-against a Passport site or ElevenLabs.
+reports nothing, and every case in `tests/narrate.yaml`,
+`tests/narration.text.yaml` and `tests/narration.create.yaml` passes as a
+dry run. In a dry run the expressions and functions (`htmlText`,
+`replaceEach`, `chunkText`, the patterns), the loops and the plugin actions'
+own steps run for real; `audience.get`, `template.render`, the ElevenLabs
+requests, `asset.concat` and `asset.virtual` are answered from samples. So
+that an MP3 is stored protected, that the virtual asset accepts the MP3s as
+variants and keeps its id on a second run, and who is answered with which
+version, are the engine's documented behaviour and have not been seen
+working here. Nothing has been run against a Passport site or ElevenLabs.
 
 ## What became what
 
@@ -39,18 +55,21 @@ against a Passport site or ElevenLabs.
 | the "narration" entry in an article's Add Distribution menu | **Create Audio Narration** on the article's Extensions menu |
 | the distribution trigger's `ui:` editor hints | `ui.paragraphs` on the `script` input |
 | the distribution's body, edited in the narration editor | input `script` (`format: html`, `widget: paragraphs`), which starts as the article's body and is remembered from the last run on the article |
-| the distribution's audience | input `audience` (`format: passport.audience`, required) |
+| the distribution's audience | input `audiences` (a list of `passport.audience`, at least one): the audiences read for. Input `preview_audience` is the one the editor marks sections for |
 | blueprint inputs filled in at install | the extension's `settings` |
 | `package.yml` `settings:` sections | `settings.ui.layout`, same three sections |
 | `ui.choice` (Voice menu, saved in `context.voice`) | input `voice`, read as `inputs.voice` |
 | input `listen` (`runtime: true`) | `trigger.preview.sample`, set by a paragraph's play button |
 | `trigger.preview.body` (the editor's unsaved body) | `inputs.script` as it is on screen |
 | the `load` step (`distribution.get`) | removed; the run has the record as `article` |
-| `distribution.render` with `as_audience` | `template.render` with `body`, `article_id`, `audience_id` |
+| `distribution.render` with `as_audience` | `template.render` with `body`, `article_id`, `audience_id`, once per audience, in action `narration.text` |
 | the rendered title (`steps.render.outputs.title`) | `article.title` |
-| publish and republish | a run (`trigger.action` `run`); a second run for the same article and audience replaces the MP3 |
+| publish and republish | a run (`trigger.action` `run`); a second run for the same article replaces each audience's MP3 and keeps the narration's id |
+| one MP3, private | one protected MP3 per audience (`audiences` on `response_asset` and `asset.concat`), filed as the variants of one virtual asset (`asset.virtual`) |
 | delete (removes the MP3) | nothing: see "What an extension cannot do yet" |
-| what was recorded in the distribution's `context` | the run's outputs (`asset_id`, `filename`, `characters`, `characters_billed`, `requests`) and the asset's `metadata.narration` |
+| what was recorded in the distribution's `context` | the run's outputs (`asset_id`, `filename`, `versions`, `characters`, `characters_billed`, `requests`) and each MP3's `metadata.narration` |
+| the steps from `render` to `pieces` | action `elevenlabs/narration.text` |
+| the `generate` and `join` steps | action `elevenlabs/narration.create` |
 | the `tts` step's `http.post` | action `elevenlabs/speech.create` |
 | the `sample` step's `http.post` | action `elevenlabs/speech.sample` |
 | blueprint `list-voices` | `automations/list-voices.yaml`, on actions `voices.list` and `usage.get` |
@@ -74,17 +93,21 @@ against a Passport site or ElevenLabs.
 
 ## Decisions that change behaviour or naming
 
-1. **One narration per run, for one audience.** The form asks for the
-   audience; the narration is rendered as a member of it. A publisher who
-   wants a free and a paid version runs it twice.
-2. **The file is named after the article and the audience**:
-   `narration-<article id>-<audience id>.mp3`, pieces
-   `…-part-<n>.mp3`. v1 named it from the first three words of the title
-   and the distribution's number (`Fishing_the_Ozarks-887.mp3`) and kept
-   the chosen name in the distribution's `context`. An extension has nowhere
-   to keep a chosen name, and a name with the title in it would stop a
-   second run replacing the first after the title changed. The title is in
-   the asset's description.
+1. **One narration per article, with a version per audience.** The form
+   asks who to make audio for; the text is rendered once for each audience,
+   as a member of it and of every audience ranked below it, and each
+   version is a protected MP3. The run hands back one virtual asset whose
+   variants they are. (The first conversion made one private MP3 per run,
+   for one audience.)
+2. **Files are named after the article, and the audience**: the virtual
+   asset `narration-<article id>.mp3`, each audience's MP3
+   `narration-<article id>-<audience id>.mp3`, pieces `…-part-<n>.mp3`. v1
+   named the MP3 from the first three words of the title and the
+   distribution's number (`Fishing_the_Ozarks-887.mp3`) and kept the chosen
+   name in the distribution's `context`. An extension has nowhere to keep a
+   chosen name, and a name with the title in it would stop a second run
+   replacing the first after the title changed. The title is in the
+   assets' descriptions.
 3. **The unchanged-text check is gone.** v1 skipped ElevenLabs on a
    republish when the spoken text, voice and model were unchanged, because
    a republish can happen for reasons that have nothing to do with the
@@ -92,8 +115,8 @@ against a Passport site or ElevenLabs.
    because the last take sounded wrong, so every run reads again and is
    billed. The hash is still written to `metadata.narration.text_hash`.
 4. **Not `multiple`.** The channel could be added more than once (a second
-   language or show). Two of this extension would write the same file name
-   for the same article and audience and replace each other's MP3. Telling
+   language or show). Two of this extension would write the same file names
+   for the same article and replace each other's narration. Telling
    them apart needs the added automation's own name in the file name, and
    the guide does not list one among what a run can read. Until it does, the
    extension is added once.
@@ -111,10 +134,11 @@ against a Passport site or ElevenLabs.
 7. **Preview results are set by the preview steps**, with step-level
    `outputs:` and `workflow.exit`, as the channel did. The declared
    `outputs`/`returns` describe a run only (`asset_id` is required there).
-8. **A missing audience fails a run with a plain reason.** The form
-   requires it; the `no-audience` step covers a run started some other way.
-   A preview may come before the audience is chosen, and then renders with
-   no audience.
+8. **A run needs at least one audience; a preview does not.** The form
+   requires "Make audio for", and inputs supplied any other way are held to
+   the same schema (the dry run refuses a run without it before any step),
+   so there is no step for it. A preview may come before an audience is
+   chosen, and then renders for nobody in particular.
 9. **Offered when the article has a body** (`extension.if`), published or
    not.
 10. **The Voice menu.** The form lists the choice equal to the field's
@@ -127,28 +151,50 @@ against a Passport site or ElevenLabs.
     an absent one to ElevenLabs as `null`.
 12. **Asset metadata** is the typed `narration` object of `speech.create`
     without `distribution_id`: article, audience, voice, model, hash,
-    requests.
-13. **Lead-in silence stays hardcoded** at 0.5 seconds in the `join` step,
-    and the pause lengths in the `blocks` step's tag rules, as in v1.
+    requests. It is on each audience's MP3; the virtual asset has none of
+    its own (a read of it shows the answering variant's).
+13. **Lead-in silence stays hardcoded** at 0.5 seconds in
+    `narration.create`'s `join` step, and the pause lengths in
+    `narration.text`'s tag rules, as in v1.
 14. **`category: audio`** for the plugin (v1 package: `integrations`).
 15. **The YAML anchor** `&expressive_tags` is kept so eleven_v3 and
     eleven_v4 share one tag set.
 16. **`list-voices` is a tool.** Manual, no settings: it is listed under
     Tools with a Run button and is never added (guide 5.4).
-
-## Next step: the narration as a protected asset a channel uses
-
-Not available yet, and not used here:
-
-- **Audiences on asset steps** (PSPT-1056): the MP3 saved as a protected
-  asset for its audience, in place of a private one.
-- **A built-in that makes a virtual asset from several** (PSPT-1058): one
-  narration with a variant per audience, so a podcast distribution names one
-  asset and each member hears their audience's version.
-
-Until then this version makes one narration per run, for the chosen
-audience, as a private asset, and the publisher picks that asset on a
-podcast distribution by hand.
+17. **"Preview as" is its own, optional field.** The paragraph editor
+    marks restricted sections for one audience, named by a
+    `passport.audience` field of the same form (guide 2.6); it cannot name
+    the "Make audio for" list. A default in an extension's form is worked
+    out when the form opens, from the record and the settings (guide 2.10),
+    so it cannot follow the first audience chosen. The field is therefore
+    not required and has no default. Left empty, the editor shows
+    restricted sections unmarked, and "Spoken text" is rendered for the
+    first audience chosen (the `who` step).
+18. **No default version, and no setting for one.** A member in none of the
+    chosen audiences gets no audio. A virtual asset's default is checked
+    like any asset when it answers, so naming one audience's MP3 as the
+    default would give nothing to the people a default is for: they are not
+    in that audience. A default that works would be another, private or
+    public, copy of some version, which is a decision about giving audio
+    away and not one a setting should make quietly. A publisher who wants
+    everyone to hear something adds their widest audience.
+19. **An audience left out of a later run keeps its MP3.** `asset.virtual`
+    replaces the variant set, so the audience's version is no longer part
+    of the narration, and the engine would then allow `asset.delete` on it.
+    The run does not delete it: it does not know what the narration held
+    before (it would have to read the virtual asset's variants first), and
+    the MP3 may have been picked directly somewhere. It stays a protected
+    asset for that audience; the README says so.
+20. **Every audience is checked before any is read.** The texts are
+    prepared for all the audiences first, and a run that would fail for one
+    (nothing to read, or over "Longest article to read") fails naming it
+    with nothing sent to ElevenLabs. The limit is per version, as before,
+    so a run for three audiences can cost three times the limit.
+21. **The pieces are protected too.** `speech.create` takes `audiences` and
+    stores each `…-part-<n>.mp3` for the same audience as the MP3 it
+    becomes, so a piece is no easier to fetch while a run is going.
+22. **The audience's name is looked up** (`audience.get`) for the failure
+    reasons and the MP3s' descriptions, one read per audience per run.
 
 ## What an extension cannot do yet, that v1's narration did
 
@@ -161,7 +207,9 @@ podcast distribution by hand.
   someone runs it again.
 - **Reach members by itself.** The v1 distribution carried the audio
   (`context.asset_id`) to its audience. Now a second, manual step puts the
-  asset on a podcast distribution. See "Next step".
+  narration on a podcast distribution. One distribution is enough: the
+  narration answers each reader with their audience's MP3.
+- **Remove a version it no longer makes.** See decision 19.
 - **Be added twice.** See decision 4.
 
 ## Needs Jon
@@ -182,13 +230,35 @@ podcast distribution by hand.
 - The admin's narration editor lives on the admin app's `audio-narration`
   branch and reads v1 names. It must read the hints from the `script`
   input's `ui.paragraphs`; `skip_parts` as a list; the audience from the
-  form's `audience` field. It must send a paragraph's sample as
+  form's `preview_audience` field ("Preview as"), which may be empty. It
+  must send a paragraph's sample as
   `trigger.preview.sample`, and the pronunciation dialog's unsaved list as
   unsaved settings for that preview (guide 5.7).
 - Whether `list-voices` is still worth shipping now that both voice
   settings are menus. It remains the only place that shows a voice id and
   the quota.
-- `list-voices`, `ping` and the four actions have no test cases.
+- `list-voices`, `ping` and the actions `speech.create`, `speech.sample`,
+  `voices.list` and `usage.get` have no test cases of their own
+  (`speech.create`'s steps run inside the `narration.create` and `narrate`
+  cases).
+- A run on a sandbox, which is the first time any of this meets a real
+  site: two ranked audiences and an article with a restricted section;
+  check that each MP3 is listed as protected, that the narration is listed
+  as virtual with two variants, that a member of each audience and of both
+  hears the right one, that a member of neither gets a 404, and that a
+  second run keeps the narration's id.
+- The admin: the run's result shows `asset_id` as a player (for staff, the
+  best-ranked version), and `versions` is a list of objects, which the
+  guide's "anything else as text" does not make readable. The asset picker
+  on a podcast distribution must offer the virtual asset, and ideally tell
+  it apart from the per-audience MP3s beside it.
+- Whether the editor's marks for the "Preview as" audience follow the rank
+  order as the render now does (as Paid, a Free section is read). The guide
+  (2.6) does not say.
+- The form's two audience fields. "Preview as" cannot default to the first
+  audience chosen (see decision 17); if the editor could take its audience
+  from a list field, or a default could follow another field, it would be
+  one field fewer.
 
 ## What v2 still expresses awkwardly or not at all
 
