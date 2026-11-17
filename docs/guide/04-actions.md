@@ -63,7 +63,7 @@ The ones you will use most:
 
 | Need | Action | Notes |
 |---|---|---|
-| Call a vendor's API | `http.*` | Hosts must be in `allowed_hosts`. `retries` is total attempts. A non-2xx status fails the step unless listed in `expect_status` |
+| Call a vendor's API | `http.*` | Hosts must be in `allowed_hosts`, at a public address, on port 80 or 443; a redirect is followed only to another allowed host, and without the step's headers ([1.2](01-project-and-manifest.md#where-http-may-connect)). `retries` is total attempts. A non-2xx status fails the step unless listed in `expect_status` |
 | Save a file a vendor returns | `http.*` with `response_asset` | See [chapter 9](09-files-and-binary.md) |
 | Look up the member an event is about | `user.get` | |
 | Read the distribution being published | `distribution.get` | |
@@ -200,8 +200,8 @@ steps:
 - **Not allowed inside an action:** `wait` (a run can only pause at its top
   level), and `workflow.exit` (use an `if:` to skip the remaining steps).
   `workflow.fail` is allowed and fails the whole run. In an automation or a
-  channel's flow, `workflow.exit` may be used anywhere, including inside a
-  branch or a loop.
+  flow of a channel or an extension, `workflow.exit` may be used anywhere,
+  including inside a branch or a loop.
 - **Called from a channel's flow**, the action runs as part of that flow.
   `trigger.action` names the flow, so one action can serve `publish` and
   `update`. Called from a `preview` or `status` flow it may run only

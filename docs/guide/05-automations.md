@@ -53,11 +53,12 @@ steps:
 | `multiple` | no | `true` if a publisher may add it more than once (one per list, say). Default `false` |
 | `settings` | no | This automation's own settings, a [form schema](02-field-schema.md), filled in when the publisher adds it. Read as `automation.settings.<name>` and `automation.secrets.<name>` |
 | `inputs` | no | What a manual run, or a caller using `workflow.run`, supplies. A form schema. Read as `inputs.<name>` |
-| `outputs`, `returns` | no | What a manual run or a synchronous `workflow.run` gets back ([2.12](02-field-schema.md#212-outputs)) |
+| `outputs`, `returns` | no | What a manual run or a synchronous `workflow.run` gets back ([2.12](02-field-schema.md#212-outputs)). An extension declares `outputs` here and writes its `returns` under `run:` |
 | `on` | yes, unless `extension` | One or more triggers ([5.3](#53-triggers)) |
 | `extension` | no | Makes this an extension: run by a person on one Passport record, from that record's page ([5.7](#57-extensions)). In place of `on` |
 | `vars` | no | Starting values for `vars` |
-| `steps` | yes | [Chapter 7](07-steps-and-expressions.md) |
+| `steps` | yes, unless `extension` | [Chapter 7](07-steps-and-expressions.md). An extension has none at the top level: its steps are in its flows |
+| `run`, `preview` | only with `extension` | An extension's flows, each with its own `steps` and `returns` ([5.7](#57-extensions)). `run` is required there; an automation with `on` has neither |
 | `schemas` | no | Shapes used only in this file ([3.3](03-schemas.md#33-schemas-inside-an-automation-or-channel)) |
 | `retention` | no | How long runs are kept, `72h` (default) to `4320h` |
 | `requires` | no | [1.5](01-project-and-manifest.md#15-requires) |
@@ -326,54 +327,114 @@ description: Reads the article aloud with an ElevenLabs voice and saves it as an
 extension:
   on: article
   label: Create Audio Narration
-  if: "${{ article.published_at != nil }}"
+  if: "${{ trim(article.body ?? '') != '' }}"
 settings:
   type: object
+  required: [voice_id]
   properties:
-    model_id: { type: string, title: Model, enum: [eleven_multilingual_v2, eleven_turbo_v2_5], default: eleven_multilingual_v2 }
+    voice_id: { type: string, title: Default voice }
+    model_id: { type: string, title: Model, enum: [eleven_multilingual_v2, eleven_v4], default: eleven_v4 }
 inputs:
   type: object
-  required: [voice]
   properties:
-    voice:
+    script:
       type: string
-      title: Voice
-      ui: { options: { action: elevenlabs/voices.list, items: "${{ outputs.voices }}", value: "${{ item.voice_id }}", label: "${{ item.name }}" } }
-    intro:
-      type: string
-      title: Spoken introduction
-      default: "${{ article.title }}, by ${{ article.author }}"
+      format: html
+      title: Text to read
+      default: "${{ article.body }}"
+      ui: { widget: paragraphs, paragraphs: { sample: audio, preview_label: Spoken text } }
 outputs:
   type: object
   required: [asset_id]
   properties:
     asset_id: { type: string, format: passport.asset, title: Narration }
-returns:
-  asset_id: "${{ steps.join.outputs.asset_id }}"
-steps:
-  - id: speak
-    action: elevenlabs/speech.create
-    with:
-      text: "${{ inputs.intro + '. ' + htmlText(article.body) }}"
-      voice_id: "${{ inputs.voice }}"
-      model_id: "${{ automation.settings.model_id }}"
-      filename: "narration-${{ article.id }}.mp3"
-  # …
+
+run:                      # required: what a person starts
+  steps:
+    - id: speak
+      name: Read the text into an MP3
+      action: elevenlabs/speech.create
+      with:
+        text: "${{ htmlText(inputs.script) }}"
+        voice_id: "${{ automation.settings.voice_id }}"
+        model_id: "${{ automation.settings.model_id }}"
+        filename: "narration-${{ article.id }}.mp3"
+  returns:                # the extension's outputs, declared above
+    asset_id: "${{ steps.speak.outputs.asset_id }}"
+
+preview:                  # optional: having it is what makes it answer previews
+  steps:
+    - id: sample
+      name: Read one paragraph, saving nothing
+      if: "${{ trim(trigger.preview?.sample ?? '') != '' }}"   # a play button
+      action: elevenlabs/speech.sample
+      with:
+        text: "${{ trigger.preview.sample }}"
+        voice_id: "${{ automation.settings.voice_id }}"
+        model_id: "${{ automation.settings.model_id }}"
+  returns:                # Passport's shape, the same for every extension
+    text: "${{ trim(trigger.preview?.sample ?? '') != '' ? trigger.preview.sample : htmlText(inputs.script) }}"
+    audio: "${{ steps.sample.outputs?.audio }}"            # nothing when the step
+    audio_type: "${{ steps.sample.outputs?.audio_type }}"  # was skipped: left out
 ```
+
+That is the shape of `plugins/elevenlabs/automations/narrate.yaml`, cut
+down. The real file reads the article once for each audience chosen, and
+its preview answers both of the paragraph editor's buttons; read it as the
+model of an extension.
 
 | `extension` key | Required | Meaning |
 |---|---|---|
 | `on` | yes | The kind of record it is run on: `article`, `user`, `subscription`, `distribution`, `template`, `asset`, `plan`, `audience` or `category` |
 | `label` | no | What the menu item says. Defaults to the automation's `name`. Write it as the thing to do: "Create Audio Narration" |
 | `if` | no | Offer it only when true. It reads only the record: `"${{ subscription.status == 'active' }}"` |
-| `preview` | no | `true`: the extension answers previews, for a [paragraph editor](02-field-schema.md#the-paragraph-editor)'s play buttons. Default `false` |
 
 An automation has `extension` or `on`, never both. An extension cannot be
 started by an event, a webhook, a schedule or `workflow.run`. When the same
 work must also happen on an event, put the steps in an action and call it
 from the extension and from an event automation.
 
-**What the run reads.** The record, under the name of its kind (`article`,
+### The flows
+
+An extension has no top-level `steps:`. Like a channel
+([6.5](06-channels.md#65-the-flows)), it has a named flow for each request
+it answers. One request is one run, and one run is one flow.
+
+| Flow | Required | Runs when | Its result | May run |
+|---|---|---|---|---|
+| `run` | yes | A person runs the extension on a record | The extension's own `outputs`: `run.returns` gives one value per output ([2.12](02-field-schema.md#212-outputs)). With no `outputs`, leave `returns` out | Every action the plugin may use |
+| `preview` | no | A preview is asked for: a [paragraph editor](02-field-schema.md#the-paragraph-editor)'s play buttons and its preview button | Passport's, the same for every extension ([below](#the-preview-flow)) | Only `control`, `read` and `external` actions |
+
+| Key of a flow | Required | Meaning |
+|---|---|---|
+| `steps` | yes | The flow's steps, at least one ([chapter 7](07-steps-and-expressions.md)) |
+| `returns` | in `preview`; in `run` when the extension has `outputs` | The flow's result: one value per key, or a single expression for the whole result |
+
+A flow has no other keys.
+
+- **Each flow has its own steps.** Step ids are unique within a flow, and
+  the two flows may use the same id. `steps.<id>` holds only the steps of
+  the flow that is running, so `preview` cannot read a step of `run`. What
+  both need (preparing the text, say) goes in a plugin action that each
+  flow calls.
+- **Say what each step is for** with its `name` and `description`
+  ([7.1](07-steps-and-expressions.md#71-a-step)), in both flows. A
+  channel's flow may also carry a `description` of its own
+  ([6.5.1](06-channels.md#651-a-flow)); an extension's flow may not, so say
+  what a flow is for in a comment above it and in the automation's `help`.
+- **`trigger.action`** is `run` or `preview`: the flow that is running. A
+  flow never needs to test it. A plugin action that both flows call may.
+- **`run` behaves as an automation's steps do.** `wait` is allowed at its
+  top level. `workflow.exit` ends it as a success with the outputs its
+  steps named ([7.5](07-steps-and-expressions.md#75-named-outputs)); its
+  `returns` is then not worked out.
+- **There is no other form.** The checker refuses a top-level `steps:`
+  ("an extension's steps are in its flows; put them under run:"), a
+  top-level `returns:` (it goes under `run:`) and `extension.preview`
+  ("an extension answers previews because it has a preview: flow").
+  `run:` or `preview:` in an automation that has `on:` is refused too.
+
+**What a flow reads.** The record, under the name of its kind (`article`,
 `user`, `subscription`, …), as it was when the run started and with the
 fields the matching `get` action returns. `trigger.type` is `extension`,
 `trigger.record.kind` and `trigger.record.id` say what it was run on, and
@@ -395,20 +456,107 @@ the record** sets every field back to its default. A field the last run did
 not have (added in a newer version) takes its default; a value the form no
 longer accepts is dropped.
 
-**Previews.** With `preview: true`, a preview runs the same steps with
-`trigger.action` `preview` (it is `run` otherwise), `inputs` as they are on
-screen, and `trigger.preview.sample` set to the text of the paragraph being
-played. A preview makes nothing: no assets, no records, no calls that change
-anything at the vendor. Return what to play as outputs `audio` (base64) and
-`audio_type`; a preview with no sample (the `preview_label` button) may also
-return `text`, `characters`, `limit` and `note`, which the editor shows.
-Previews are not listed with the record's runs.
+### The preview flow
 
-A preview is not held to the form's `required` list, so a paragraph can be
-played before every field is filled; what is given is still checked. While a
-pronunciation is being edited, the preview carries the extension's settings
-as they are on screen, and `automation.settings` holds those for that
-preview only.
+A preview shows a person what a run would do before they run it. The
+paragraph editor asks for one when its preview button (`preview_label`) or a
+paragraph's play button (`sample: audio`) is pressed; both hints need the
+extension to have a `preview` flow, and the checker says so when it has
+none.
+
+**Reads.** What a run reads, as things stand on screen:
+
+| Name | In a preview |
+|---|---|
+| The record (`article`, `user`, …) | As saved |
+| `inputs` | The form as it is on screen, defaults worked out. Not held to the form's `required` list, so a paragraph can be played before every field is filled; what is given is still checked |
+| `automation.settings` | The saved settings, with any the editor is changing laid over them for this preview only (a pronunciation being edited, say). A secret is never taken from the screen |
+| `trigger.preview.sample` | The text of the paragraph whose play button was pressed. Absent for the preview button. `trigger.preview` is read in the `preview` flow only: naming it in `run` is an error |
+| `settings`, `secrets`, `instance` | As in a run |
+
+**May do.** Only `control`, `read` and `external` actions
+([4.2](04-actions.md#42-built-in-actions)): work things out, read Passport data, call the
+vendor. Not `notify`, `write` or `destructive` actions, no `http.*` step
+with `response_asset`, and no `wait`. The same holds for every plugin
+action the flow calls, and the actions those call. The checker refuses a
+plugin that breaks this, naming the flow, the step and the action, and the
+engine refuses the step again when it runs. What a call does at the vendor
+is still yours to keep harmless: a preview must make nothing there either,
+though it may cost (ElevenLabs bills a paragraph played).
+
+**Returns** (`passport/schemas/extension.preview.result@1`):
+
+| Key | Type | Required | Meaning |
+|---|---|---|---|
+| `text` | string | one of `text` and `audio` | The text that would be worked on, paragraphs separated by blank lines. The editor shows it |
+| `audio` | string, base64 | one of the two | Audio, played in place. Needs `audio_type` |
+| `audio_type` | string | with `audio` | The audio's media type, `audio/mpeg` for example |
+| `characters` | integer | no | The length of the text |
+| `limit` | integer | no | The limit the text is held to, shown against `characters`. `0` or left out: no limit |
+| `note` | string | no | A short line under the preview |
+
+It is a channel preview's result ([6.5.7](06-channels.md#657-preview))
+without `html` and `url`. At least one of `text` and `audio` must be there;
+both may be. A key the result does not have (`requests`, say) is an error
+when the plugin is checked. A key whose expression yields nothing is left
+out, so a flow that answers two buttons can list every key and let the
+branch that did not run yield nothing. The result is held to the schema
+when the flow runs, on a live site as on a sandbox, and a result that does
+not fit fails the preview with a message naming the key
+(`returns.characters: …`). After `workflow.exit` the `returns` is still
+worked out.
+
+**How it runs.** At once, while the person waits, for at most 60 seconds.
+Nothing of it is recorded: no run, no log, and it is not among the record's
+runs or what the form remembers.
+
+The ElevenLabs preview answers both buttons with one flow. Its first step
+tells them apart, each branch names what it found with step-level
+`outputs:`, and `returns` hands those back:
+
+```yaml
+preview:
+  steps:
+    - id: mode
+      name: Work out which preview was asked for
+      action: set-output
+      with:
+        mode: "${{ trim(trigger.preview?.sample ?? '') != '' ? 'listen' : 'text' }}"
+    # … the steps that prepare the text …
+    - id: preview-text
+      name: "Preview: return the text a run would read"
+      if: "${{ steps.mode.outputs.mode == 'text' }}"
+      then:
+        - id: preview-spoken
+          action: elevenlabs/narration.text      # reads only
+          with: { … }
+        - id: previewed
+          action: set-output
+          with: { done: true }
+          outputs:
+            text: "${{ steps.preview-spoken.outputs.text }}"
+            characters: "${{ steps.preview-spoken.outputs.characters }}"
+            limit: "${{ automation.settings.max_characters }}"
+    - id: preview-listen
+      name: "Preview: read one paragraph aloud"
+      if: "${{ steps.mode.outputs.mode == 'listen' }}"
+      then:
+        - id: sample
+          action: elevenlabs/speech.sample       # http.post, the MP3 as base64
+          with: { … }
+          outputs:
+            audio: "${{ steps.sample.outputs.audio }}"
+            audio_type: "${{ steps.sample.outputs.audio_type }}"
+  returns:
+    text: "${{ outputs.text }}"
+    characters: "${{ outputs.characters }}"
+    limit: "${{ outputs.limit }}"
+    note: "${{ outputs.note }}"
+    audio: "${{ outputs.audio }}"
+    audio_type: "${{ outputs.audio_type }}"
+```
+
+### The text, and what a run hands back
 
 **Reading a `paragraphs` field.** Render it as an audience, then take the
 text:
@@ -443,8 +591,8 @@ To make one result per audience and hand members a single file, render once
 for each audience and file the results as the variants of a virtual asset
 ([9.7](09-files-and-binary.md#97-protected-and-virtual-assets)).
 
-**What it hands back.** Declare `outputs` and `returns`. The admin shows the
-result when the run ends, each output by its `title` and drawn by its
+**What it hands back.** Declare `outputs`, and give `run` a `returns`. The
+admin shows the result when the run ends, each output by its `title` and drawn by its
 `format`: a `passport.asset` as a player or a download link, another
 `passport.*` id as a link to that record, anything else as text. The
 record's page lists the extension's recent runs with what each produced, so
@@ -481,39 +629,3 @@ The run is recorded with who ran it.
 - An extension is not a channel. A channel publishes a distribution
   somewhere; an extension makes or changes something in Passport that a
   channel, or a person, may then use.
-
-> **Decided, not built yet.** The section above is what the engine does
-> today; this box is what it will do.
->
-> A channel no longer branches on `trigger.action`: it has a named flow for
-> each request ([6.5](06-channels.md#65-the-flows)). An extension gets the
-> same shape, with two flows in the automation file:
->
-> ```yaml
-> extension:
->   on: article
->   label: Create Audio Narration
-> run:
->   steps: [ … ]
->   returns:
->     asset_id: "${{ steps.join.outputs.asset_id }}"
-> preview:
->   steps: [ … ]
->   returns:
->     audio: "${{ steps.sample.outputs.body }}"
->     audio_type: audio/mpeg
-> ```
->
-> - `run` is required and replaces the top-level `steps` and `returns`. Its
->   result is the extension's own `outputs`, declared as now.
-> - `preview` is optional. Its presence replaces `extension.preview: true`,
->   and its result is the channel preview's
->   ([6.5.7](06-channels.md#657-preview)), without `html` and `url`.
-> - `trigger.action` stays `run` or `preview`.
-> - A `preview` flow would be held to `control`, `read` and `external`
->   actions, as a channel's is.
->
-> Until this is decided, write an extension as the section above says: one
-> `steps:` list, `extension.preview: true`, and `trigger.action` tested
-> where a preview differs.
-

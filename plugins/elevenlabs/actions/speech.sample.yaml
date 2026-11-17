@@ -44,6 +44,10 @@ returns:
   audio_type: audio/mpeg
 steps:
   - id: sample
+    name: Ask ElevenLabs to read the sample
+    description: >-
+      One text-to-speech request. The MP3 comes back in the response, as base64,
+      and is not saved.
     action: http.post
     with:
       url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}/with-timestamps"

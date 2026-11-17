@@ -95,12 +95,36 @@ test: ping
 | `support` | no | How a publisher reaches whoever supports the plugin: `url` (https), `email`, or both. Shown on the plugin's page and in the registry |
 | `visibility` | no | `public` (default) or `restricted` (offered only to sites an operator grants it to) |
 | `requires` | yes | What the plugin needs ([1.5](#15-requires)). `passport` is required |
-| `allowed_hosts` | when it calls out | The hosts `http.*` may reach: a host name, or `*.example.com`. No IP addresses. Nothing else is reachable, whatever the site's own allowlist says |
+| `allowed_hosts` | when it calls out | The hosts `http.*` may reach: a host name, or `*.example.com` (every subdomain, but not `example.com` itself). No IP addresses. Nothing else is reachable, whatever the site's own allowlist says. A host a listed one redirects to must be listed too ([below](#where-http-may-connect)) |
 | `settings` | no | The plugin's shared settings, a [form schema](02-field-schema.md) |
 | `test` | no | Key of an automation with a manual trigger and no inputs that proves the settings work. The admin runs it for "Test connection" |
 
 Never write these; the registry assigns them at release and a hand-written
 value is rejected: `uuid`, `version`.
+
+### Where `http.*` may connect
+
+`allowed_hosts` is the list of hosts a plugin may call. On top of the list
+the engine holds every `http.*` step to a few rules that nothing in a plugin
+or on a site can change. Each one fails the step, with a message that says
+which rule it was.
+
+| Rule | What fails | What to do |
+|---|---|---|
+| **A redirect is followed only to an allowed host**, at most 5 in a row | A vendor that answers from one host and redirects to another (an API that sends a download to its CDN): `api.example.com redirected the request to files.example-cdn.com, which was not followed: host "files.example-cdn.com" is not one plugin acme is allowed to reach`. The step is not retried | List the second host in `allowed_hosts` as well. Find it by reading the message, or the vendor's documentation |
+| **The step's headers stay with the host it named** | After a redirect to another host, or from `https` to `http`, the second request goes without the `headers` the step set (an `Authorization`, an API key, a cookie). Only `Content-Type` and `Accept` go along, so a second host that wants the credential answers 401 or 403 | Do not rely on the redirect. Call the second host directly, in a step of its own that names it in `url` and sets the headers it needs |
+| **Public addresses only** | A host that resolves to the machine Passport runs on, a private network or any other address that is not public: `host "…" is not at a public address`. That includes `localhost`, and a public name that points at a private address | Call the vendor's public API. A service on a private network cannot be reached from a plugin |
+| **Ports 80 and 443 only** | A URL naming another port: `port 8080 of api.example.com is not one a workflow may reach; only 80 and 443 are`. Refused before anything is connected to | Use the vendor's standard `https` address. If the vendor only listens elsewhere, say so; do not work around it |
+| **`http` or `https`, with no user name or password in the URL** | `https://user:secret@api.example.com/…` | Send credentials in `headers`, from `secrets` |
+
+The same rules hold for an address the server fetches for you: the `url` of
+`asset.create` and `asset.update` must be on an allowed host, at a public
+address, on port 80 or 443, and so must every redirect on the way to the
+file ([9.4](09-files-and-binary.md#94-working-with-assets)).
+
+These rules also hold in a dry run with `--live-http`
+([10.2](10-testing-review-release.md#102-test-cases)), so a mock or a
+service on your own machine cannot be called that way.
 
 Unknown keys are an error in every v2 file. A typo is reported, not ignored.
 

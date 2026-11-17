@@ -406,8 +406,22 @@ publish:
 |---|---|---|
 | `steps` | yes | The flow's steps, at least one ([chapter 7](07-steps-and-expressions.md)) |
 | `returns` | yes | The flow's result: one value per key of the result, or a single expression for the whole result |
+| `description` | no | What the flow does, for a person reading it: Markdown, up to 2,000 characters, never evaluated (`${{ }}` in it is text). It changes nothing in a run |
 
 A flow has no other keys.
+
+```yaml
+update:
+  description: >-
+    Changes the post that is there. Never makes a second one: when the post
+    is gone at Acme it returns `not_found`.
+  steps: [ … ]
+  returns: { … }
+```
+
+Say what a flow is for in its `description`, and what each step is for in
+the step's `name` and `description`
+([7.1](07-steps-and-expressions.md#71-a-step)).
 
 - **`returns` works as an action's does**
   ([2.12](02-field-schema.md#212-outputs)). It is evaluated after the flow's
@@ -1062,12 +1076,14 @@ inputs:
       format: passport.template
       title: Script
       default: narration-script        # one of this plugin's templates
-steps:
-  - id: script
-    action: template.render
-    with:
-      template_id: "${{ inputs.script }}"
-      article_id: "${{ article.id }}"
+run:
+  steps:
+    - id: script
+      name: Render the script for this article
+      action: template.render
+      with:
+        template_id: "${{ inputs.script }}"
+        article_id: "${{ article.id }}"
 ```
 
 A `format: passport.template` field, or a list of them

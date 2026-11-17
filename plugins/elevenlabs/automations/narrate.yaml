@@ -54,9 +54,6 @@ icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
 extension:
   on: article
   label: Create Audio Narration
-  # The form's paragraph editor plays a paragraph and shows the spoken text:
-  # trigger.action "preview". See the PREVIEW steps.
-  preview: true
   # Offered when there is something to read.
   if: "${{ trim(article.body ?? '') != '' }}"
 
@@ -420,10 +417,10 @@ inputs:
                       - { tag: "[long pause]", hint: "2 seconds" }
                       - { tag: "[pause 1.5s]", hint: "a set length, up to 3s" }
 
-# What a run hands back; the admin shows the narration as a player. A preview
-# ends before this (workflow.exit) and hands back its own values, set by the
-# PREVIEW steps: text, characters, limit, requests and note, or audio and
-# audio_type.
+# What a run hands back (run.returns); the admin shows the narration as a
+# player. A preview hands back none of this: its result is the preview flow's
+# own returns, whose shape Passport fixes (text, characters, limit and note,
+# or audio and audio_type).
 outputs:
   type: object
   required: [asset_id]
@@ -462,325 +459,480 @@ outputs:
       type: integer
       title: Requests
       description: How many ElevenLabs requests the run made.
-returns:
-  asset_id: "${{ steps.virtual.outputs.asset_id }}"
-  filename: "${{ steps.name.outputs.filename }}"
-  versions: "${{ vars.results }}"
-  characters: "${{ sum(map(vars.results, .characters)) }}"
-  characters_billed: "${{ sum(map(vars.results, .characters_billed)) }}"
-  requests: "${{ sum(map(vars.results, .requests)) }}"
+# RUN: what a person starts from the article's page. It reads the article
+# once for each audience chosen and files the MP3s as one narration. The text
+# is prepared for every audience before anything is read, so a run that
+# cannot finish (nothing to read for one audience, or over the limit) fails
+# with nothing sent to ElevenLabs and nothing billed. Running it again on the
+# same article replaces the MP3s and keeps the narration's id and link.
+#
+# The preview flow below has its own steps; the two share the preparation
+# through narration.text. (An extension's flow holds steps and returns and
+# nothing else, so what each flow is for is said here, in a comment.)
+run:
+  steps:
+    - id: voice
+      name: Pick the voice
+      description: >-
+        The voice: the form's pick when it is still one of the extension's
+        voices, otherwise the default.
+      action: set-output
+      with:
+        id: >-
+          ${{ let picked = trim(toString(inputs.voice ?? ""));
+          picked != "" && (picked == automation.settings.voice_id || picked in map(automation.settings.voices ?? [], toString(.voice_id)))
+          ? picked : automation.settings.voice_id }}
 
-steps:
-  # What this run does: "run", or for a preview "text" (what would be read:
-  # the form's Spoken text button) or "listen" (read trigger.preview.sample,
-  # the paragraph whose play button was pressed).
-  - id: mode
-    action: set-output
-    with:
-      mode: >-
-        ${{ trigger.action != "preview" ? "run"
-        : trim(trigger.preview?.sample ?? "") != "" ? "listen" : "text" }}
+    - id: blocks
+      name: Set the patterns for restricted sections
+      description: |-
+        Swap each restricted block's else branch for the spoken fallback, unless an editor wrote that section's own line ("Read instead"). The patterns and pieces of the replacement are plain strings (no ${{ }}), because an expression cannot contain a literal "}}". The pattern matches an `if hasAnyAudience`/`if audiences` block with no template action nested inside it, with or without an else branch; other blocks (e.g. isChannel "email") are left as they are.
 
-  # The voice: the form's pick (in a preview, the form as it is on screen)
-  # when it is still one of the extension's voices, otherwise the default.
-  - id: voice
-    action: set-output
-    with:
-      id: >-
-        ${{ let picked = trim(toString(inputs.voice ?? ""));
-        picked != "" && (picked == automation.settings.voice_id || picked in map(automation.settings.voices ?? [], toString(.voice_id)))
-        ? picked : automation.settings.voice_id }}
+        First, each `if isChannel "web"` block is collapsed to its web branch. passport-wp puts one inside a restricted block's subscriber branch when the block has a distribution view (web view, else the shorter distribution view). Narration reads the full web view, and with the nested block gone the restricted block matches the pattern again. The editor does the same when it loads the text (channel_view); this covers a script that did not come through the editor.
+      action: set-output
+      with:
+        # An `if isChannel "web"` block, with the <template-content> wrapper
+        # passport-wp puts around its opening tag; ${1} is the web branch.
+        web_pattern: '(?:<template-content>\s*)?\{\{-?\s*if\s+isChannel\s+(?:"|&#34;|&quot;)web(?:"|&#34;|&quot;)\s*-?\}\}(?:\s*</template-content>)?((?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        open: "{{ else }}"
+        close: "{{ end }}"
+        # An else branch that starts with an editor's own line
+        # (<p data-text="instead">, or the older data-narration="spoken")
+        # keeps it: its else tag is swapped for custom_open first, which the
+        # pattern above does not match, then swapped back.
+        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-(?:text="instead"|narration="spoken"))'
+        custom_open: "{{ narration-else }}"
+        # Where the form's text goes in the template setting. A template
+        # carried over from v1 marks it {{ .distribution.body }}; both work.
+        body_pattern: '\{\{-?\s*\.(?:script|distribution\.body)\s*-?\}\}'
+        # The text's own document wrapper (<html>, <head>…</head>, <body>),
+        # removed so the template can go in front of it.
+        doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
 
-  # RUN / PREVIEW.
-  #
-  # 1. Swap each restricted block's else branch for the spoken fallback,
-  #    unless an editor wrote that section's own line ("Read instead"). The
-  #    patterns and pieces of the replacement are plain strings (no ${{ }}),
-  #    because an expression cannot contain a literal "}}". The pattern
-  #    matches an `if hasAnyAudience`/`if audiences` block with no template
-  #    action nested inside it, with or without an else branch; other blocks
-  #    (e.g. isChannel "email") are left as they are.
-  #
-  #    First, each `if isChannel "web"` block is collapsed to its web branch.
-  #    passport-wp puts one inside a restricted block's subscriber branch
-  #    when the block has a distribution view (web view, else the shorter
-  #    distribution view). Narration reads the full web view, and with the
-  #    nested block gone the restricted block matches the pattern again. The
-  #    editor does the same when it loads the text (channel_view); this
-  #    covers a script that did not come through the editor.
-  - id: blocks
-    action: set-output
-    with:
-      # An `if isChannel "web"` block, with the <template-content> wrapper
-      # passport-wp puts around its opening tag; ${1} is the web branch.
-      web_pattern: '(?:<template-content>\s*)?\{\{-?\s*if\s+isChannel\s+(?:"|&#34;|&quot;)web(?:"|&#34;|&quot;)\s*-?\}\}(?:\s*</template-content>)?((?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
-      pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
-      open: "{{ else }}"
-      close: "{{ end }}"
-      # An else branch that starts with an editor's own line
-      # (<p data-text="instead">, or the older data-narration="spoken")
-      # keeps it: its else tag is swapped for custom_open first, which the
-      # pattern above does not match, then swapped back.
-      custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-(?:text="instead"|narration="spoken"))'
-      custom_open: "{{ narration-else }}"
-      # Where the form's text goes in the template setting. A template
-      # carried over from v1 marks it {{ .distribution.body }}; both work.
-      body_pattern: '\{\{-?\s*\.(?:script|distribution\.body)\s*-?\}\}'
-      # The text's own document wrapper (<html>, <head>…</head>, <body>),
-      # removed so the template can go in front of it.
-      doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
+    - id: rewrite
+      name: Swap hidden sections for the spoken fallback
+      description: >-
+        The form's text with each hidden section's else branch swapped for the
+        spoken fallback. Left alone, the text is the article's body (the field's
+        default).
+      action: set-output
+      with:
+        # "$" is special in a regexReplace replacement, so it is doubled in the
+        # publisher's text.
+        body: >-
+          ${{ let web = regexReplace(steps.blocks.outputs.web_pattern,
+          inputs.script ?? "", "${1}");
+          let kept = regexReplace(steps.blocks.outputs.custom_pattern,
+          web, steps.blocks.outputs.custom_open + "${1}");
+          let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
+          "${1}" + steps.blocks.outputs.open
+          + (trim(automation.settings.fallback_text ?? "") == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(automation.settings.fallback_text), "$", "$$") + "</p>")
+          + steps.blocks.outputs.close);
+          replace(rewritten, steps.blocks.outputs.custom_open, steps.blocks.outputs.open) }}
 
-  # The form's text: in a preview, as it is on screen. Left alone, it is the
-  # article's body (the field's default).
-  - id: rewrite
-    if: >-
-      ${{ steps.mode.outputs.mode != "listen" }}
-    action: set-output
-    with:
-      # "$" is special in a regexReplace replacement, so it is doubled in the
-      # publisher's text.
-      body: >-
-        ${{ let web = regexReplace(steps.blocks.outputs.web_pattern,
-        inputs.script ?? "", "${1}");
-        let kept = regexReplace(steps.blocks.outputs.custom_pattern,
-        web, steps.blocks.outputs.custom_open + "${1}");
-        let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
-        "${1}" + steps.blocks.outputs.open
-        + (trim(automation.settings.fallback_text ?? "") == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(automation.settings.fallback_text), "$", "$$") + "</p>")
-        + steps.blocks.outputs.close);
-        replace(rewritten, steps.blocks.outputs.custom_open, steps.blocks.outputs.open) }}
+    - id: compose
+      name: Put the text into the template
+      description: >-
+        Put the text into the template setting, so the two render in one pass (a
+        template's {{ .script }} would otherwise come out empty). A template
+        without the placeholder is followed by the text; an empty one is just the
+        text.
+      action: set-output
+      with:
+        body: >-
+          ${{ let body = regexReplace(steps.blocks.outputs.doc_pattern, steps.rewrite.outputs.body, "");
+          trim(automation.settings.template ?? "") == "" ? body
+          : regexMatch(steps.blocks.outputs.body_pattern, automation.settings.template)
+          ? regexReplace(steps.blocks.outputs.body_pattern, automation.settings.template, replace(body, "$", "$$"))
+          : automation.settings.template + body }}
 
-  # 2. Put the text into the template setting, so the two render in one pass
-  #    (a template's {{ .script }} would otherwise come out empty). A
-  #    template without the placeholder is followed by the text; an empty one
-  #    is just the text.
-  - id: compose
-    if: >-
-      ${{ steps.mode.outputs.mode != "listen" }}
-    action: set-output
-    with:
-      body: >-
-        ${{ let body = regexReplace(steps.blocks.outputs.doc_pattern, steps.rewrite.outputs.body, "");
-        trim(automation.settings.template ?? "") == "" ? body
-        : regexMatch(steps.blocks.outputs.body_pattern, automation.settings.template)
-        ? regexReplace(steps.blocks.outputs.body_pattern, automation.settings.template, replace(body, "$", "$$"))
-        : automation.settings.template + body }}
+    - id: who
+      name: Work out who it is read for
+      description: >-
+        Who is read for: the audiences under "Make audio for". A run without one
+        never gets here: the form requires one, and inputs supplied any other way
+        are held to the same schema.
+      action: set-output
+      with:
+        audiences: >-
+          ${{ filter(map(inputs.audiences ?? [], trim(toString(#))), # != "") }}
+        preview: >-
+          ${{ let chosen = filter(map(inputs.audiences ?? [], trim(toString(#))), # != "");
+          trim(toString(inputs.preview_audience ?? "")) != "" ? trim(toString(inputs.preview_audience))
+          : len(chosen) > 0 ? chosen[0] : nil }}
 
-  # Who is read for. The form refuses an empty or repeated list; a preview
-  # is not held to it. The preview audience is "Preview as", else the first
-  # audience chosen, else none (the text is then rendered for nobody in
-  # particular).
-  - id: who
-    action: set-output
-    with:
-      audiences: >-
-        ${{ filter(map(inputs.audiences ?? [], trim(toString(#))), # != "") }}
-      preview: >-
-        ${{ let chosen = filter(map(inputs.audiences ?? [], trim(toString(#))), # != "");
-        trim(toString(inputs.preview_audience ?? "")) != "" ? trim(toString(inputs.preview_audience))
-        : len(chosen) > 0 ? chosen[0] : nil }}
+    # From here the text depends on the audience. A run fails, with the reason
+  # shown to the person who ran it, when for any audience there is nothing to
+  # read or the text is longer than max_characters.
 
-  # 3. From here the text depends on the audience. narration.text renders
-  #    the composed body as a member of one audience (and of every audience
-  #    ranked below it), turns it into the text that is read, applies the
-  #    pronunciations, the cleanup and the voice tags, and cuts it into
-  #    pieces of one request each. It reads only, so a preview may run it.
-  #    While a pronunciation is being edited in the form, a preview's
-  #    automation.settings holds the unsaved list (guide 5.7).
+    - id: name
+      name: Name the narration's files
+      description: >-
+        The narration's file name: the article, and nothing that can change (not
+        the title, not the voice), so a second run finds the same narration and
+        keeps its id and link. Each audience's MP3 adds the audience's id.
+      action: set-output
+      with:
+        base: >-
+          ${{ "narration-" + toString(article.id) }}
+        filename: >-
+          ${{ "narration-" + toString(article.id) + ".mp3" }}
 
-  # PREVIEW (text): return what a run would read for the preview audience.
-  # Changes nothing.
-  - id: preview-text
-    if: >-
-      ${{ steps.mode.outputs.mode == "text" }}
-    then:
-      - id: preview-spoken
-        action: elevenlabs/narration.text
-        with:
-          body: "${{ steps.compose.outputs.body }}"
-          article_id: "${{ toString(article.id) }}"
-          audience_id: "${{ steps.who.outputs.preview }}"
-          model_id: "${{ automation.settings.model_id }}"
-          skip_parts: "${{ automation.settings.skip_parts }}"
-          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
-          text_cleanup: "${{ automation.settings.text_cleanup }}"
-      - id: previewed
-        action: set-output
-        with:
-          done: true
-        outputs:
-          text: "${{ steps.preview-spoken.outputs.text }}"
-          characters: "${{ steps.preview-spoken.outputs.characters }}"
-          # the editor flags text over limit; 0 is no limit
-          limit: "${{ automation.settings.max_characters }}"
-          requests: "${{ steps.preview-spoken.outputs.requests }}"
-          note: >-
-            ${{ steps.preview-spoken.outputs.requests > 1 ? "Read in " + toString(steps.preview-spoken.outputs.requests)
-            + " requests to " + automation.settings.model_id + ", joined into one MP3" : "" }}
-      - id: preview-text-done
-        action: workflow.exit
-        with:
-          reason: "previewed ${{ steps.preview-spoken.outputs.characters }} characters"
-
-  # PREVIEW (listen): read the sample in the voice and return the MP3 as
-  # base64. The sample is a paragraph's text as the editor shows it, so it
-  # is not rendered and no audience is needed. Nothing is saved; billed.
-  - id: preview-listen
-    if: >-
-      ${{ steps.mode.outputs.mode == "listen" }}
-    then:
-      - id: sample-spoken
-        action: elevenlabs/narration.text
-        with:
-          sample: "${{ trigger.preview.sample }}"
-          model_id: "${{ automation.settings.model_id }}"
-          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
-          text_cleanup: "${{ automation.settings.text_cleanup }}"
-      - id: sample-too-long
-        if: >-
-          ${{ steps.sample-spoken.outputs.characters > 2000 }}
-        action: workflow.fail
-        with:
-          reason: "A sample is at most 2,000 characters; this one is ${{ steps.sample-spoken.outputs.characters }}."
-      - id: sample
-        action: elevenlabs/speech.sample
-        with:
-          voice_id: "${{ steps.voice.outputs.id }}"
-          model_id: "${{ automation.settings.model_id }}"
-          text: "${{ steps.sample-spoken.outputs.text }}"
-        outputs:
-          audio: "${{ steps.sample.outputs.audio }}"
-          audio_type: "${{ steps.sample.outputs.audio_type }}"
-          text: "${{ steps.sample-spoken.outputs.text }}"
-      - id: preview-listen-done
-        action: workflow.exit
-        with:
-          reason: "read a ${{ steps.sample-spoken.outputs.characters }}-character sample"
-
-  # RUN. Both previews ended above, so nothing below runs in one.
-  #
-  # A run without an audience never gets here: the form requires one, and
-  # inputs supplied any other way are held to the same schema. A run fails,
-  # with the reason shown to the person who ran it, when for any audience
-  # there is nothing to read or the text is longer than max_characters.
-  # The narration's file name: the article, and nothing that can change (not
-  # the title, not the voice), so a second run finds the same narration and
-  # keeps its id and link. Each audience's MP3 adds the audience's id.
-  - id: name
-    action: set-output
-    with:
-      base: >-
-        ${{ "narration-" + toString(article.id) }}
-      filename: >-
-        ${{ "narration-" + toString(article.id) + ".mp3" }}
-
-  # 4. Prepare the text for every audience before anything is read, so a
-  #    run that cannot finish (nothing to read for one audience, or over the
-  #    limit) fails with nothing sent to ElevenLabs and nothing billed.
-  - id: prepare
-    foreach: "${{ steps.who.outputs.audiences }}"
-    as: audience
-    steps:
-      # the audience's name, for reasons and descriptions a person reads
-      - id: named
-        action: audience.get
-        with:
-          audience_id: "${{ loop.audience }}"
-      - id: spoken
-        action: elevenlabs/narration.text
-        with:
-          body: "${{ steps.compose.outputs.body }}"
-          article_id: "${{ toString(article.id) }}"
-          audience_id: "${{ loop.audience }}"
-          model_id: "${{ automation.settings.model_id }}"
-          skip_parts: "${{ automation.settings.skip_parts }}"
-          pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
-          text_cleanup: "${{ automation.settings.text_cleanup }}"
-      - id: empty
-        if: >-
-          ${{ steps.spoken.outputs.characters == 0 }}
-        action: workflow.fail
-        with:
-          reason: >-
-            ${{ "There is no text to read for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
-            + ". Check the text, the paragraphs switched off and the audiences. Nothing was read." }}
-      - id: too-long
-        if: >-
-          ${{ automation.settings.max_characters > 0 && steps.spoken.outputs.characters > automation.settings.max_characters }}
-        action: workflow.fail
-        with:
-          reason: >-
-            ${{ "The text for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
-            + " is " + toString(steps.spoken.outputs.characters)
-            + " characters, over the limit of " + toString(automation.settings.max_characters)
-            + " (Longest article to read). Shorten the text or raise the limit. Nothing was read." }}
-      - id: planned
-        action: vars.set
-        with:
-          versions: >-
-            ${{ concat(vars.versions ?? [], [({
-            "audience_id": toString(loop.audience),
-            "audience": toString(steps.named.outputs.audience?.name ?? loop.audience),
-            "filename": steps.name.outputs.base + "-" + toString(loop.audience) + ".mp3",
-            "chunks": steps.spoken.outputs.chunks,
-            "characters": steps.spoken.outputs.characters,
-            "text_hash": sha256(steps.spoken.outputs.text + "|" + steps.voice.outputs.id + "|" + automation.settings.model_id)
-            })]) }}
-
-  # 5. Read each audience's text to its own MP3, a protected asset only that
-  #    audience's members (and admins) can fetch:
-  #    narration-<article id>-<audience id>.mp3. overwrite keeps the asset's
-  #    id across runs, and an MP3 is only replaced once every piece of it
-  #    has been read, so a run that fails partway leaves the versions it did
-  #    not reach, and the narration, as they were. Every request that
-  #    reaches ElevenLabs is billed.
-  #
-  #    text_hash is kept on the asset (metadata.narration) to tell what it
-  #    was made from. A run never skips on it: a person asked for this run.
-  - id: generate
-    foreach: "${{ vars.versions }}"
-    as: version
-    steps:
-      - id: narration
-        action: elevenlabs/narration.create
-        with:
-          chunks: "${{ loop.version.chunks }}"
-          voice_id: "${{ steps.voice.outputs.id }}"
-          model_id: "${{ automation.settings.model_id }}"
-          filename: "${{ loop.version.filename }}"
-          audience_id: "${{ loop.version.audience_id }}"
-          description: "Narration of ${{ article.title ?? article.id }} for ${{ loop.version.audience }}"
-          narration:
+    - id: prepare
+      name: Prepare the text for every audience
+      description: >-
+        Prepare the text for every audience before anything is read, so a run that
+        cannot finish (nothing to read for one audience, or over the limit) fails
+        with nothing sent to ElevenLabs and nothing billed.
+      foreach: "${{ steps.who.outputs.audiences }}"
+      as: audience
+      steps:
+        - id: named
+          name: Look up the audience's name
+          description: >-
+            The audience's name, for reasons and descriptions a person reads.
+          action: audience.get
+          with:
+            audience_id: "${{ loop.audience }}"
+        - id: spoken
+          name: Prepare the text this audience hears
+          description: >-
+            Runs `narration.text` as a member of the audience: rendered, cleaned
+            and cut into pieces of one request each.
+          action: elevenlabs/narration.text
+          with:
+            body: "${{ steps.compose.outputs.body }}"
             article_id: "${{ toString(article.id) }}"
+            audience_id: "${{ loop.audience }}"
+            model_id: "${{ automation.settings.model_id }}"
+            skip_parts: "${{ automation.settings.skip_parts }}"
+            pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+            text_cleanup: "${{ automation.settings.text_cleanup }}"
+        - id: empty
+          name: Fail when there is nothing to read
+          if: >-
+            ${{ steps.spoken.outputs.characters == 0 }}
+          action: workflow.fail
+          with:
+            reason: >-
+              ${{ "There is no text to read for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
+              + ". Check the text, the paragraphs switched off and the audiences. Nothing was read." }}
+        - id: too-long
+          name: Fail when the text is over the limit
+          if: >-
+            ${{ automation.settings.max_characters > 0 && steps.spoken.outputs.characters > automation.settings.max_characters }}
+          action: workflow.fail
+          with:
+            reason: >-
+              ${{ "The text for " + toString(steps.named.outputs.audience?.name ?? loop.audience)
+              + " is " + toString(steps.spoken.outputs.characters)
+              + " characters, over the limit of " + toString(automation.settings.max_characters)
+              + " (Longest article to read). Shorten the text or raise the limit. Nothing was read." }}
+        - id: planned
+          name: Keep the prepared text for the reading
+          description: >-
+            Adds this audience's pieces to `vars.versions`, which the next loop
+            reads.
+          action: vars.set
+          with:
+            versions: >-
+              ${{ concat(vars.versions ?? [], [({
+              "audience_id": toString(loop.audience),
+              "audience": toString(steps.named.outputs.audience?.name ?? loop.audience),
+              "filename": steps.name.outputs.base + "-" + toString(loop.audience) + ".mp3",
+              "chunks": steps.spoken.outputs.chunks,
+              "characters": steps.spoken.outputs.characters,
+              "text_hash": sha256(steps.spoken.outputs.text + "|" + steps.voice.outputs.id + "|" + automation.settings.model_id)
+              })]) }}
+
+    - id: generate
+      name: Read each audience's text to its own MP3
+      description: |-
+        Read each audience's text to its own MP3, a protected asset only that audience's members (and admins) can fetch: narration-<article id>-<audience id>.mp3. overwrite keeps the asset's id across runs, and an MP3 is only replaced once every piece of it has been read, so a run that fails partway leaves the versions it did not reach, and the narration, as they were. Every request that reaches ElevenLabs is billed.
+
+        text_hash is kept on the asset (metadata.narration) to tell what it was made from. A run never skips on it: a person asked for this run.
+      foreach: "${{ vars.versions }}"
+      as: version
+      steps:
+        - id: narration
+          name: Read the text into the MP3
+          description: >-
+            Runs `narration.create`: one request per piece, joined into
+            `narration-<article id>-<audience id>.mp3`.
+          action: elevenlabs/narration.create
+          with:
+            chunks: "${{ loop.version.chunks }}"
             voice_id: "${{ steps.voice.outputs.id }}"
             model_id: "${{ automation.settings.model_id }}"
-            text_hash: "${{ loop.version.text_hash }}"
-      - id: made
-        action: vars.set
-        with:
-          variants: >-
-            ${{ concat(vars.variants ?? [], [({
-            "asset_id": steps.narration.outputs.asset_id,
-            "audience_id": loop.version.audience_id})]) }}
-          results: >-
-            ${{ concat(vars.results ?? [], [({
-            "audience_id": loop.version.audience_id,
-            "audience": loop.version.audience,
-            "filename": loop.version.filename,
-            "characters": loop.version.characters,
-            "characters_billed": steps.narration.outputs.characters_billed,
-            "requests": steps.narration.outputs.requests})]) }}
+            filename: "${{ loop.version.filename }}"
+            audience_id: "${{ loop.version.audience_id }}"
+            description: "Narration of ${{ article.title ?? article.id }} for ${{ loop.version.audience }}"
+            narration:
+              article_id: "${{ toString(article.id) }}"
+              voice_id: "${{ steps.voice.outputs.id }}"
+              model_id: "${{ automation.settings.model_id }}"
+              text_hash: "${{ loop.version.text_hash }}"
+        - id: made
+          name: Note the MP3 that was made
+          description: >-
+            Adds the MP3 to `vars.variants` and `vars.results`, for the virtual
+            asset and for what the run hands back.
+          action: vars.set
+          with:
+            variants: >-
+              ${{ concat(vars.variants ?? [], [({
+              "asset_id": steps.narration.outputs.asset_id,
+              "audience_id": loop.version.audience_id})]) }}
+            results: >-
+              ${{ concat(vars.results ?? [], [({
+              "audience_id": loop.version.audience_id,
+              "audience": loop.version.audience,
+              "filename": loop.version.filename,
+              "characters": loop.version.characters,
+              "characters_billed": steps.narration.outputs.characters_billed,
+              "requests": steps.narration.outputs.requests})]) }}
 
-  # 6. File the MP3s as the versions of one narration: a virtual asset,
-  #    narration-<article id>.mp3, that answers each member with the MP3 for
-  #    their audience. A narration that is already there is given this run's
-  #    versions in place of the ones it had and keeps its id and link. No
-  #    default: a member in none of the audiences gets no audio. An audience
-  #    left out of this run is no longer a version; its MP3 is left under
-  #    Assets, still for that audience only.
-  - id: virtual
-    action: asset.virtual
-    with:
-      filename: "${{ steps.name.outputs.filename }}"
-      description: "Narration of ${{ article.title ?? article.id }}"
-      variants: "${{ vars.variants }}"
+    - id: virtual
+      name: File the MP3s as one narration
+      description: >-
+        File the MP3s as the versions of one narration: a virtual asset,
+        narration-<article id>.mp3, that answers each member with the MP3 for
+        their audience. A narration that is already there is given this run's
+        versions in place of the ones it had and keeps its id and link. No
+        default: a member in none of the audiences gets no audio. An audience left
+        out of this run is no longer a version; its MP3 is left under Assets,
+        still for that audience only.
+      action: asset.virtual
+      with:
+        filename: "${{ steps.name.outputs.filename }}"
+        description: "Narration of ${{ article.title ?? article.id }}"
+        variants: "${{ vars.variants }}"
+
+  returns:
+    asset_id: "${{ steps.virtual.outputs.asset_id }}"
+    filename: "${{ steps.name.outputs.filename }}"
+    versions: "${{ vars.results }}"
+    characters: "${{ sum(map(vars.results, .characters)) }}"
+    characters_billed: "${{ sum(map(vars.results, .characters_billed)) }}"
+    requests: "${{ sum(map(vars.results, .requests)) }}"
+
+# PREVIEW: what the form's paragraph editor asks for while a person is still
+# filling the form in. Having this flow is what makes the extension answer
+# previews. With no sample (the Spoken text button) it returns the text a run
+# would read for the preview audience; with trigger.preview.sample (a
+# paragraph's play button) it reads that one paragraph aloud and returns the
+# MP3 as base64. It reads the form as it is on screen and the extension's
+# settings as they are being edited, saves nothing and is not recorded. It
+# may only read and call ElevenLabs: the check refuses a step that would
+# change anything. A paragraph played is billed by ElevenLabs.
+preview:
+  steps:
+    - id: mode
+      name: Work out which preview was asked for
+      description: >-
+        Which preview was asked for: "text" (what would be read: the form's
+        Spoken text button) or "listen" (read trigger.preview.sample, the
+        paragraph whose play button was pressed).
+      action: set-output
+      with:
+        mode: >-
+          ${{
+          trim(trigger.preview?.sample ?? "") != "" ? "listen" : "text" }}
+
+    - id: voice
+      name: Pick the voice
+      description: >-
+        The voice: the form's pick, as the form is on screen, when it is still
+        one of the extension's voices, otherwise the default.
+      action: set-output
+      with:
+        id: >-
+          ${{ let picked = trim(toString(inputs.voice ?? ""));
+          picked != "" && (picked == automation.settings.voice_id || picked in map(automation.settings.voices ?? [], toString(.voice_id)))
+          ? picked : automation.settings.voice_id }}
+
+    - id: blocks
+      name: Set the patterns for restricted sections
+      description: |-
+        Swap each restricted block's else branch for the spoken fallback, unless an editor wrote that section's own line ("Read instead"). The patterns and pieces of the replacement are plain strings (no ${{ }}), because an expression cannot contain a literal "}}". The pattern matches an `if hasAnyAudience`/`if audiences` block with no template action nested inside it, with or without an else branch; other blocks (e.g. isChannel "email") are left as they are.
+
+        First, each `if isChannel "web"` block is collapsed to its web branch. passport-wp puts one inside a restricted block's subscriber branch when the block has a distribution view (web view, else the shorter distribution view). Narration reads the full web view, and with the nested block gone the restricted block matches the pattern again. The editor does the same when it loads the text (channel_view); this covers a script that did not come through the editor.
+      action: set-output
+      with:
+        # An `if isChannel "web"` block, with the <template-content> wrapper
+        # passport-wp puts around its opening tag; ${1} is the web branch.
+        web_pattern: '(?:<template-content>\s*)?\{\{-?\s*if\s+isChannel\s+(?:"|&#34;|&quot;)web(?:"|&#34;|&quot;)\s*-?\}\}(?:\s*</template-content>)?((?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        pattern: '(\{\{-?\s*if\s+(?:hasAnyAudience|audiences)\b(?:[^{]|\{[^{])*?)(?:\{\{-?\s*else\s*-?\}\}(?:[^{]|\{[^{])*?)?\{\{-?\s*end\s*-?\}\}'
+        open: "{{ else }}"
+        close: "{{ end }}"
+        # An else branch that starts with an editor's own line
+        # (<p data-text="instead">, or the older data-narration="spoken")
+        # keeps it: its else tag is swapped for custom_open first, which the
+        # pattern above does not match, then swapped back.
+        custom_pattern: '\{\{-?\s*else\s*-?\}\}((?:\s|</[a-zA-Z-]+>|<p>|<template-content>)*<p data-(?:text="instead"|narration="spoken"))'
+        custom_open: "{{ narration-else }}"
+        # Where the form's text goes in the template setting. A template
+        # carried over from v1 marks it {{ .distribution.body }}; both work.
+        body_pattern: '\{\{-?\s*\.(?:script|distribution\.body)\s*-?\}\}'
+        # The text's own document wrapper (<html>, <head>…</head>, <body>),
+        # removed so the template can go in front of it.
+        doc_pattern: '(?is)<head\b.*?</head\s*>|</?(?:html|body)\b[^>]*>'
+
+    - id: rewrite
+      name: Swap hidden sections for the spoken fallback
+      description: >-
+        The form's text as it is on screen, with each hidden section's else
+        branch swapped for the spoken fallback. Left alone, the text is the
+        article's body (the field's default). Not needed to play one paragraph.
+      if: >-
+        ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        # "$" is special in a regexReplace replacement, so it is doubled in the
+        # publisher's text.
+        body: >-
+          ${{ let web = regexReplace(steps.blocks.outputs.web_pattern,
+          inputs.script ?? "", "${1}");
+          let kept = regexReplace(steps.blocks.outputs.custom_pattern,
+          web, steps.blocks.outputs.custom_open + "${1}");
+          let rewritten = regexReplace(steps.blocks.outputs.pattern, kept,
+          "${1}" + steps.blocks.outputs.open
+          + (trim(automation.settings.fallback_text ?? "") == "" ? "" : "<p data-narration=\"fallback\">" + replace(trim(automation.settings.fallback_text), "$", "$$") + "</p>")
+          + steps.blocks.outputs.close);
+          replace(rewritten, steps.blocks.outputs.custom_open, steps.blocks.outputs.open) }}
+
+    - id: compose
+      name: Put the text into the template
+      description: >-
+        Put the text into the template setting, so the two render in one pass (a
+        template's {{ .script }} would otherwise come out empty). A template
+        without the placeholder is followed by the text; an empty one is just the
+        text. Not needed to play one paragraph.
+      if: >-
+        ${{ steps.mode.outputs.mode != "listen" }}
+      action: set-output
+      with:
+        body: >-
+          ${{ let body = regexReplace(steps.blocks.outputs.doc_pattern, steps.rewrite.outputs.body, "");
+          trim(automation.settings.template ?? "") == "" ? body
+          : regexMatch(steps.blocks.outputs.body_pattern, automation.settings.template)
+          ? regexReplace(steps.blocks.outputs.body_pattern, automation.settings.template, replace(body, "$", "$$"))
+          : automation.settings.template + body }}
+
+    - id: who
+      name: Work out who it is read for
+      description: >-
+        Who is read for. The form refuses an empty or repeated list; a preview is
+        not held to it. The preview audience is "Preview as", else the first
+        audience chosen, else none (the text is then rendered for nobody in
+        particular).
+      action: set-output
+      with:
+        audiences: >-
+          ${{ filter(map(inputs.audiences ?? [], trim(toString(#))), # != "") }}
+        preview: >-
+          ${{ let chosen = filter(map(inputs.audiences ?? [], trim(toString(#))), # != "");
+          trim(toString(inputs.preview_audience ?? "")) != "" ? trim(toString(inputs.preview_audience))
+          : len(chosen) > 0 ? chosen[0] : nil }}
+
+    # From here the text depends on the audience. narration.text renders
+    #    the composed body as a member of one audience (and of every audience
+    #    ranked below it), turns it into the text that is read, applies the
+    #    pronunciations, the cleanup and the voice tags, and cuts it into
+    #    pieces of one request each. It reads only, so a preview may run it.
+    #    While a pronunciation is being edited in the form, a preview's
+    #    automation.settings holds the unsaved list (guide 5.7).
+
+    - id: preview-text
+      name: "Preview: return the text a run would read"
+      description: >-
+        The form's Spoken text button: return what a run would read for the
+        preview audience. Changes nothing.
+      if: >-
+        ${{ steps.mode.outputs.mode == "text" }}
+      then:
+        - id: preview-spoken
+          name: Prepare the text for the preview audience
+          description: >-
+            Runs `narration.text` for the audience under **Preview as**: the same
+            preparation a run makes.
+          action: elevenlabs/narration.text
+          with:
+            body: "${{ steps.compose.outputs.body }}"
+            article_id: "${{ toString(article.id) }}"
+            audience_id: "${{ steps.who.outputs.preview }}"
+            model_id: "${{ automation.settings.model_id }}"
+            skip_parts: "${{ automation.settings.skip_parts }}"
+            pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+            text_cleanup: "${{ automation.settings.text_cleanup }}"
+        - id: previewed
+          name: Hand back the text and its length
+          description: >-
+            The named outputs are what the flow's returns hand back: the text,
+            how many characters it is, the limit the editor flags it against, and
+            a note when it would take more than one request.
+          action: set-output
+          with:
+            done: true
+          outputs:
+            text: "${{ steps.preview-spoken.outputs.text }}"
+            characters: "${{ steps.preview-spoken.outputs.characters }}"
+            # the editor flags text over limit; 0 is no limit
+            limit: "${{ automation.settings.max_characters }}"
+            note: >-
+              ${{ steps.preview-spoken.outputs.requests > 1 ? "Read in " + toString(steps.preview-spoken.outputs.requests)
+              + " requests to " + automation.settings.model_id + ", joined into one MP3" : "" }}
+
+    - id: preview-listen
+      name: "Preview: read one paragraph aloud"
+      description: >-
+        A paragraph's play button: read the sample in the voice and return the
+        MP3 as base64. The sample is a paragraph's text as the editor shows it, so
+        it is not rendered and no audience is needed. Nothing is saved; billed.
+      if: >-
+        ${{ steps.mode.outputs.mode == "listen" }}
+      then:
+        - id: sample-spoken
+          name: Prepare the sample
+          description: >-
+            The paragraph goes through the pronunciations, the cleanup and the
+            voice tags, and is not rendered.
+          action: elevenlabs/narration.text
+          with:
+            sample: "${{ trigger.preview.sample }}"
+            model_id: "${{ automation.settings.model_id }}"
+            pronunciations: "${{ automation.settings.pronunciations ?? [] }}"
+            text_cleanup: "${{ automation.settings.text_cleanup }}"
+        - id: sample-too-long
+          name: Refuse a sample over 2,000 characters
+          if: >-
+            ${{ steps.sample-spoken.outputs.characters > 2000 }}
+          action: workflow.fail
+          with:
+            reason: "A sample is at most 2,000 characters; this one is ${{ steps.sample-spoken.outputs.characters }}."
+        - id: sample
+          name: Read the sample in the voice
+          description: >-
+            One request to ElevenLabs, billed. The MP3 comes back as base64 in the
+            named outputs and is not saved.
+          action: elevenlabs/speech.sample
+          with:
+            voice_id: "${{ steps.voice.outputs.id }}"
+            model_id: "${{ automation.settings.model_id }}"
+            text: "${{ steps.sample-spoken.outputs.text }}"
+          outputs:
+            audio: "${{ steps.sample.outputs.audio }}"
+            audio_type: "${{ steps.sample.outputs.audio_type }}"
+            text: "${{ steps.sample-spoken.outputs.text }}"
+
+  # The fixed result of an extension's preview
+  # (passport/schemas/extension.preview.result@1). Only one of the two
+  # branches ran, so the other's values are absent and left out.
+  returns:
+    text: "${{ outputs.text }}"
+    characters: "${{ outputs.characters }}"
+    limit: "${{ outputs.limit }}"
+    note: "${{ outputs.note }}"
+    audio: "${{ outputs.audio }}"
+    audio_type: "${{ outputs.audio_type }}"

@@ -19,7 +19,7 @@ server uses, so what it accepts is what the server accepts.
 |---|---|
 | `passport-plugin check <folder>` | Loads the project and reports every problem, with file and line. Exit code 1 if there are any |
 | `passport-plugin build <folder> [--registry owner/name[@branch]]` | Builds the package the way a release does: references pinned, dependencies copied in. A plugin with dependencies needs `--registry` to fetch them |
-| `passport-plugin run <folder> --automation <key> [--case <name>]` | Dry-runs an automation with a test case. With dependencies, give `--registry` as for `build` |
+| `passport-plugin run <folder> --automation <key> [--case <name>]` | Dry-runs an automation with a test case; for an extension, one flow of it: the one the case names in `trigger.action`, `run` when it names none. With dependencies, give `--registry` as for `build` |
 | `passport-plugin run <folder> --channel <name> [--case <name>]` | Dry-runs one flow of a channel: the one the case names in `trigger.action` |
 | `passport-plugin run <folder> --action <name> [--case <name>]` | Dry-runs one plugin action |
 | `passport-plugin info` | The server version the tool was built from |
@@ -42,12 +42,19 @@ Add `--json` to `check` and `run` for output a program can read.
 - an `http.*` address whose host is not in `allowed_hosts`;
 - a channel with a top-level `steps:`, a `channel.preview` or a
   `channel.status` key, or no `publish` flow;
+- an extension with a top-level `steps:` or `returns:`, an
+  `extension.preview` key, or no `run` flow; `trigger.preview` read in the
+  `run` flow; a paragraph editor's `sample` or `preview_label` in an
+  extension or a channel with no `preview` flow;
 - a flow with no `returns`, a `returns` key its result does not have, or a
   literal value that does not fit;
 - a `preview` or `status` flow, or a plugin action one of them calls, that
   runs a `notify`, `write` or `destructive` action, or an `http.*` step
   with `response_asset`;
 - a literal `pending` returned by a channel with no `status` flow (warning);
+- a `name` over 80 characters or a `description` over 2,000;
+- a definition with more than five steps of which none has a `name` or a
+  `description` (warning);
 - a form field without a `title` (warning).
 
 ## 10.2 Test cases
@@ -84,7 +91,7 @@ cases:
 | `settings`, `secrets` | The plugin's, for this case |
 | `automation.settings`, `automation.secrets`, `automation.label` | The automation's own (automation tests) |
 | `channel.settings`, `channel.secrets`, `channel.name`, `channel.label` | The channel's own (channel tests) |
-| `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id, preview }`. `action` names the flow the case runs: `publish` (the default), `update`, `delete`, `preview` or `status`. Naming a flow the channel does not have is an error. `preview` (`body`, `sample`, `settings`) is for a `preview` case only |
+| `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id, preview }`. `action` names the flow the case runs: `publish` (the default), `update`, `delete`, `preview` or `status`. Naming a flow the channel does not have is an error. `preview` (`body`, `sample`, `settings`) is for a `preview` case only. For an extension: `{ action, preview }`. `action` is `run` (the default) or `preview`; a `preview` case of an extension with no `preview` flow fails. `preview: { sample: … }` is the paragraph being played |
 | `inputs` | For a manual run, an extension or an action |
 | `record` | For an extension: the record it is run on, with the fields its steps and its form's defaults read. `expect.offered: false` checks that `extension.if` hides it for this record |
 | `fields`, `distribution`, `article` | For a channel: the distribution form's values, the distribution, and the article its followed defaults read |
@@ -93,8 +100,8 @@ cases:
 | `samples.actions.<action>` | The outputs every step running that action returns, unless it has its own sample. Built-in or plugin action; steps inside a plugin action are reached this way (`samples.actions.http.post`). Give a list to answer successive calls differently: one entry per call in the order they happen, the last repeated |
 | `expect.status` | `success` or `failed` |
 | `expect.reason` | For a failed run: text the failure reason must contain |
-| `expect.outputs` | Values the run's outputs must have. Only the keys you list are compared |
-| `expect.returns` | For a channel: values the flow's result must have, after it has been held to the flow's result schema. Only the keys you list are compared. A result that does not fit the schema fails the case whatever is listed |
+| `expect.outputs` | Values the run's outputs must have. Only the keys you list are compared. For an extension's `run` flow: what `run.returns` hands back |
+| `expect.returns` | For a channel: values the flow's result must have, after it has been held to the flow's result schema. Only the keys you list are compared. A result that does not fit the schema fails the case whatever is listed. For an extension's `preview` flow it works the same way, against `passport/schemas/extension.preview.result@1` (`expect.outputs` reads the same result there) |
 | `expect.steps.<id>.outputs`, `expect.steps.<id>.status` | The same for one step; `status` is `ok`, `skipped` or `error` |
 | `expect.not_run` | A list of step ids that must not have run (the vendor call in an `update` that found nothing changed, say). A step skipped by its `if:` counts as not run. Steps inside a branch, a loop or a plugin action are named by their own id |
 
@@ -150,6 +157,46 @@ cases:
       returns: { status: not_found }
 ```
 
+An extension's test file likewise holds cases for both of its flows. The
+record goes in `record`, the form in `inputs`:
+
+```yaml
+# tests/narrate.yaml
+cases:
+  - name: A run with no audience is refused
+    secrets: { api_key: test }
+    automation: { settings: { voice_id: JBFqnCBsd6RMkjVDRZzb, model_id: eleven_v4 } }
+    record: { id: Ar3oep6QbWZm8q5XEjgS5, title: Out now, body: "<p>Hello there.</p>" }
+    inputs: { audiences: [] }          # no trigger: the run flow
+    expect:
+      status: failed
+
+  - name: Preview a spoken sample
+    secrets: { api_key: test }
+    automation: { settings: { voice_id: JBFqnCBsd6RMkjVDRZzb, model_id: eleven_v4 } }
+    record: { id: Ar3oep6QbWZm8q5XEjgS5, title: Out now, body: "<p>Hello there.</p>" }
+    trigger:
+      action: preview                  # the preview flow
+      preview:
+        sample: "Hello there."
+    # A paragraph can be played before any audience is chosen.
+    inputs: { voice: JBFqnCBsd6RMkjVDRZzb }
+    samples:
+      steps:
+        sample: { audio: "SUQzBAAAAAAA", audio_type: audio/mpeg }
+    expect:
+      status: success
+      returns:
+        audio: "SUQzBAAAAAAA"
+        audio_type: audio/mpeg
+        text: Hello there.
+      not_run: [name, virtual]
+```
+
+A step of the other flow never runs, so `expect.not_run` may name one; and
+a preview that would write fails the case, as it would fail on a site. The
+full file is `plugins/elevenlabs/tests/narrate.yaml`.
+
 **What runs for real in a dry run:** `set-output`, `vars.set`, `log`,
 `transmute`, `workflow.exit`, `workflow.fail`, every expression and function,
 every branch and loop, every plugin action's own steps, and schema
@@ -159,7 +206,13 @@ skipped.
 
 `http.*` is sampled by default. `--live-http` lets it really call the hosts
 in `allowed_hosts`, which is useful once, with a real key in `secrets`, to
-capture what a vendor actually returns. Keys in test files are never real;
+capture what a vendor actually returns. Those calls are held to the rules of
+a real run ([1.2](01-project-and-manifest.md#where-http-may-connect)):
+public addresses, ports 80 and 443, redirects to allowed hosts only. So
+`--live-http` cannot reach a service on your own machine (a mock server on
+`localhost`, a vendor's local emulator) or on a private network; today there
+is no way to switch that off. Test against such a service with samples, or
+against the vendor's public sandbox. Keys in test files are never real;
 the tool refuses to push a `tests/` file whose `secrets` look like live keys.
 
 In Passport Studio the **Form** tab shows each form as the publisher will see
@@ -221,7 +274,9 @@ refused with the same problems the Studio lists.
 What a reviewer looks for:
 
 - Does it do what the change says, and nothing else?
-- Every host in `allowed_hosts` is needed and is the vendor's.
+- Every host in `allowed_hosts` is needed and is the vendor's, including any
+  listed only because the vendor redirects to it. A wildcard is no wider
+  than it has to be.
 - Credentials are `secret: true`, never logged, never put in an output.
 - Destructive steps (`asset.delete`, `entitlement.delete`, a vendor delete)
   are reachable only from where they should be.

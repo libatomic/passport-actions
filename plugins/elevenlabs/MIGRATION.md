@@ -32,6 +32,21 @@ extension had not been released, so `narrate.yaml` was changed in place and
 is still 1.0.0; had it been, the change to its inputs would have been a new
 major file.
 
+**17 November 2026: flows, and steps that say what they do** (PSPT-940).
+An extension no longer has top-level `steps:` and `returns:` with
+`extension.preview: true`; it has a `run:` flow and, to answer previews, a
+`preview:` flow, each with its own `steps` and `returns`. `narrate.yaml`
+was rewritten that way: the run flow lost the `mode` step and the two
+preview branches, the preview flow has the steps a preview needs and no
+`workflow.exit`, and its `returns` is Passport's fixed preview result
+(`text`, `characters`, `limit`, `note`, or `audio` with `audio_type`; the
+`requests` count a text preview used to return is not a key of it and was
+dropped, the note still says when a text takes several requests). Every
+step in the plugin now has a `name`, and a `description` where the action
+does not say enough; the comments that explained steps moved into those
+descriptions. Nothing a run does changed. Still 1.0.0, as the extension has
+not been released.
+
 **What has been run.** `passport-plugin check` (built from atomic `develop`)
 reports nothing, and every case in `tests/narrate.yaml`,
 `tests/narration.text.yaml` and `tests/narration.create.yaml` passes as a
@@ -131,9 +146,12 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
 6. **The wrapper template is applied by the steps, not shown in the
    editor.** "Read around the article" goes around the form's text before
    the render. "Spoken text" shows it; the paragraph list does not.
-7. **Preview results are set by the preview steps**, with step-level
-   `outputs:` and `workflow.exit`, as the channel did. The declared
-   `outputs`/`returns` describe a run only (`asset_id` is required there).
+7. **A preview is its own flow.** `preview:` has its own steps, which name
+   the result with step-level `outputs:`, and its own `returns`, held to
+   `passport/schemas/extension.preview.result@1`. The declared `outputs`
+   and `run.returns` describe a run only (`asset_id` is required there).
+   (Until 17 November 2026 the preview was two branches of one list of
+   steps, each ended by `workflow.exit`.)
 8. **A run needs at least one audience; a preview does not.** The form
    requires "Make audio for", and inputs supplied any other way are held to
    the same schema (the dry run refuses a run without it before any step),
@@ -262,11 +280,11 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
 
 ## What v2 still expresses awkwardly or not at all
 
-- **Preview results are undeclared.** The guide says a preview returns
-  `audio` and `audio_type`, or `text`, `characters`, `limit` and `note`, as
-  outputs, but an automation's `outputs`/`returns` describe one result, and
-  a preview has none of a run's. They are set with step-level `outputs:`
-  before `workflow.exit`, and nothing checks their shape.
+- **A flow cannot say what it is for.** A channel's flow may carry a
+  `description`; an extension's `run:` and `preview:` hold `steps` and
+  `returns` and nothing else, so `narrate.yaml` says it in a comment above
+  each. (Preview results, once undeclared, are now the `preview` flow's
+  `returns`, with a shape Passport fixes and checks.)
 - **The default voice has to be added to its own menu by an expression.**
   See decision 10.
 - **The name of an added automation is not among what a run can read**

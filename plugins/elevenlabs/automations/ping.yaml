@@ -17,4 +17,5 @@ returns:
   characters_left: "${{ steps.usage.outputs.characters_limit - steps.usage.outputs.characters_used }}"
 steps:
   - id: usage
+    name: Check that the API key works
     action: elevenlabs/usage.get

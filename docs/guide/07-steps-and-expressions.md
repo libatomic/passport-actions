@@ -1,7 +1,8 @@
 # 7. Steps and expressions
 
 Automations and plugin actions have `steps:`, and so does each flow of a
-channel ([6.5](06-channels.md#65-the-flows)). A step runs an action, or
+channel ([6.5](06-channels.md#65-the-flows)) and of an extension
+([5.7](05-automations.md#the-flows)). A step runs an action, or
 controls which steps run.
 
 ## 7.1 A step
@@ -21,9 +22,9 @@ controls which steps run.
 
 | Key | Meaning |
 |---|---|
-| `id` | Required. Lowercase letters, digits, hyphens and underscores; unique among the steps of the file; in a channel, among the steps of its flow. Results are at `steps.<id>`: `.outputs`, and `.status`, which is `ok`, `skipped` or `error` |
-| `name` | A short title in plain words, up to 80 characters: "Work out what is read". Shown in place of the bare id in Passport Studio, in a run's step list and in the admin |
-| `description` | What the step does and why, in Markdown, up to 2,000 characters. Never evaluated: `${{ }}` in it is text |
+| `id` | Required. Lowercase letters, digits, hyphens and underscores; unique among the steps of the file; in a channel or an extension, among the steps of its flow. Results are at `steps.<id>`: `.outputs`, and `.status`, which is `ok`, `skipped` or `error`. A run's record lists each step by its id, with the step's `name` beside it when it has one (`steps.<id>.name`) |
+| `name` | A short title in plain words, up to 80 characters: "Work out what is read". Shown with the id wherever a person sees the step: Passport Studio, a dry run's list of steps, a run's record and the admin |
+| `description` | What the step does and why, in Markdown, up to 2,000 characters. Never evaluated: `${{ }}` in it is text. Shown in Passport Studio; not copied to a run's record |
 | `action` | The action to run ([chapter 4](04-actions.md)) |
 | `with` | The action's inputs |
 | `if` | Run the step only when true. A skipped step has `steps.<id>.status == "skipped"` |
@@ -48,14 +49,19 @@ step does belongs in `description`.
 
 ```yaml
 - id: mode
-  name: Work out what this run is for
+  name: Work out which preview was asked for
   description: >-
-    A real run, a preview of the whole text, or a preview of one paragraph
-    (the play button). Later steps branch on `steps.mode.outputs.mode`.
+    A preview of the whole text, or of one paragraph (its play button, which
+    sends the paragraph as `trigger.preview.sample`). Later steps branch on
+    `steps.mode.outputs.mode`.
   action: set-output
   with:
-    mode: "${{ trigger.action != 'preview' ? 'run' : 'text' }}"
+    mode: "${{ trim(trigger.preview?.sample ?? '') != '' ? 'listen' : 'text' }}"
 ```
+
+A flow of a channel may say the same of itself, with a `description` beside
+its `steps` and `returns` ([6.5.1](06-channels.md#651-a-flow)). An
+extension's flows may not ([5.7](05-automations.md#the-flows)).
 
 A step has an `action`, or is a branch, or is a loop. Unknown keys are an
 error.
@@ -175,10 +181,10 @@ attempt may be billed by the vendor.
 
 | Action | Does |
 |---|---|
-| `workflow.exit` | Ends the run now, as a success. Anywhere in an automation or a channel's flow, including inside a branch or a loop; not inside a plugin action. In a flow the `returns` is still evaluated ([6.5.1](06-channels.md#651-a-flow)) |
+| `workflow.exit` | Ends the run now, as a success. Anywhere in an automation or a flow, including inside a branch or a loop; not inside a plugin action. In a channel's flow and in an extension's `preview` the `returns` is still evaluated ([6.5.1](06-channels.md#651-a-flow)); an extension's `run` ends, as an automation does, with the outputs its steps named |
 | `workflow.fail` | Ends the run now, as failed, with `reason`. Not caught by `on_error` or `continue-on-error`. A channel's publish fails with that reason |
 | `sleep` | Pauses in place, up to 90 seconds |
-| `wait` | Suspends the run and resumes it later, up to 90 days. Top level of an automation only; not in a channel, a loop, a branch or a plugin action |
+| `wait` | Suspends the run and resumes it later, up to 90 days. Top level of an automation, or of an extension's `run` flow, only; not in a channel, an extension's `preview`, a loop, a branch or a plugin action |
 
 ## 7.5 Named outputs
 
@@ -218,8 +224,8 @@ flow's own later steps.
 | `published` | What Passport kept from the last successful `publish` or `update` of the distribution: `id`, `url`, `data`, `status`, `at` (channels; [6.5.10](06-channels.md#6510-what-passport-keeps)) |
 | `article`, `user`, `subscription`, … | The record an extension was run on, under the name of its kind (extensions; [5.7](05-automations.md#57-extensions)) |
 | `inputs` | What was supplied for this run. Inside a plugin action: the action's inputs |
-| `trigger` | What started the run ([5.3](05-automations.md#53-triggers), [6.5.2](06-channels.md#652-what-a-flow-reads)). In a channel `trigger.action` is the flow that is running |
-| `steps.<id>.outputs`, `.status`, `.error` | An earlier step's result. In a channel: an earlier step of the same flow |
+| `trigger` | What started the run ([5.3](05-automations.md#53-triggers), [6.5.2](06-channels.md#652-what-a-flow-reads)). In a channel or an extension `trigger.action` is the flow that is running |
+| `steps.<id>.outputs`, `.status`, `.error` | An earlier step's result. In a channel or an extension: an earlier step of the same flow |
 | `vars` | Values set with `vars.set`, or declared under `vars:` |
 | `outputs` | Named outputs so far |
 | `loop` | The current loop pass |
@@ -287,7 +293,15 @@ Every function is in [chapter 8](08-functions.md).
 - **`distribution.update` replaces `context`.** Merge the old map back in.
 - **`http.*` `retries` is total attempts**, not extra ones.
 - **No binary in outputs or a body string.** See [chapter 9](09-files-and-binary.md).
-- **A preview must not have side effects.** In an extension, gate them on
-  `trigger.action`. In a channel the `preview` flow cannot run a step that
-  writes ([6.5.3](06-channels.md#653-what-a-flow-may-do)); what its calls do
-  at the vendor is still yours to keep harmless.
+- **A preview must not have side effects.** A `preview` flow, of a channel
+  or of an extension, cannot run a step that writes
+  ([6.5.3](06-channels.md#653-what-a-flow-may-do),
+  [5.7](05-automations.md#the-preview-flow)); what its calls do at the
+  vendor is still yours to keep harmless.
+- **A redirect is not followed off the list.** `http.*` follows a redirect
+  only to a host in `allowed_hosts`, and drops the step's headers when the
+  redirect goes to another host. A download that worked in a browser and
+  fails here with "redirected the request to …, which was not followed"
+  needs the second host listed; one that then answers 401 needs a step of
+  its own that calls the second host with the credential
+  ([1.2](01-project-and-manifest.md#where-http-may-connect)).

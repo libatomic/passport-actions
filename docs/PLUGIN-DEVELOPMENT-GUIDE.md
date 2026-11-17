@@ -41,7 +41,9 @@ accepts today.
 | Effect classes on built-ins ([4.2](guide/04-actions.md)) | Built |
 | Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Built |
 | The distribution form ([6.4](guide/06-channels.md)) | Built in the engine; the admin's distribution page does not show it yet |
-| Extensions, previews and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
+| Extensions, with a `run` flow and a `preview` flow whose result is fixed, and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
+| A `name` and a `description` on every step, and a `description` on a channel's flow ([7.1](guide/07-steps-and-expressions.md#71-a-step)) | Built |
+| `http.*` held to public addresses, ports 80 and 443, and redirects to allowed hosts ([1.2](guide/01-project-and-manifest.md#where-http-may-connect)) | Built |
 | Channel flows: `publish`, `update`, `delete`, `preview` and `status` in the channel file, each with a fixed result, and `published` ([6.5](guide/06-channels.md#65-the-flows)); `channel.delivery` and `channel.audience` in place of `mode` and `requires_audience` ([6.2](guide/06-channels.md#62-the-channel-block)) | Specified 16 November; not built. Until it is, `passport-plugin check` refuses the examples in chapter 6 |
 | Templates a plugin ships and the channel template menu ([6.8](guide/06-channels.md#68-templates)) | Built, in review; the admin's template menu is not built |
 | Protected assets, virtual assets, audiences on the steps that create assets, and audience ranking ([9.7](guide/09-files-and-binary.md#97-protected-and-virtual-assets)) | Built |
@@ -174,7 +176,9 @@ stateDiagram-v2
   change it). Channel runs are not counted and not limited.
 - For a plugin's run the engine binds the plugin first: its settings and
   secrets become readable, the automation's or channel's own are added, and
-  `http.*` may reach only the plugin's `allowed_hosts`.
+  `http.*` may reach only the plugin's `allowed_hosts`, at public addresses,
+  on ports 80 and 443, and follows a redirect only to another allowed host
+  ([1.2](guide/01-project-and-manifest.md#where-http-may-connect)).
 
 ### A manual run
 
@@ -199,7 +203,9 @@ back; that is how previews and "Run" in the admin work.
 
 An **extension** runs the same way. The request also names the record; the
 API checks the caller may change it, loads it, and the run starts with the
-record in hand.
+record in hand. The run is the extension's `run` flow. A preview is its
+`preview` flow: it is answered at once, may only read and call out, and is
+not recorded ([5.7](guide/05-automations.md#57-extensions)).
 
 ### An event
 
@@ -388,6 +394,13 @@ index.json.
 - Writes a channel as one `steps:` list that branches on `trigger.action`,
   or records the link in `context`. A channel has flows (`publish`,
   `update`, `delete`, `preview`, `status`), and each ends in `returns`.
+- Writes an extension with top-level `steps:` and `extension.preview: true`.
+  An extension has flows too: `run`, and `preview` when it answers
+  previews.
+- Leaves steps unnamed. Every step has a `name`, and a `description` where
+  the action does not say enough.
+- Expects `http.*` to follow a redirect anywhere, or to reach `localhost`
+  or a port other than 80 and 443.
 - Passes binary through an output. Binary is an asset or base64 text.
 
 ### Checking its work

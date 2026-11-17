@@ -45,24 +45,32 @@ inputs:
 on:
   - manual: true
 steps:
-  # The form shows the address only when it is needed, but cannot say that it
-  # is then required (a rule across fields; guide 2.11, rule 5c), so this
-  # step does.
   - id: need-url
+    name: Refuse a missing webhook address
+    description: >-
+      The form shows the address only when it is needed, but cannot say that it
+      is then required (a rule across fields; guide 2.11, rule 5c), so this
+      step does.
     if: '${{ inputs.operation != "list" && empty(inputs.webhook_url) }}'
     action: workflow.fail
     with:
       reason: Enter the webhook address to register or remove.
 
   - id: inventory
+    name: List the webhooks on the list
+    description: Only when asked to show what is registered. Changes nothing.
     if: '${{ inputs.operation == "list" }}'
     action: campaign-monitor/webhook.register
     with:
       list_id: "${{ inputs.list_id }}"
       operation: list
 
-  # Deactivate is the only event the unsubscribe automation acts on.
   - id: webhook
+    name: Register or remove the address
+    description: >-
+      Runs `webhook.register` for the list. Deactivate is the only event the
+      unsubscribe automation acts on. An address already registered, or one
+      already gone, is left as it is.
     if: '${{ inputs.operation != "list" }}'
     action: campaign-monitor/webhook.register
     with:
@@ -72,18 +80,21 @@ steps:
       events: [Deactivate]
 
   - id: report-register
+    name: Log whether the address was registered
     if: '${{ inputs.operation == "register" }}'
     action: log
     with:
       message: '${{ steps.webhook.outputs.registered ? "registered on list " + inputs.list_id : "already registered on list " + inputs.list_id + ", nothing to do" }}'
 
   - id: report-unregister
+    name: Log whether the address was removed
     if: '${{ inputs.operation == "unregister" }}'
     action: log
     with:
       message: '${{ steps.webhook.outputs.unregistered ? "unregistered from list " + inputs.list_id : "was not registered on list " + inputs.list_id + ", nothing to do" }}'
 
   - id: report-list
+    name: Log the webhooks found
     if: '${{ inputs.operation == "list" }}'
     action: log
     with:

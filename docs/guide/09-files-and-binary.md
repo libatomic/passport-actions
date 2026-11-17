@@ -44,6 +44,17 @@ is no `body`. An error response still comes back in `body`, so
 The asset is written only once the whole response has arrived, so a failed
 download never leaves half a file.
 
+**Downloads often redirect.** Many vendors answer a request for a file with
+a redirect to a storage or CDN host. The step follows it only when that host
+is in `allowed_hosts` too, and sends it none of the step's `headers` but
+`Content-Type` and `Accept`
+([1.2](01-project-and-manifest.md#where-http-may-connect)). So: list the
+file host beside the API host; and if the file host needs the credential,
+the redirect will not carry it. Where the vendor's API can hand back the
+file's address instead of redirecting to it, ask for the address in one
+step, then fetch it in a second step with the headers it needs and
+`response_asset`.
+
 ## 9.2 Sending bytes
 
 | `http.*` input | Sends | Since |
@@ -121,11 +132,22 @@ A few hundred kilobytes for a preview is fine; a whole file is not.
 | Action | Does |
 |---|---|
 | `asset.get` | Metadata, and with `link: true` an address a vendor can fetch the file from |
-| `asset.create` | From `url` (fetched by the server, which may reach only the plugin's `allowed_hosts`), `payload` (text) or `payload_base64` (bytes, 2.3.0). Only one of `url` and `payload_base64`. `audiences` makes it protected ([9.7](#97-protected-and-virtual-assets)) |
-| `asset.update` | Metadata |
+| `asset.create` | From `url`, `payload` (text) or `payload_base64` (bytes, 2.3.0). Only one of `url` and `payload_base64`. `audiences` makes it protected ([9.7](#97-protected-and-virtual-assets)) |
+| `asset.update` | Metadata, and with `url` a new source address for the file |
 | `asset.delete` | Removes the asset and its file. Refused while the asset is a variant or the default of a virtual asset |
 | `asset.concat` | Joins assets in order into one. MP3s are joined frame by frame. `overwrite: true` keeps the final asset's id; `delete_sources: true` removes the parts; `audiences` makes the joined asset protected |
 | `asset.virtual` | Builds a virtual asset: one id and address, answered by a different file for each audience ([9.7](#97-protected-and-virtual-assets)) |
+
+**A `url` is fetched by the server, under the rules of an `http.*` step.**
+The `url` of `asset.create` and `asset.update` must be on one of the
+plugin's `allowed_hosts`, at a public address, on port 80 or 443, with no
+user name or password in it, and every redirect on the way to the file is
+held to the same
+([1.2](01-project-and-manifest.md#where-http-may-connect)). An address a
+vendor hands back for a file (a signed link on a storage host, say) is
+therefore only usable when that host is listed. It cannot carry headers: a
+file that needs a credential is fetched with `http.get` and
+`response_asset` instead.
 
 **Give the vendor a link, not the bytes**, when the vendor can fetch:
 
@@ -414,7 +436,9 @@ rows that matter for files are `http_response_size` (a response returned in
 `asset_concat_…` rows, `asset_audiences`, `virtual_asset_variants` (one
 variant per audience), `gzip_size`, `webhook_multipart_field_size` and
 `package_asset_size`. The two response sizes and `asset_concat_size` are
-defaults a step may change (`max_response_size`, `max_size`). This table is
+defaults a step may change (`max_response_size`, `max_size`).
+`http_redirects` is fixed: a chain longer than that fails the step. This
+table is
 generated from the engine (`passport-plugin reference`; do not edit it by
 hand):
 
@@ -427,6 +451,7 @@ hand):
 | `package_asset_size` | 256 KiB | The largest file a plugin may ship under assets/. |
 | `runs_per_hour` | 500 | The runs a site starts in an hour, all its workflows together, unless the site's policy says otherwise. |
 | `http_timeout` | 30 seconds | How long an http step waits when it gives no timeout. |
+| `http_redirects` | 5 | The most redirects an http step follows, each to an allowed host on port 80 or 443; so too the url of asset.create and asset.update. |
 | `http_response_size` | 10 MiB | The largest response an http step reads into outputs.body when it gives no max_response_size. |
 | `http_response_asset_size` | 200 MiB | The largest response an http step stores with response_asset when it gives no max_size. |
 | `asset_concat_parts` | 500 | The most assets one asset.concat joins. |

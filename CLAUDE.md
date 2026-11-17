@@ -72,7 +72,18 @@ syntax into this branch.
   `context`.
 - Something a person does to one record on demand (narrate this article,
   send this member to the CRM) is an automation with `extension:`, not a
-  channel and not a trigger. Safe to run twice on the same record.
+  channel and not a trigger. Safe to run twice on the same record. It has
+  flows too, not top-level `steps:` or `returns:`: `run` (required; its
+  `returns` are the extension's `outputs`) and `preview` (only when it
+  answers previews; never `extension.preview: true`). `preview` runs only
+  `control`, `read` and `external` actions and returns the fixed result of
+  guide 5.7 (`text`, `audio` with `audio_type`, `characters`, `limit`,
+  `note`).
+- `http.*` reaches only `allowed_hosts`, at public addresses, on ports 80
+  and 443, and follows a redirect only to another allowed host, without the
+  step's headers (guide 1.2). List a host the vendor redirects to; call it
+  in its own step if it needs the credential. The same holds for the `url`
+  of `asset.create` and `asset.update`.
 - Binary is an asset or base64 text, never a raw string.
 - One file per major version. A breaking change is a new file
   (`name_2.yaml`); the old one stays.

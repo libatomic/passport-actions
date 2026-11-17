@@ -81,7 +81,6 @@ cases:
         characters_billed: 214
         requests: 2
       steps:
-        mode: { outputs: { mode: run } }
         voice: { outputs: { id: 21m00Tcm4TlvDq8ikWAM } }
         # the last pass of each loop: Free
         spoken:
@@ -219,8 +218,6 @@ cases:
         text: An unsaved edit, 50 percent done.
         characters: 33
         limit: 0
-        requests: 1
-        note: ""
       steps:
         who: { outputs: { preview: Au9zep6QbWZm8q5XEjgF4 } }
       not_run: [sample, name, named, spoken, narration, virtual]

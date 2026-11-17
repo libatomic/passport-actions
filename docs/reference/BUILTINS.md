@@ -796,7 +796,7 @@ Effect: `write`. Automations a publisher writes: no.
 |---|---|---|---|
 | `filename` | yes | text | The asset's file name, which is its address: /assets/<filename>. |
 | `mime_type` | no | text | The content type, such as image/png, audio/mpeg or application/json. Required with payload and payload_base64. |
-| `url` | no | text | Import the asset from this URL. |
+| `url` | no | text | Import the asset from this URL, which is held to what an http step's url is: an allowed host at a public address, port 80 or 443, and the same for every redirect. |
 | `payload` | no | expression | Store this string as the asset body (alternative to url). |
 | `payload_base64` | no | expression | Store the decoded bytes of this base64 text as the asset body. Not with url or payload. |
 | `public` | no | boolean | true: anyone may fetch the asset. Default false: a private asset. Not with audiences. |
@@ -833,7 +833,7 @@ Effect: `write`. Automations a publisher writes: no.
 | `filename` | no | text | A new file name. Left out, it stays. |
 | `mime_type` | no | text | A new content type. Left out, it stays. |
 | `type` | no | text | A new kind of asset. Left out, it stays. |
-| `url` | no | text | A new source address for the asset, a full URL. Left out, it stays. |
+| `url` | no | text | A new source address for the asset, a full URL, held to what an http step's url is: an allowed host at a public address, port 80 or 443, and the same for every redirect. Left out, it stays. |
 | `public` | no | boolean | true makes the asset public, false takes that back. Left out, it stays. |
 | `size` | no | number | A new size in bytes. Left out, it stays. |
 | `categories` | no | list | A list of category ids that replaces the asset's. Left out, they stay. |
@@ -1165,8 +1165,8 @@ Effect: `external`. Automations a publisher writes: no.
 
 | Input | Required | Type | Description |
 |---|---|---|---|
-| `url` | yes | expression | The address to call, http or https. In a plugin its host must be one of the manifest's allowed_hosts; otherwise one on the site's allow list. |
-| `headers` | no | json | A map of request headers, such as { Authorization: "Bearer ${{ secrets.api_token }}" }. Left out, none besides the Content-Type the body sets. |
+| `url` | yes | expression | The address to call, http or https, on port 80 or 443, with no user name or password in it. In a plugin its host must be one of the manifest's allowed_hosts; otherwise one on the site's allow list. The host must be at a public address. A redirect is held to the same rules, and one to another host goes without the step's headers. |
+| `headers` | no | json | A map of request headers, such as { Authorization: "Bearer ${{ secrets.api_token }}" }. Left out, none besides the Content-Type the body sets. They are sent to the url's host; a redirect to another host gets only Content-Type and Accept. |
 | `query` | no | json | A map of query parameters, each written as text. One replaces a parameter of the same name in the url. |
 | `body` | no | json | An object or list is sent as JSON; text is sent as it is (set Content-Type yourself). Ignored for GET/DELETE. Only one of body, form, body_base64 and multipart. |
 | `form` | no | json | A map of fields sent as application/x-www-form-urlencoded. A list repeats the field, an object is sent as JSON text, a null value is left out. Not for GET/DELETE. |

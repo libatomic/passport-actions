@@ -84,11 +84,13 @@ returns:
   requests: "${{ len(inputs.chunks) }}"
   characters_billed: "${{ toInt(vars.billed ?? 0) }}"
 steps:
-  # One row per piece. previous and next give the voice the text around a
-  # piece so the joins sound continuous; nil for the first and last piece (a
-  # nil `with:` value is an absent input). speech.create leaves them out for
-  # eleven_v3 and eleven_v4, which do not take them.
   - id: plan
+    name: List the pieces to read
+    description: >-
+      One row per piece. previous and next give the voice the text around a
+      piece so the joins sound continuous; nil for the first and last piece (a
+      nil `with:` value is an absent input). speech.create leaves them out for
+      eleven_v3 and eleven_v4, which do not take them.
     action: set-output
     with:
       parts: >-
@@ -102,15 +104,21 @@ steps:
         ${{ merge({"audience_id": toString(inputs.audience_id), "requests": len(inputs.chunks)},
         inputs.narration ?? {}) }}
 
-  # Each piece's MP3 goes straight into the asset store, never into the run
-  # output. A piece is protected like the MP3 it becomes, so it is no easier
-  # to fetch while the run is going.
   - id: generate
+    name: Read each piece
+    description: >-
+      Each piece's MP3 goes straight into the asset store, never into the run
+      output. A piece is protected like the MP3 it becomes, so it is no easier
+      to fetch while the run is going.
     foreach: "${{ steps.plan.outputs.parts }}"
     as: part
     max: 100
     steps:
       - id: tts
+        name: Read one piece
+        description: >-
+          One request to ElevenLabs through `speech.create`, with the text
+          before and after it so the joins sound continuous.
         action: elevenlabs/speech.create
         with:
           voice_id: "${{ inputs.voice_id }}"
@@ -125,18 +133,21 @@ steps:
             ${{ (inputs.description ?? "Narration")
             + (len(inputs.chunks) > 1 ? ", part " + toString(loop.part.index) + " of " + toString(len(inputs.chunks)) : "") }}
           narration: "${{ steps.plan.outputs.narration }}"
-      # what ElevenLabs billed, summed across the requests
       - id: tally
+        name: Add up what was billed
+        description: What ElevenLabs billed, summed across the requests.
         action: vars.set
         with:
           billed: >-
             ${{ toInt(vars.billed ?? 0) + steps.tts.outputs.characters_billed }}
 
-  # Join the pieces (even one) into the MP3, after half a second of silence
-  # so a player or headset that takes a moment to start does not clip the
-  # first words (the models drop a pause tag at the very start), and delete
-  # the pieces. Protected: audiences, and public left off.
   - id: join
+    name: Join the pieces into the MP3
+    description: >-
+      Join the pieces (even one) into the MP3, after half a second of silence so
+      a player or headset that takes a moment to start does not clip the first
+      words (the models drop a pause tag at the very start), and delete the
+      pieces. Protected: audiences, and public left off.
     action: asset.concat
     with:
       filenames: >-

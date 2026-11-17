@@ -52,6 +52,8 @@ returns:
   characters_reset_at: "${{ steps.usage.outputs.characters_reset_at }}"
 steps:
   - id: voices
+    name: List the voices
     action: elevenlabs/voices.list
   - id: usage
+    name: Read what is left of the plan
     action: elevenlabs/usage.get

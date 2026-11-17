@@ -94,9 +94,11 @@ returns:
   chunks: "${{ steps.pieces.outputs.chunks }}"
   requests: "${{ len(steps.pieces.outputs.chunks) }}"
 steps:
-  # The rewrite rules, as plain values: an expression cannot hold some of
-  # these patterns (guide 7.8).
   - id: rules
+    name: Set the rewrite rules
+    description: >-
+      The rewrite rules, as plain values: an expression cannot hold some of
+      these patterns (guide 7.8).
     action: set-output
     with:
       # Built-in cleanup (the cleanup step), applied in order by
@@ -135,15 +137,21 @@ steps:
         - { find: '\s*\[(?:whispers?|whispering|sighs?|exhales(?: sharply)?|inhales deeply|clears throat|laughs(?: harder)?|laughing|starts laughing|chuckles|giggles|crying|muttering|excited(?:ly)?|happy|sad|angry|annoyed|curious|surprised|thoughtful|sarcastic|mischievously|sympathetic|reassuring|professional|deadpan|dramatically|applause|clapping|gulps|swallows|sings|singing|strong [a-z -]+ accent)\]', replace: '' }
 
   - id: source
+    name: Note whether a sample is read
+    description: >-
+      A sample is a paragraph's text as the editor shows it. When there is one
+      it is read as it is, and the body is not rendered.
     action: set-output
     with:
       sample: "${{ trim(inputs.sample ?? '') }}"
 
-  # 1. Render the body as a member of the audience (and of every audience
-  #    ranked below it), with the article as .article: blocks the audience
-  #    can see render their content, the others render their else branch.
-  #    Reads only; a preview may run it.
   - id: render
+    name: Render the body as the audience sees it
+    description: >-
+      Render the body as a member of the audience (and of every audience ranked
+      below it), with the article as .article: blocks the audience can see
+      render their content, the others render their else branch. Reads only; a
+      preview may run it.
     if: "${{ steps.source.outputs.sample == '' }}"
     action: template.render
     with:
@@ -151,9 +159,11 @@ steps:
       article_id: "${{ inputs.article_id }}"
       audience_id: "${{ inputs.audience_id }}"
 
-  # 2. Several hidden blocks would repeat the fallback; keep the first and
-  #    mark the rest data-text="skip" (htmlText always drops it).
   - id: html
+    name: Keep one spoken fallback
+    description: >-
+      Several hidden blocks would repeat the fallback; keep the first and mark
+      the rest data-text="skip" (htmlText always drops it).
     if: "${{ steps.source.outputs.sample == '' }}"
     action: set-output
     with:
@@ -162,9 +172,11 @@ steps:
         len(parts) < 3 ? steps.render.outputs.body
         : parts[0] + "data-narration=\"fallback\"" + join(parts[1:], "data-text=\"skip\"") }}
 
-  # 3. The text that is read. htmlText takes the selectors as one
-  #    comma-separated group. A sample is read as it is.
   - id: speech
+    name: Turn the HTML into the text that is read
+    description: >-
+      The text that is read. htmlText takes the selectors as one comma-separated
+      group. A sample is read as it is.
     action: set-output
     with:
       text: >-
@@ -177,18 +189,22 @@ steps:
   # pronunciations still apply after it. When it is on, skip the cleanup
   # step.
 
-  # 4. Pronunciations: replace each term with its "say as" text, as written
-  #    (same capitalization), whole words.
   - id: pronounce
+    name: Apply the pronunciations
+    description: >-
+      Pronunciations: replace each term with its "say as" text, as written (same
+      capitalization), whole words.
     action: set-output
     with:
       text: >-
         ${{ replaceEach(steps.speech.outputs.text, inputs.pronunciations,
         {"find": "term", "replace": "say_as", "literal": true, "word": true}) }}
 
-  # 5. Built-in cleanup of numbers, symbols and abbreviations, after the
-  #    pronunciations so an editor's rule for the same text wins.
   - id: cleanup
+    name: Clean up numbers, symbols and abbreviations
+    description: >-
+      Built-in cleanup of numbers, symbols and abbreviations, after the
+      pronunciations so an editor's rule for the same text wins.
     action: set-output
     with:
       text: >-
@@ -196,10 +212,12 @@ steps:
         ? replaceEach(steps.pronounce.outputs.text, steps.rules.outputs.cleanup)
         : steps.pronounce.outputs.text }}
 
-  # 6. Voice tags typed into the text ([pause], [whispers], …): kept for
-  #    eleven_v3 and eleven_v4, turned into breaks or left out for the other
-  #    models.
   - id: tags
+    name: Apply the voice tags
+    description: >-
+      Voice tags typed into the text ([pause], [whispers], …): kept for
+      eleven_v3 and eleven_v4, turned into breaks or left out for the other
+      models.
     action: set-output
     with:
       text: >-
@@ -208,6 +226,10 @@ steps:
         {"ignoreCase": true})) }}
 
   - id: measure
+    name: Measure the text
+    description: >-
+      Counts the characters, and looks up the most one request to the model may
+      carry.
     action: set-output
     with:
       # len() counts bytes, so accented letters and curly quotes count more
@@ -221,9 +243,11 @@ steps:
         ${{ {"eleven_flash_v2_5": 40000, "eleven_turbo_v2_5": 40000,
         "eleven_multilingual_v2": 10000, "eleven_v3": 5000, "eleven_v4": 10000}[inputs.model_id] ?? 10000 }}
 
-  # 7. The text in pieces of at most one request each, broken between
-  #    paragraphs, then sentences.
   - id: pieces
+    name: Cut the text into pieces of one request
+    description: >-
+      The text in pieces of at most one request each, broken between paragraphs,
+      then sentences.
     action: set-output
     with:
       chunks: >-

@@ -28,6 +28,7 @@ A Passport record id (`passport.id`) is short text such as
 | `channel.status.result` | `passport/schemas/channel.status.result@^1` | channel | What a channel's status flow returns: what the destination says became of what was published. |
 | `channel.update.result` | `passport/schemas/channel.update.result@^1` | channel | What a channel's update flow returns. The keys are those of a publish; an id, url or data left out stays as Passport has it. It is handed to every later flow as published. |
 | `entitlement` | `passport/schemas/entitlement@^1` | record | A Passport entitlement, as event bodies and API responses carry it. |
+| `extension.preview.result` | `passport/schemas/extension.preview.result@^1` | extension | What an extension's preview flow returns: what to play, or the text that would be worked on. At least one of text and audio is there. |
 | `instance` | `passport/schemas/instance@^1` | record | A Passport instance (a site), as event bodies carry it, with its configuration. |
 | `job` | `passport/schemas/job@^1` | record | A Passport job, as event bodies carry it. |
 | `openid.address` | `passport/schemas/openid.address@^1` | openid | OpenID Connect address claim (section 5.1.1 of the connect core 1.0 spec). |
@@ -202,6 +203,21 @@ Version 1.0.0, referred to as `passport/schemas/entitlement@^1`.
 | `stripe_invoice` | string | no |  |
 | `subscription_id` | string (`passport.id`) | no |  |
 | `status` | string | no |  |
+
+#### `extension.preview.result`
+
+What an extension's preview flow returns: what to play, or the text that would be worked on. At least one of text and audio is there.
+
+Version 1.0.0, referred to as `passport/schemas/extension.preview.result@^1`.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `text` | string | no | The text that would be worked on, paragraphs separated by blank lines. |
+| `audio` | string | no | Audio, as base64 text, played in place. Needs audio_type. |
+| `audio_type` | string | no | The audio's media type, audio/mpeg for example. |
+| `characters` | integer | no | The length of the text. |
+| `limit` | integer | no | The limit the text is held to, shown against characters. 0 or left out: no limit. |
+| `note` | string | no | A short line under the preview. |
 
 #### `instance`
 

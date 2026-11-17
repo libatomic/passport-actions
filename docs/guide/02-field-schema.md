@@ -337,8 +337,8 @@ script:
 | `channel_view` | Show the body as that channel sees it: each `{{ if isChannel "<channel>" }}…{{ else }}…{{ end }}` is replaced by its first branch when the editor loads the text |
 | `skip_setting` | A setting that holds CSS selectors for parts never used (an array of strings); the editor leaves those parts out |
 | `section_line` | `{ setting, label }`: each restricted section gets an editable line to use instead for audiences without access, starting from that setting's value (a string) |
-| `sample` | `audio`: a play button on each paragraph runs a preview with `trigger.preview.sample` set to the paragraph's text, and plays the `audio` (base64) and `audio_type` it returns |
-| `preview_label` | The label of the preview button |
+| `sample` | `audio`: a play button on each paragraph runs the `preview` flow with `trigger.preview.sample` set to the paragraph's text, and plays the `audio` (base64) and `audio_type` it returns |
+| `preview_label` | The label of the preview button, which runs the `preview` flow with no sample and shows the `text` it returns, with `characters`, `limit` and `note` |
 | `term_list` | `{ setting, find, replace, label }`: right-click a word to add or edit a row of that list setting (an array of objects; `find` and `replace` name a row's two properties). Saved to the settings at once. While a row is being edited, its play button previews with the unsaved list |
 | `tags` | `{ setting, title, sets }`: a menu of tags to insert. `setting` (a string setting, usually an `enum`) picks the set from `sets`, falling back to `sets.default`. A set is `{ note, groups: [ { label, tags: [ "[tag]" or { tag, hint } ] } ] }` |
 
@@ -347,9 +347,10 @@ channel's own settings for a channel's distribution form, the automation's
 own settings for an extension's inputs. An extension that names a setting
 here therefore has settings, and is added before it is run. `sample` and
 `preview_label` need
-that channel or extension to answer previews: a `preview` flow in the
-channel ([6.5.7](06-channels.md#657-preview)), or `extension.preview` in
-the extension.
+that channel or extension to answer previews, which it does by having a
+`preview` flow: in the channel ([6.5.7](06-channels.md#657-preview)), or in
+the extension ([5.7](05-automations.md#the-preview-flow)). Without one the
+editor has no preview to run, and the checker reports both hints.
 
 The editor can be used in a channel's distribution form and in an
 extension's inputs. A channel may instead give the same keys as `channel.ui`

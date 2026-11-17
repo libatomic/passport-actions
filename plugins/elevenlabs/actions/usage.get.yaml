@@ -31,6 +31,10 @@ returns:
     ${{ date("2006-01-02T15:04:05Z07:00", steps.usage.outputs.body.next_character_count_reset_unix ?? 0) }}
 steps:
   - id: usage
+    name: Read the subscription from ElevenLabs
+    description: >-
+      The plan, and the characters used and allowed this period. It also shows that
+      the API key works.
     action: http.get
     with:
       url: https://api.elevenlabs.io/v1/user/subscription

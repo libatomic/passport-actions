@@ -101,6 +101,10 @@ returns:
     ${{ toInt(steps.tts.outputs.headers?.["Character-Cost"] ?? 0) }}
 steps:
   - id: tts
+    name: Ask ElevenLabs to read the text
+    description: >-
+      One text-to-speech request. The MP3 is written straight into the asset
+      store, never into the run.
     action: http.post
     with:
       url: "https://api.elevenlabs.io/v1/text-to-speech/${{ inputs.voice_id }}"

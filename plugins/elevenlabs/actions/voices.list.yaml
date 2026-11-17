@@ -42,6 +42,7 @@ returns:
     "models": #.high_quality_base_model_ids ?? []})) }}
 steps:
   - id: voices
+    name: Read the account's voices from ElevenLabs
     action: http.get
     with:
       url: https://api.elevenlabs.io/v1/voices

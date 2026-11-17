@@ -140,11 +140,17 @@ narration's versions).
 
 ## What a run and a preview do
 
+The extension has two flows in `automations/narrate.yaml`: `run`, which a
+person starts from the article's page, and `preview`, which the form's
+paragraph editor asks for. Each has its own steps; both prepare the text
+with the action `narration.text`. The preview flow may only read and call
+ElevenLabs, so it cannot save or change anything.
+
 | Request | Result |
 |---|---|
-| Run | For each audience chosen: renders the form's text as that audience, generates the MP3 (in several requests for a long article, joined) and saves it as a protected asset. Then files the MP3s as the versions of one narration. Hands back the narration, its file name, what was read and billed for each audience, and the totals |
-| Spoken text (preview) | Returns the text that would be read for the "Preview as" audience (or the first one chosen), its length and the limit. Changes nothing; not billed |
-| A paragraph's play button (preview) | Reads that paragraph, at most 2,000 characters, and returns the audio. Saves nothing; billed |
+| Run (the `run` flow) | For each audience chosen: renders the form's text as that audience, generates the MP3 (in several requests for a long article, joined) and saves it as a protected asset. Then files the MP3s as the versions of one narration. Hands back the narration, its file name, what was read and billed for each audience, and the totals |
+| Spoken text (the `preview` flow, no sample) | Returns the text that would be read for the "Preview as" audience (or the first one chosen), its length and the limit. Changes nothing; not billed |
+| A paragraph's play button (the `preview` flow, with the paragraph as its sample) | Reads that paragraph, at most 2,000 characters, and returns the audio. Saves nothing; billed |
 
 Each MP3's metadata (`metadata.narration`) records the article, audience,
 voice, model, number of requests and a hash of the spoken text.
@@ -166,7 +172,7 @@ out. Tags are suggestions; not every voice responds to every tag.
 | File | |
 |---|---|
 | `plugin.yaml` | Manifest; the shared API key |
-| `automations/narrate.yaml` | The Create Audio Narration extension: settings, the form, the steps |
+| `automations/narrate.yaml` | The Create Audio Narration extension: settings, the form, and its two flows, `run` and `preview` |
 | `actions/narration.text.yaml` | The text a voice reads for one audience: render, pronunciations, cleanup, voice tags, pieces |
 | `actions/narration.create.yaml` | One audience's MP3: every piece read and joined, as a protected asset |
 | `actions/speech.create.yaml` | One text-to-speech request, stored as an MP3 asset |
