@@ -364,8 +364,13 @@ channel:
 | `default` | One of this plugin's templates (below), by name. A new distribution on this channel starts with it chosen |
 
 `template: false` turns the menu off for a channel that renders but must
-not be given a template. `template:` on a channel that never calls
-`distribution.render` is an error.
+not be given a template; `template: {}` is the same as leaving it out. No
+other value is allowed. A `{ required, default }` block on a channel that
+never calls `distribution.render` is an error; `false` and `{}` are allowed
+on any channel. "Calls" counts the channel's own steps,
+nested ones included, and the steps of the plugin actions they call, this
+plugin's or a dependency's, followed through actions that call actions; it
+does not follow `workflow.run`.
 
 **What the menu lists.** The site's article templates. Those offered for
 this channel come first, marked: the plugin's own templates whose `for`
@@ -391,9 +396,9 @@ body: |
 
 | Key | Required | Meaning |
 |---|---|---|
-| `name` | yes | What the publisher sees in the template menu and the Templates page |
+| `name` | yes | What the publisher sees in the template menu and the Templates page. A template is referred to by its file name (`post` for `templates/post.yaml`), never by this |
 | `description` | no | One sentence, shown with it |
-| `for` | yes | The channels and extensions it is offered for: `channel/<name>`, `automation/<key>` |
+| `for` | yes | The channels and extensions it is offered for: `channel/<name>`, or `automation/<key>` of an automation with `extension:` (any other automation is an error) |
 | `title` | no | The title template. Without it the title is the article's |
 | `body` | yes | The template, in Passport's template language |
 
@@ -439,9 +444,11 @@ steps:
       article_id: "${{ article.id }}"
 ```
 
-A `format: passport.template` field lists the templates offered for its
-definition first, as the menu does. Its `default` may name one of the
-plugin's own templates; the form shows that template chosen.
+A `format: passport.template` field, or a list of them
+(`type: array`, `items: { format: passport.template }`), lists the
+templates offered for its definition first, as the menu does. Its `default`
+may name one of the plugin's own templates by file name, which must be
+offered for that definition; the form shows that template chosen.
 
 ## 6.9 Checklist
 

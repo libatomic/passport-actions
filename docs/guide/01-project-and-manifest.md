@@ -53,7 +53,7 @@ Names:
 | Plugin `id` | lowercase letters, digits and single hyphens, up to 64 characters; unique in the registry; never changes | `campaign-monitor` |
 | Automation key, channel name | same rule as an id | `new-subscriber`, `facebook-post` |
 | Action and schema name | lowercase letters, digits, hyphens, underscores and dots | `subscriber.add`, `user.email.opt_in` |
-| Template name | same rule as an id; equals the file name | `post`, `show-notes` |
+| Template | the file name, same rule as an id; what defaults refer to (its `name:` is only the label) | `post`, `show-notes` |
 | File | the name, plus `_<major>` from major version 2 on, plus `.yaml` | `subscriber.add.yaml`, `subscriber.add_2.yaml` |
 
 ## 1.2 `plugin.yaml`
@@ -264,9 +264,47 @@ What follows from that:
 - A plugin in `requires` that nothing uses is a warning, and is not copied.
 - The effective server requirement includes what the copied actions require.
 
-## 1.7 The registry
+## 1.7 Registries and where a plugin can go
 
-The registry is the `v2` branch of `libatomic/passport-actions`.
+A plugin reaches a site in one of three ways:
+
+| Where | Who publishes | Who can install |
+|---|---|---|
+| **The Passport registry** (official) | Passport operators only, after review | Every publisher on a compatible server (or the sites it is granted to, when `visibility: restricted`) |
+| **The community registry** | Publishers and other developers, after the review the registry sets | Publishers who choose to install community plugins |
+| **One instance, directly** | A publisher on their own instance, or an operator on an instance they have access to | That instance only |
+
+The community registry is specified here so plugins are written for it
+from the start; it is not built yet. The two registries share this
+format, this guide and the same checks: a plugin that passes in one passes
+in the other. A plugin's `id` is unique within its registry; the community
+registry's ids are shown with the registry's name so the two never collide
+on a site.
+
+**Directly on an instance.** Passport Studio can install a plugin on an
+instance without a registry:
+
+- A **publisher** signs Passport Studio in to their own instance, the way
+  `atomic-cli login` does: the Studio opens the instance's admin, the
+  publisher approves it there, and the instance gives the Studio a token for
+  that instance only. With the instance's **Passport Studio** feature turned
+  on (by Passport, in the back office), the publisher can build, test and
+  install their own plugins and automations on it, to extend their site
+  their own way. Without it they can still build and test on Passport
+  desktop on their own computer. Template work with Scout is always open to
+  a publisher signed in to their own instance.
+- An **operator** signed in to the back office can install a plugin they
+  are working on onto another instance they have access to, not only a
+  sandbox, for example to try it in production before it is released. That
+  install is recorded against the operator, and the instance shows it as an
+  operator's draft.
+
+A plugin installed directly is not in any registry: nobody else is offered
+it, it has no release history, and it is replaced by installing it again.
+
+### The Passport registry
+
+The Passport registry is the `v2` branch of `libatomic/passport-actions`.
 
 ```
 plugins/<id>/…                    each plugin's source, as last released
