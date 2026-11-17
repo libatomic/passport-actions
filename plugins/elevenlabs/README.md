@@ -11,7 +11,7 @@ dashboard.
   audience sees it: restricted sections the audience cannot access are
   replaced by a short spoken note.
 - **One narration asset that gives each member their version.** Each
-  audience's MP3 is protected: only that audience's members (and staff) can
+  audience's MP3 is protected: only that audience's members (and admins) can
   fetch it. The MP3s are filed as the versions of a single narration, with
   one id and one address. Whoever plays it gets the MP3 for their audience.
 - **A narration editor** in its form: the article's body as the paragraphs
@@ -71,7 +71,7 @@ Narration is not a channel. It makes an asset; a channel then publishes it
 - A member in none of the audiences gets no audio: the narration answers
   them as a file that does not exist. If everyone should hear something,
   include your widest audience under **Make audio for**.
-- Staff hear the best-ranked audience's version.
+- Admins hear the best-ranked audience's version.
 
 **Running it again** for the same article reads every chosen audience again
 and replaces their MP3s. The narration keeps its id and link, so whatever

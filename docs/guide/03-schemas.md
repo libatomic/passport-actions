@@ -147,6 +147,7 @@ package: the server a plugin runs on supplies them.
 |---|---|---|
 | Events | one per event type: `user.created`, `user.subscription.status.active`, `distribution.published`, … | [reference/EVENTS.md](../reference/EVENTS.md) |
 | Records | `user`, `subscription`, `entitlement`, `application`, `instance`, `job`, `openid.profile`, `openid.address`. More record shapes (plan, audience, article, distribution, asset, template) are added as actions gain generated output schemas | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
+| Channel flow results | `channel.publish.result`, `channel.update.result`, `channel.delete.result`, `channel.preview.result`, `channel.status.result`, `channel.publish.member.result`: what each flow of a channel returns. A channel never references them; the engine holds each flow's `returns` to its own | [6.5](06-channels.md#65-the-flows), until the reference page is generated with them |
 | Stripe | `stripe.<name>`: the Stripe objects Passport relays in its own events | [reference/SCHEMAS.md](../reference/SCHEMAS.md) |
 
 Built-in actions' inputs and outputs are generated from the server's code and

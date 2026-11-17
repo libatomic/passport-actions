@@ -316,8 +316,9 @@ channel's own settings for a channel's distribution form, the automation's
 own settings for an extension's inputs. An extension that names a setting
 here therefore has settings, and is added before it is run. `sample` and
 `preview_label` need
-that channel or extension to answer previews (`channel.preview` or
-`extension.preview`).
+that channel or extension to answer previews: a `preview` flow in the
+channel ([6.5.7](06-channels.md#657-preview)), or `extension.preview` in
+the extension.
 
 The editor can be used in a channel's distribution form and in an
 extension's inputs. A channel may instead give the same keys as `channel.ui`
@@ -593,6 +594,10 @@ in the second.
 
 Give every output a `title` and, where it is not obvious, a `description`.
 They are what the next developer sees in the variable picker.
+
+A channel's flow has `returns` and no `outputs`. The shape of each flow's
+result is Passport's, not the channel's, and `returns` is held to it
+([6.5.1](06-channels.md#651-a-flow)).
 
 ## 2.13 Checklist for a field
 

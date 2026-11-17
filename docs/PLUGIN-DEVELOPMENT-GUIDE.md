@@ -15,7 +15,7 @@ reference Passport Studio, the back office and the engine are built against.
 | [3. Schemas](guide/03-schemas.md) | Schema files, event schemas, the built-in `passport` schemas |
 | [4. Actions](guide/04-actions.md) | Built-in actions, effect classes, writing a plugin action |
 | [5. Automations](guide/05-automations.md) | Triggers, settings, inputs, outputs |
-| [6. Channels](guide/06-channels.md) | The channel block, settings, the distribution form, and the five requests a channel answers |
+| [6. Channels](guide/06-channels.md) | The channel block, settings, the distribution form, and a channel's flows with the result each returns |
 | [7. Steps and expressions](guide/07-steps-and-expressions.md) | Step kinds, errors, what a run can read, expression rules |
 | [8. Functions](guide/08-functions.md) | Every inline function |
 | [9. Files and binary data](guide/09-files-and-binary.md) | Assets, base64, `http.*` bodies |
@@ -42,6 +42,7 @@ accepts today.
 | Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Built |
 | The distribution form ([6.4](guide/06-channels.md)) | Built in the engine; the admin's distribution page does not show it yet |
 | Extensions, previews and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
+| Channel flows: `publish`, `update`, `delete`, `preview` and `status` in the channel file, each with a fixed result, and `published` ([6.5](guide/06-channels.md#65-the-flows)); `channel.delivery` and `channel.audience` in place of `mode` and `requires_audience` ([6.2](guide/06-channels.md#62-the-channel-block)) | Specified 16 November; not built. Until it is, `passport-plugin check` refuses the examples in chapter 6 |
 | Templates a plugin ships and the channel template menu ([6.8](guide/06-channels.md#68-templates)) | Built, in review; the admin's template menu is not built |
 | Protected assets, virtual assets, audiences on the steps that create assets, and audience ranking ([9.7](guide/09-files-and-binary.md#97-protected-and-virtual-assets)) | Built |
 | Passport Studio for publishers, direct installs, the community registry ([1.7](guide/01-project-and-manifest.md#17-registries-and-where-a-plugin-can-go)) | Not built |
@@ -62,11 +63,15 @@ A plugin is a folder of YAML files. There are five kinds of definition.
 | **Schema** | A named shape of data: an action's input or output, an event's body | `schemas/<name>.yaml` |
 | **Action** | One reusable operation with declared inputs and outputs. The engine has built-in actions; a plugin adds its own, made of steps | `actions/<name>.yaml` |
 | **Automation** | A trigger (manual, event, webhook, schedule) and the steps to run when it fires. An automation marked as an **extension** has no trigger: a person runs it on one record (an article, a member), from that record's page | `automations/<key>.yaml` |
-| **Channel** | A place a distribution can be published to: Spotify, a Facebook page, an audio narration | `channels/<name>.yaml` |
+| **Channel** | A place a distribution can be published to: Spotify, a Facebook page, a LinkedIn page | `channels/<name>.yaml` |
 
 An automation never defines a channel, and a channel is never started by a
-trigger: it runs when a distribution on it is published, republished, deleted
-or previewed, or when its status is asked for.
+trigger: it runs when a distribution on it is published, updated, deleted
+or previewed, or when its status is asked for. Each of those five requests
+has its own **flow** in the channel file: named steps that end in a result
+whose shape Passport defines. Only `publish` is required. A channel with no
+`update` flow cannot change what it has sent, and one with no `delete` flow
+cannot take it back ([6.5.11](guide/06-channels.md#6511-permanence)).
 
 ### Definitions, and what a publisher adds
 
@@ -117,6 +122,7 @@ all become forms.
 | `automation.settings`, `automation.secrets` | This automation's own | automations |
 | `channel.name`, `channel.label`, `channel.settings`, `channel.secrets` | This channel's own | channels |
 | `fields` | The distribution form's values, resolved at publish | channels |
+| `published` | What Passport kept from the last successful `publish` or `update` of the distribution: `id`, `url`, `data`, `status`, `at` | channels |
 | `inputs` | What was supplied for this run; inside an action, the action's own inputs | manual runs, actions |
 | `trigger` | What started the run | automations, channels |
 | `steps.<id>.outputs` | What an earlier step returned | everywhere |
@@ -259,30 +265,48 @@ sequenceDiagram
   participant X as Executor
   P->>D: publish a distribution on channel C
   D->>D: resolve the distribution form (fields)
-  alt broadcast channel
-    D->>X: run C once, inline: action publish or republish
-    X-->>D: success, or an error
-    D->>D: mark the distribution published or failed
-  else per-member channel (unicast)
+  alt delivery once
+    D->>X: run one flow of C inline, publish or update
+    X-->>D: the flow's result (status, id, url, data, note), or an error
+    D->>D: keep the result as published, mark the distribution published or failed
+  else delivery per_member
     D->>M: one message per audience member
     loop each member
-      M->>X: run C for that member (trigger.user_id)
+      M->>X: run the publish flow for that member (trigger.user_id)
+      X-->>M: that member's result, sent or skipped
     end
   end
 ```
 
-- A **broadcast** channel runs once, inside the publish job. If the run
-  fails, the distribution is marked failed with the run's error. Use
-  `workflow.fail` with a reason the publisher can act on.
-- A **unicast** channel runs once per audience member, from the message
-  queue; a run that times out is retried by the queue. Runs for one
-  distribution are grouped together in the run history.
-- `trigger.action` tells the run what to do: `publish`, `republish` (the
-  distribution was published before; update, do not duplicate), `delete`
-  (runs before the distribution is deleted; a failure keeps it), or
-  `preview` (a manual run that must have no side effects).
-- The run's outputs are not copied back to the distribution. A channel
-  records what it made with `distribution.update`.
+- **One request, one run, one flow.** The engine picks the flow from the
+  request: `publish` when nothing of the distribution is live at the
+  destination, `update` when it is published again while live, `delete`
+  before the distribution is deleted, `preview` and `status` when the
+  publisher asks. `trigger.action` carries the flow's name. A request whose
+  flow the channel does not have starts no run
+  ([6.5.11](guide/06-channels.md#6511-permanence)).
+- A **`delivery: once`** channel runs inside the publish job, one time. If
+  its `publish` or `update` run fails, the distribution is marked failed
+  with the run's error. Use `workflow.fail` with a reason the publisher can
+  act on. `once` says how often Passport hands the distribution over, not
+  who may see it at the destination.
+- A **`delivery: per_member`** channel's `publish` runs once per member of
+  the audience, from the message queue, with the member as
+  `trigger.user_id`; a run that times out is retried by the queue, and a
+  failed run is a failure for that member only. Runs for one distribution
+  are grouped together in the run history. Its other flows run once for the
+  distribution, without a member.
+- `delete` runs inside the delete, before the distribution's row is
+  removed; a failed run keeps the distribution. `preview` and `status` are
+  runs the caller waits on, up to 60 seconds, as for a manual run.
+- **The flow's result is what Passport reads.** After the flow's steps its
+  `returns` is evaluated and held to the engine's schema for that flow
+  (`passport/schemas/channel.<flow>.result@1`); a result that does not fit
+  fails the run. The result of a successful `publish` or `update` is stored
+  with the distribution and handed to every later flow as `published`.
+  Nothing else the run sets is copied back.
+- `preview` and `status` flows may run only `control`, `read` and `external`
+  actions; the engine refuses any other step in them.
 
 ## What changed from v1, and why
 
@@ -293,7 +317,7 @@ knowledge of how the engine happened to behave.
 | v1 | v2 | Why |
 |---|---|---|
 | **Blueprint** with event, manual, webhook or schedule triggers | **Automation** | Same thing with a clearer name; no more wrapper with two copies of `inputs` |
-| **Blueprint** with a `distribution:` trigger | **Channel**, with a `channel:` block | A channel is not triggered; it has its own settings, a distribution form, and five requests to answer. Hiding it inside a trigger hid all of that |
+| **Blueprint** with a `distribution:` trigger | **Channel**, with a `channel:` block | A channel is not triggered; it has its own settings, a distribution form, and a flow for each request it answers. Hiding it inside a trigger hid all of that |
 | **Recipe** (`includes:`) | **Action** in a plugin | Recipes had no declared outputs, unvalidated inputs, and their step ids leaked into the caller. An action has a contract |
 | **Package** (`package.yml`) and **vendor plugin** (`plugins/<v>/plugin.yml`, `plugin.call`, `data_source`) | **Plugin** | Two half-overlapping ways to group and configure. One bundle, one settings model |
 | **Schema** files, referenced but never checked | **Schema**, resolved and validated | A reference that nothing reads is documentation that rots |
@@ -361,7 +385,9 @@ index.json.
   complete; if it is not there, it does not exist.
 - Reads `inputs.x` for something that is a setting. Settings are
   `settings.x`, `automation.settings.x` or `channel.settings.x`.
-- Forgets `republish` and `delete` in a channel, or lets a `preview` publish.
+- Writes a channel as one `steps:` list that branches on `trigger.action`,
+  or records the link in `context`. A channel has flows (`publish`,
+  `update`, `delete`, `preview`, `status`), and each ends in `returns`.
 - Passes binary through an output. Binary is an asset or base64 text.
 
 ### Checking its work

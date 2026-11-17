@@ -728,7 +728,7 @@ steps:
             })]) }}
 
   # 5. Read each audience's text to its own MP3, a protected asset only that
-  #    audience's members (and staff) can fetch:
+  #    audience's members (and admins) can fetch:
   #    narration-<article id>-<audience id>.mp3. overwrite keeps the asset's
   #    id across runs, and an MP3 is only replaced once every piece of it
   #    has been read, so a run that fails partway leaves the versions it did

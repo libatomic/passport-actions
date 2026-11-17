@@ -137,7 +137,7 @@ What counts as breaking:
 | Schema | removing a property, adding a required one, narrowing a type, format, enum or range |
 | Action | a breaking change to its `inputs` or `outputs` schema, or doing something materially different |
 | Automation | a breaking change to its `settings` or `inputs`; changing what starts it |
-| Channel | a breaking change to its `settings` or `distribution` form; changing `mode` or `content_type` |
+| Channel | a breaking change to its `settings` or `distribution` form; changing `delivery`, `audience` or `content_type`; removing a flow |
 
 Keeping the old major beside the new one is what lets things move at their
 own pace: an automation a publisher added from `new-subscriber.yaml` keeps

@@ -36,9 +36,9 @@ is no `body`. An error response still comes back in `body`, so
 |---|---|
 | `filename` | Required |
 | `mime_type` | Defaults to the response's content type |
-| `overwrite` | `true`: replace an existing asset of that name and **keep its id and link**. Use it for anything republished |
+| `overwrite` | `true`: replace an existing asset of that name and **keep its id and link**. Use it for anything published again |
 | `public`, `type`, `description`, `categories`, `metadata` | As for `asset.create` |
-| `audiences` | A list of audience ids: the asset is **protected**, for members of those audiences and staff only ([9.7](#97-protected-and-virtual-assets)). Not with `public: true` |
+| `audiences` | A list of audience ids: the asset is **protected**, for members of those audiences and admins only ([9.7](#97-protected-and-virtual-assets)). Not with `public: true` |
 | `max_size` | Bytes. Default 200 MiB |
 
 The asset is written only once the whole response has arrived, so a failed
@@ -179,13 +179,16 @@ player or a link under the distribution:
                 distribution.context) }}
 ```
 
-On `delete`, remove it with `asset.delete` and `continue-on-error: true`.
+This is the channel's own record, written in the `publish` and `update`
+flows; the remote id and link are not kept this way, they are returned
+([6.5.10](06-channels.md#6510-what-passport-keeps)). In the `delete` flow,
+remove the asset with `asset.delete` and `continue-on-error: true`.
 
 ## 9.6 Doing the expensive thing once
 
-Hash what the result depends on, keep the hash in `context`, and on
-`republish` skip the call when the hash is unchanged and the asset is still
-there:
+Hash what the result depends on, return the hash in the result's `data`,
+and in the `update` flow skip the call when the hash is unchanged and the
+asset is still there:
 
 ```yaml
 - id: sig
@@ -197,11 +200,22 @@ there:
   with: { asset_id: "${{ distribution.context.asset_id }}" }
 - id: unchanged
   if: >-
-    ${{ trigger.action == 'republish'
-        && distribution.context.narration_hash == steps.sig.outputs.hash
+    ${{ published.data.narration_hash == steps.sig.outputs.hash
         && steps.have.status == 'ok' }}
   action: workflow.exit
 ```
+
+These are steps of the `update` flow. After `workflow.exit` the flow's
+`returns` is still evaluated, so it ends the same way either way:
+
+```yaml
+  returns:
+    status: published
+    data: "${{ merge({'narration_hash': steps.sig.outputs.hash}, published.data) }}"
+```
+
+The `publish` flow has the `sig` step too and returns the same `data`, so
+the first `update` has a hash to compare.
 
 ## 9.7 Protected and virtual assets
 
@@ -213,7 +227,7 @@ An asset is in one of three states:
 |---|---|---|
 | Public | `public: true` | Anyone, signed in or not |
 | Private | Neither `public` nor `audiences`. What a step makes by default | Anyone signed in to the site |
-| Protected | `audiences`: a list of audience ids | Members of at least one of those audiences, and staff |
+| Protected | `audiences`: a list of audience ids | Members of at least one of those audiences, and admins |
 
 Everyone else who asks for a protected asset is answered exactly as if it
 did not exist. Membership is read on every request, so a member who leaves
@@ -274,7 +288,7 @@ each reader is answered with the file for their audience.
 | A member | The variant of the best-ranked audience they are in: variants are tried in the site's audience rank order, unranked audiences last. Membership is read on every request |
 | A member in none of the variants' audiences | The **default**, when the virtual asset has one. Otherwise exactly what a missing asset answers |
 | Nobody signed in | The default, when there is one and it is public. Otherwise the same missing-asset answer |
-| Staff, and application or site tokens | The first variant, the best-ranked audience's. With `?as_audience=<audience id>` on the address, that audience's variant |
+| Admins, and application or site tokens | The first variant, the best-ranked audience's. With `?as_audience=<audience id>` on the address, that audience's variant |
 
 The default is optional and is any asset with a file. It is checked like
 any asset when it answers, so a protected default is still refused to
@@ -368,7 +382,9 @@ virtual asset leaves its variants' files as they are. An audience a variant
 is for cannot be deleted until the variant is taken out.
 
 **Render each variant as its audience.** Use `template.render` with
-`audience_id`, or in a channel `distribution.render` with `as_audience`. A
+`audience_id`, or in a channel `distribution.render` with `as_audience`
+(the distribution must have an audience, so not on a channel with
+`audience: none`; [6.2](06-channels.md#62-the-channel-block)). A
 render as an audience is that audience and every audience ranked below it,
 which matches who is answered with that variant: a member of two audiences
 gets the better-ranked one's file, and it holds what the lower one's does.

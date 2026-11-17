@@ -1,7 +1,8 @@
 # 7. Steps and expressions
 
-Automations, channels and plugin actions all have `steps:`. A step runs an
-action, or controls which steps run.
+Automations and plugin actions have `steps:`, and so does each flow of a
+channel ([6.5](06-channels.md#65-the-flows)). A step runs an action, or
+controls which steps run.
 
 ## 7.1 A step
 
@@ -20,7 +21,7 @@ action, or controls which steps run.
 
 | Key | Meaning |
 |---|---|
-| `id` | Required. Lowercase letters, digits, hyphens and underscores; unique among the steps of the file. Results are at `steps.<id>`: `.outputs`, and `.status`, which is `ok`, `skipped` or `error` |
+| `id` | Required. Lowercase letters, digits, hyphens and underscores; unique among the steps of the file; in a channel, among the steps of its flow. Results are at `steps.<id>`: `.outputs`, and `.status`, which is `ok`, `skipped` or `error` |
 | `action` | The action to run ([chapter 4](04-actions.md)) |
 | `with` | The action's inputs |
 | `if` | Run the step only when true. A skipped step has `steps.<id>.status == "skipped"` |
@@ -48,15 +49,15 @@ is now a plugin action, run with `action:`).
   with: { message: "${{ fields.note }}" }
 
 # then / else
-- id: by-action
-  if: "${{ trigger.action == 'republish' }}"
+- id: by-contact
+  if: "${{ steps.find.outputs.found }}"
   then:
     - id: update
-      action: acme/post.update
+      action: acme/contact.update
       with: { … }
   else:
     - id: create
-      action: acme/post.create
+      action: acme/contact.create
       with: { … }
 
 # switch
@@ -81,7 +82,11 @@ is now a plugin action, run with `action:`).
 or the case marked `default: true` when none does.
 
 Steps inside a branch are ordinary steps. Their ids must still be unique in
-the file, and their results are at `steps.<id>` like any other.
+the file (in a channel, in the flow), and their results are at `steps.<id>`
+like any other.
+
+Do not branch on `trigger.action` in a channel to tell a publish from an
+update or a preview: each has its own flow.
 
 ## 7.3 Loops
 
@@ -132,7 +137,7 @@ vendor's answer.
 ```yaml
 - id: remove
   action: acme/post.delete
-  with: { post_id: "${{ distribution.context.post_id }}" }
+  with: { post_id: "${{ published.id }}" }
   on_error:
     - id: gone
       if: "${{ steps.remove.error.detail.status != 404 }}"
@@ -146,7 +151,7 @@ attempt may be billed by the vendor.
 
 | Action | Does |
 |---|---|
-| `workflow.exit` | Ends the run now, as a success. Anywhere in an automation or channel, including inside a branch or a loop; not inside a plugin action |
+| `workflow.exit` | Ends the run now, as a success. Anywhere in an automation or a channel's flow, including inside a branch or a loop; not inside a plugin action. In a flow the `returns` is still evaluated ([6.5.1](06-channels.md#651-a-flow)) |
 | `workflow.fail` | Ends the run now, as failed, with `reason`. Not caught by `on_error` or `continue-on-error`. A channel's publish fails with that reason |
 | `sleep` | Pauses in place, up to 90 seconds |
 | `wait` | Suspends the run and resumes it later, up to 90 days. Top level of an automation only; not in a channel, a loop, a branch or a plugin action |
@@ -154,25 +159,28 @@ attempt may be billed by the vendor.
 ## 7.5 Named outputs
 
 `outputs:` on a step adds named values to the run's `outputs` map, readable
-by later steps as `outputs.<name>`. It works in automations, channels and
-plugin actions alike, and is the handy way to name a result once and reuse
-it in several `if:` conditions.
-
-The run's `outputs` map is also what a caller receives when the definition
-declares no `outputs` schema: a channel's preview and status results are
-read from it, and so is the result of a manual run. A definition that does
-declare `outputs` and `returns` hands back exactly what `returns` says
-instead.
+by later steps as `outputs.<name>`. It works in automations, channel flows
+and plugin actions alike, and is the handy way to name a result once and
+reuse it in several `if:` conditions.
 
 ```yaml
-- id: answer
-  if: "${{ trigger.action == 'preview' }}"
-  action: workflow.exit
+- id: look
+  action: acme/contact.find
+  with: { email: "${{ steps.user.outputs.user.login }}" }
   outputs:
-    text: "${{ steps.text.outputs.text }}"
-    characters: "${{ len(steps.text.outputs.text) }}"
-    limit: "${{ channel.settings.max_characters }}"
+    known: "${{ steps.look.outputs.found }}"
+    contact_id: "${{ steps.look.outputs.id }}"
 ```
+
+The run's `outputs` map is also what a caller receives when an automation
+declares no `outputs` schema: the result of a manual run is read from it. A
+definition that does declare `outputs` and `returns` hands back exactly what
+`returns` says instead.
+
+A channel's flow never hands back the `outputs` map. Its result is its
+`returns`, held to the shape Passport fixes for that flow
+([6.5.1](06-channels.md#651-a-flow)). Named outputs in a flow are for the
+flow's own later steps.
 
 ## 7.6 What a run can read
 
@@ -182,11 +190,12 @@ instead.
 | `automation.settings`, `automation.secrets` | This automation's own (automations) |
 | `channel.name`, `.label`, `.settings`, `.secrets` | This channel (channels) |
 | `fields` | The distribution form's values (channels) |
-| `distribution`, `article` | The distribution being published and its article (channels; [6.5](06-channels.md#65-what-a-channel-must-answer)) |
+| `distribution`, `article` | The distribution being published and its article (channels; [6.5.2](06-channels.md#652-what-a-flow-reads)) |
+| `published` | What Passport kept from the last successful `publish` or `update` of the distribution: `id`, `url`, `data`, `status`, `at` (channels; [6.5.10](06-channels.md#6510-what-passport-keeps)) |
 | `article`, `user`, `subscription`, … | The record an extension was run on, under the name of its kind (extensions; [5.7](05-automations.md#57-extensions)) |
 | `inputs` | What was supplied for this run. Inside a plugin action: the action's inputs |
-| `trigger` | What started the run ([5.3](05-automations.md#53-triggers), [6.5](06-channels.md#65-what-a-channel-must-answer)) |
-| `steps.<id>.outputs`, `.status`, `.error` | An earlier step's result |
+| `trigger` | What started the run ([5.3](05-automations.md#53-triggers), [6.5.2](06-channels.md#652-what-a-flow-reads)). In a channel `trigger.action` is the flow that is running |
+| `steps.<id>.outputs`, `.status`, `.error` | An earlier step's result. In a channel: an earlier step of the same flow |
 | `vars` | Values set with `vars.set`, or declared under `vars:` |
 | `outputs` | Named outputs so far |
 | `loop` | The current loop pass |
@@ -211,7 +220,7 @@ An expression is written `${{ … }}` inside a string.
 
   ```yaml
   context: >-
-    ${{ merge({'post_id': steps.post.outputs.post_id},
+    ${{ merge({'narrated_at': now()},
               distribution.context) }}
   ```
 
@@ -254,4 +263,7 @@ Every function is in [chapter 8](08-functions.md).
 - **`distribution.update` replaces `context`.** Merge the old map back in.
 - **`http.*` `retries` is total attempts**, not extra ones.
 - **No binary in outputs or a body string.** See [chapter 9](09-files-and-binary.md).
-- **A preview must not have side effects.** Gate them.
+- **A preview must not have side effects.** In an extension, gate them on
+  `trigger.action`. In a channel the `preview` flow cannot run a step that
+  writes ([6.5.3](06-channels.md#653-what-a-flow-may-do)); what its calls do
+  at the vendor is still yours to keep harmless.

@@ -8,7 +8,7 @@ help: |
   With `overwrite`, an asset of the same file name keeps its id.
 
   With `audiences`, the MP3 is a protected asset: only members of those
-  audiences, and staff, can fetch it. Without, it is private.
+  audiences, and admins, can fetch it. Without, it is private.
 
   `previous_text` and `next_text` give the voice the text around this piece
   so that pieces joined later sound continuous. `eleven_v3` and `eleven_v4`
@@ -62,7 +62,7 @@ inputs:
     audiences:
       type: array
       title: Audiences
-      description: Makes the MP3 a protected asset, for members of these audiences and staff only. Left out, it is private.
+      description: Makes the MP3 a protected asset, for members of these audiences and admins only. Left out, it is private.
       uniqueItems: true
       items: { type: string, format: passport.audience }
     narration:

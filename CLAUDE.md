@@ -59,8 +59,13 @@ syntax into this branch.
   `plugin.yaml`; what one automation or channel needs in its own
   `settings`; what one distribution needs in the channel's `distribution`
   form. `inputs` are only for manual runs and action calls.
-- A channel handles `publish`, `republish` (update, never duplicate) and
-  `delete`, and has no side effects in a `preview`.
+- A channel has flows, not top-level `steps:`: `publish` (required),
+  `update` (change what exists, never duplicate), `delete`, `preview` and
+  `status`, each `{ steps, returns }` with the result chapter 6.5 fixes for
+  it. Leave `update` or `delete` out only when the destination cannot do
+  it. `preview` and `status` run only `control`, `read` and `external`
+  actions. The remote id and link go in `returns` (`id`, `url`), never in
+  `context`.
 - Something a person does to one record on demand (narrate this article,
   send this member to the CRM) is an automation with `extension:`, not a
   channel and not a trigger. Safe to run twice on the same record.
@@ -87,4 +92,4 @@ syntax into this branch.
   **adds** an automation or a channel from one. Do not call these
   "instances": an instance is a Passport instance, a publisher's site.
 - "Publisher" is the customer. "Member" is the publisher's reader.
-  "Operator" is Passport staff.
+  "Operator" is a person who works for Passport. Do not write "staff": the people who run a publisher's site are admins.

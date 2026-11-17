@@ -18,8 +18,14 @@ publisher needs it.
 | `plugins/<vendor>/plugin.yml` (`base_url`, `auth`, `methods`) | actions, one per method you use | `config` becomes plugin `settings`. `plugin.call` and `data_source` are gone; a chooser is `ui.options` |
 | `recipes/<v>/<name>/recipe.yml` | `actions/<name>.yaml` | Add `outputs` and `returns`; tighten `inputs` |
 | `blueprints/<v>/<name>/blueprint.yml` with event, manual, webhook or schedule triggers | `automations/<name>.yaml` | The `definition:` wrapper and the duplicate `inputs` go |
-| `blueprints/<v>/<name>/blueprint.yml` with `on: - distribution:` | `channels/<name>.yaml` | The trigger's fields become the `channel:` block |
-| A status blueprint (`channel: <name>` at the top) | `status` in the same channel | `channel.status: true`, answer `trigger.action == 'status'` |
+| `blueprints/<v>/<name>/blueprint.yml` with `on: - distribution:` | `channels/<name>.yaml` | The trigger's fields become the `channel:` block; the steps are split into flows |
+| Steps that branch on `trigger.action` (`publish`, `republish`, `delete`, `preview`) | One flow each: `publish`, `update`, `delete`, `preview` | v1 `republish` is the `update` flow. What the branches shared becomes a plugin action ([6.5](06-channels.md#65-the-flows)) |
+| `mode: broadcast` / `mode: unicast` on the distribution trigger | `channel.delivery: once` / `channel.delivery: per_member` | The v1 words are gone from v2 ([6.2](06-channels.md#62-the-channel-block)) |
+| `requires_audience: true` / `false` | `channel.audience: required` / `optional` or `none` | `none` when the destination decides who may see it and the channel never renders for an audience. `per_member` is always `required` |
+| `preview: true` on the distribution trigger | a `preview` flow | Its presence is the declaration |
+| A status blueprint (`channel: <name>` at the top) | the `status` flow of the same channel | Its outputs become the flow's `returns`: `status` (`success` becomes `published`), `failures` joined into `note`, `status_updated_at` dropped |
+| `channel_link`, `post_id` and the like merged into `context` by a last `distribution.update` step | `url`, `id` and `data` in the `returns` of `publish` and `update` | Read back as `published.id`, `published.url`, `published.data` |
+| `channel_status`, `channel_failures` in `context` | the `status` flow's result | |
 | `schemas/…` | `schemas/<name>.yaml`, or `passport/schemas/…` for Passport's own | Drop `$schema` and `$id`; add `name` |
 | `actions/…` (Node) | nothing | Rebuild on `http.*`, or ask for a built-in |
 | An input the installer filled in | a setting | Plugin settings if shared; automation or channel settings otherwise |
@@ -179,9 +185,12 @@ Things v1 did that v2 does differently:
 ## 11.5 A distribution blueprint becomes a channel
 
 1. **The trigger's fields become the `channel:` block**: `channel` becomes
-   `name`; `label`, `mode`, `content_type`, `max_body_length`, `base_type`,
-   `requires_audience`, `application`, `address`, `connect_url`, `preview`
-   carry over.
+   `name`; `label`, `content_type`, `max_body_length`, `base_type`,
+   `application`, `address`, `connect_url` carry over. `mode` becomes
+   `delivery` (`broadcast` is `once`, `unicast` is `per_member`), and
+   `requires_audience` becomes `audience` (`true` is `required`; `false`
+   is `optional`, or `none` when the channel never reads the audience). `preview: true` does not: the channel gets a `preview` flow
+   instead.
 2. **Every install-time input becomes a channel setting**, tightened: a
    comma-separated list becomes an array, a table becomes an array of
    objects, a template becomes `format: template`, a model name becomes an
@@ -198,15 +207,30 @@ Things v1 did that v2 does differently:
 6. **Remove the load step.** `distribution` and `article` are already in the
    run; delete the `distribution.get` of the channel's own distribution and
    read them directly.
-7. **Previews**: an unsaved body is `trigger.preview.body`; a paragraph to
-   sample is `trigger.preview.sample`; unsaved picks are simply in `fields`.
-8. **A status blueprint** folds into the channel: `channel.status: true`, and
-   a branch on `trigger.action == 'status'`.
-9. **Keep the logic.** Change detection, piece-by-piece generation and
-   `workflow.fail` reasons carry over untouched.
+7. **Split the steps into flows.** Each branch on `trigger.action` becomes
+   a flow: `publish`, `update` (v1 `republish`), `delete`, `preview`. Steps
+   that every branch ran (rendering, building the text) move into a plugin
+   action that each flow calls. A v1 blueprint with no `delete` branch
+   becomes a channel with no `delete` flow only if the destination really
+   cannot remove what was sent; otherwise write the flow now.
+8. **Return, do not record.** The last `distribution.update` step that
+   merged `post_id` and `channel_link` into `context` goes. `publish` and
+   `update` end in `returns` with `status`, `id` and `url`, and anything
+   else the channel needs later in `data`. Read them back as `published.id`
+   and `published.data`, not from `distribution.context`.
+9. **Previews**: the `preview` flow. An unsaved body is
+   `trigger.preview.body`; a paragraph to sample is `trigger.preview.sample`;
+   unsaved picks are simply in `fields`. What it showed as outputs is its
+   `returns` ([6.5.7](06-channels.md#657-preview)).
+10. **A status blueprint** folds into the channel as its `status` flow
+    ([6.5.8](06-channels.md#658-status)).
+11. **Keep the logic.** Change detection, piece-by-piece generation and
+    `workflow.fail` reasons carry over untouched.
 
-ElevenLabs' narration channel is the worked example; its `MIGRATION.md` has
-the input-by-input table.
+ElevenLabs' v1 narration channel went through the settings and form steps
+above before it became an extension; its `MIGRATION.md` has the
+input-by-input table. No plugin in this branch is a model of a channel's
+flows yet; follow chapter 6.
 
 **Existing distributions.** A v1 channel's distributions carry its picks in
 `context` and name the v1 channel. Converting the definition does not move

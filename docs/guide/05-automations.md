@@ -482,3 +482,38 @@ The run is recorded with who ran it.
   somewhere; an extension makes or changes something in Passport that a
   channel, or a person, may then use.
 
+> **Decided, not built yet.** The section above is what the engine does
+> today; this box is what it will do.
+>
+> A channel no longer branches on `trigger.action`: it has a named flow for
+> each request ([6.5](06-channels.md#65-the-flows)). An extension gets the
+> same shape, with two flows in the automation file:
+>
+> ```yaml
+> extension:
+>   on: article
+>   label: Create Audio Narration
+> run:
+>   steps: [ … ]
+>   returns:
+>     asset_id: "${{ steps.join.outputs.asset_id }}"
+> preview:
+>   steps: [ … ]
+>   returns:
+>     audio: "${{ steps.sample.outputs.body }}"
+>     audio_type: audio/mpeg
+> ```
+>
+> - `run` is required and replaces the top-level `steps` and `returns`. Its
+>   result is the extension's own `outputs`, declared as now.
+> - `preview` is optional. Its presence replaces `extension.preview: true`,
+>   and its result is the channel preview's
+>   ([6.5.7](06-channels.md#657-preview)), without `html` and `url`.
+> - `trigger.action` stays `run` or `preview`.
+> - A `preview` flow would be held to `control`, `read` and `external`
+>   actions, as a channel's is.
+>
+> Until this is decided, write an extension as the section above says: one
+> `steps:` list, `extension.preview: true`, and `trigger.action` tested
+> where a preview differs.
+

@@ -20,7 +20,7 @@ server uses, so what it accepts is what the server accepts.
 | `passport-plugin check <folder>` | Loads the project and reports every problem, with file and line. Exit code 1 if there are any |
 | `passport-plugin build <folder> [--registry owner/name[@branch]]` | Builds the package the way a release does: references pinned, dependencies copied in. A plugin with dependencies needs `--registry` to fetch them |
 | `passport-plugin run <folder> --automation <key> [--case <name>]` | Dry-runs an automation with a test case. With dependencies, give `--registry` as for `build` |
-| `passport-plugin run <folder> --channel <name> [--case <name>]` | Dry-runs a channel |
+| `passport-plugin run <folder> --channel <name> [--case <name>]` | Dry-runs one flow of a channel: the one the case names in `trigger.action` |
 | `passport-plugin run <folder> --action <name> [--case <name>]` | Dry-runs one plugin action |
 | `passport-plugin info` | The server version the tool was built from |
 | `passport-plugin reference [--functions] [--format json\|markdown --out <folder>]` | Everything a plugin may use, read from the engine the tool was built from: actions with inputs, outputs and effect, functions, events, schemas, formats and limits. JSON by default; `--format markdown` writes reference pages |
@@ -40,7 +40,14 @@ Add `--json` to `check` and `run` for output a program can read.
 - a setting, field or step that is read but not declared, and (as warnings)
   one that is declared but never read;
 - an `http.*` address whose host is not in `allowed_hosts`;
-- a channel that never tests `trigger.action` for `delete`;
+- a channel with a top-level `steps:`, a `channel.preview` or a
+  `channel.status` key, or no `publish` flow;
+- a flow with no `returns`, a `returns` key its result does not have, or a
+  literal value that does not fit;
+- a `preview` or `status` flow, or a plugin action one of them calls, that
+  runs a `notify`, `write` or `destructive` action, or an `http.*` step
+  with `response_asset`;
+- a literal `pending` returned by a channel with no `status` flow (warning);
 - a form field without a `title` (warning).
 
 ## 10.2 Test cases
@@ -77,17 +84,71 @@ cases:
 | `settings`, `secrets` | The plugin's, for this case |
 | `automation.settings`, `automation.secrets`, `automation.label` | The automation's own (automation tests) |
 | `channel.settings`, `channel.secrets`, `channel.name`, `channel.label` | The channel's own (channel tests) |
-| `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id }` |
+| `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id, preview }`. `action` names the flow the case runs: `publish` (the default), `update`, `delete`, `preview` or `status`. Naming a flow the channel does not have is an error. `preview` (`body`, `sample`, `settings`) is for a `preview` case only |
 | `inputs` | For a manual run, an extension or an action |
 | `record` | For an extension: the record it is run on, with the fields its steps and its form's defaults read. `expect.offered: false` checks that `extension.if` hides it for this record |
 | `fields`, `distribution`, `article` | For a channel: the distribution form's values, the distribution, and the article its followed defaults read |
+| `published` | For a channel: what Passport kept from an earlier publish, as the flow reads it: `{ id, url, data, status, at }`. Leave it out for a first `publish`. An `update`, `delete` or `status` case needs it |
 | `samples.steps.<id>` | The outputs that step returns instead of running. Only the run's own steps, never steps inside a plugin action. A step that runs a plugin action may be sampled this way too; the action's own steps then do not run. For a step inside a loop, give a list: one entry per pass, the last repeated if the loop runs longer |
 | `samples.actions.<action>` | The outputs every step running that action returns, unless it has its own sample. Built-in or plugin action; steps inside a plugin action are reached this way (`samples.actions.http.post`). Give a list to answer successive calls differently: one entry per call in the order they happen, the last repeated |
 | `expect.status` | `success` or `failed` |
 | `expect.reason` | For a failed run: text the failure reason must contain |
 | `expect.outputs` | Values the run's outputs must have. Only the keys you list are compared |
+| `expect.returns` | For a channel: values the flow's result must have, after it has been held to the flow's result schema. Only the keys you list are compared. A result that does not fit the schema fails the case whatever is listed |
 | `expect.steps.<id>.outputs`, `expect.steps.<id>.status` | The same for one step; `status` is `ok`, `skipped` or `error` |
-| `expect.not_run` | A list of step ids that must not have run (a publish step in a preview, say). A step skipped by its `if:` counts as not run. Steps inside a branch, a loop or a plugin action are named by their own id |
+| `expect.not_run` | A list of step ids that must not have run (the vendor call in an `update` that found nothing changed, say). A step skipped by its `if:` counts as not run. Steps inside a branch, a loop or a plugin action are named by their own id |
+
+A channel's test file holds cases for all of its flows; give each flow the
+channel has at least one:
+
+```yaml
+# tests/facebook-post.yaml
+cases:
+  - name: First publish
+    channel:
+      settings: { page_id: "1234567890", link_back: true }
+      secrets: { page_token: test }
+    trigger: { action: publish, distribution_id: "dist_01" }
+    fields: { message: "Out now.", link: "https://example.com/a/out-now" }
+    samples:
+      steps:
+        post: { post_id: "1234567890_55", url: "https://facebook.example/1234567890/posts/55" }
+    expect:
+      status: success
+      returns:
+        status: published
+        id: "1234567890_55"
+        url: "https://facebook.example/1234567890/posts/55"
+
+  - name: Update changes the same post
+    channel:
+      settings: { page_id: "1234567890", link_back: true }
+      secrets: { page_token: test }
+    trigger: { action: update, distribution_id: "dist_01" }
+    published:
+      id: "1234567890_55"
+      url: "https://facebook.example/1234567890/posts/55"
+      status: published
+      at: "2026-11-16T09:00:00Z"
+    fields: { message: "Out now, corrected.", link: "https://example.com/a/out-now" }
+    samples:
+      steps:
+        post: { post_id: "1234567890_55", url: "https://facebook.example/1234567890/posts/55" }
+    expect:
+      returns: { status: published, id: "1234567890_55" }
+
+  - name: Delete of a post that is already gone
+    channel:
+      settings: { page_id: "1234567890" }
+      secrets: { page_token: test }
+    trigger: { action: delete, distribution_id: "dist_01" }
+    published: { id: "1234567890_55", status: published, at: "2026-11-16T09:00:00Z" }
+    samples:
+      steps:
+        remove: { found: false }
+    expect:
+      returns: { status: not_found }
+```
 
 **What runs for real in a dry run:** `set-output`, `vars.set`, `log`,
 `transmute`, `workflow.exit`, `workflow.fail`, every expression and function,
@@ -127,8 +188,12 @@ Before you push for review, on a sandbox:
 1. Fill in every settings form from empty. Is every label and hint enough
    without reading the code?
 2. Run every automation at least once from its real trigger.
-3. For a channel: publish, republish (nothing duplicated), preview (nothing
-   created), delete (nothing left behind).
+3. For a channel, every flow it has: publish; publish again, which runs
+   `update` (nothing duplicated, the link still opens the same thing);
+   preview (nothing created); check status; delete (nothing left behind).
+   For a flow it does not have, read what the admin says instead: that the
+   channel cannot change what it has sent, or that only Passport's record
+   will be deleted.
 4. Put a wrong API key in. Is the failure message something a publisher can
    act on?
 5. Run "Test connection".
@@ -160,8 +225,10 @@ What a reviewer looks for:
 - Credentials are `secret: true`, never logged, never put in an output.
 - Destructive steps (`asset.delete`, `entitlement.delete`, a vendor delete)
   are reachable only from where they should be.
-- A channel cannot publish from a preview, and does not duplicate on
-  republish.
+- A channel's `update` flow changes what exists and does not duplicate. A
+  channel with no `update` or no `delete` flow is one whose destination
+  really cannot do it. Its `preview` and `status` flows change nothing at
+  the vendor that a member or the public can see.
 - Forms read well to someone who has never seen the vendor's API.
 - Versions were bumped honestly: a breaking change is a new major file.
 

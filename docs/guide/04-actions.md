@@ -48,14 +48,16 @@ them, in the order `control`, `read`, `external`, `notify`, `write`,
 `destructive`. An action that only calls `http.get` is `external`; one that
 also calls `user.update` is `write`.
 
-A plugin may use every built-in. The effect class is used in three places:
+A plugin may use every built-in. The effect class is used in four places:
 the registry shows what a plugin does ("sends email, calls api.example.com");
 a form's [loaded choices](02-field-schema.md#28-choices-loaded-from-an-action)
 may only run actions of the classes the table marks, nothing that notifies,
-writes or removes; and automations that publishers
+writes or removes; a channel's `preview` and `status` flows are held to the
+same three classes ([6.5.3](06-channels.md#653-what-a-flow-may-do)); and
+automations that publishers
 write themselves are limited to a subset (see the Passport Automations
-Guide). None of those limits apply to a plugin's own automations and
-channels.
+Guide). Apart from those two flows, none of these limits apply to a
+plugin's own automations and channels.
 
 The ones you will use most:
 
@@ -67,7 +69,7 @@ The ones you will use most:
 | Read the distribution being published | `distribution.get` | |
 | Render the body for a channel | `distribution.render` | `as_audience: true` renders once as a member of the distribution's audience and of every audience ranked below it |
 | Keep a file for some audiences only, or one file per audience | `audiences` on the step that creates the asset; `asset.virtual` | See [9.7](09-files-and-binary.md#97-protected-and-virtual-assets) |
-| Record what was published | `distribution.update` | Only `context`, and it **replaces** the map: merge the old keys back in |
+| Keep something of the channel's own on a distribution | `distribution.update` | Only `context`, and it **replaces** the map: merge the old keys back in. Not for the remote id or link: a flow returns those ([6.5.10](06-channels.md#6510-what-passport-keeps)) |
 | Stop early, successfully | `workflow.exit` | |
 | Stop as failed, with a reason the publisher sees | `workflow.fail` | Not caught by `on_error` or `continue-on-error` |
 | Keep a value for later steps | `set-output`, `vars.set` | |
@@ -174,7 +176,7 @@ steps:
   same action can be used many times in one run.
 - **What it shares with the caller:** `settings`, `secrets`, and the
   automation's or channel's own settings, `fields`, `distribution`,
-  `article`, `trigger`, `user` and `instance`. These are copies: a `user.get`
+  `article`, `published`, `trigger`, `user` and `instance`. These are copies: a `user.get`
   inside the action changes the action's `user`, not the caller's.
   An action meant to be used from *other* plugins should not read `settings`
   or `secrets`; take them as inputs ([1.6](01-project-and-manifest.md#16-depending-on-another-plugin)).
@@ -197,8 +199,14 @@ steps:
 - **Not allowed inside an action:** `wait` (a run can only pause at its top
   level), and `workflow.exit` (use an `if:` to skip the remaining steps).
   `workflow.fail` is allowed and fails the whole run. In an automation or a
-  channel, `workflow.exit` may be used anywhere, including inside a branch or
-  a loop.
+  channel's flow, `workflow.exit` may be used anywhere, including inside a
+  branch or a loop.
+- **Called from a channel's flow**, the action runs as part of that flow.
+  `trigger.action` names the flow, so one action can serve `publish` and
+  `update`. Called from a `preview` or `status` flow it may run only
+  `control`, `read` and `external` steps
+  ([6.5.3](06-channels.md#653-what-a-flow-may-do)); an action that writes
+  cannot be called from them at all, whatever branch it would take.
 - **Timeout.** A `timeout:` on the calling step covers the whole action.
 
 ## 4.5 Writing a good action

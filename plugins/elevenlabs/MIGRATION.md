@@ -247,7 +247,7 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
   as virtual with two variants, that a member of each audience and of both
   hears the right one, that a member of neither gets a 404, and that a
   second run keeps the narration's id.
-- The admin: the run's result shows `asset_id` as a player (for staff, the
+- The admin: the run's result shows `asset_id` as a player (for an admin, the
   best-ranked version), and `versions` is a list of objects, which the
   guide's "anything else as text" does not make readable. The asset picker
   on a podcast distribution must offer the virtual asset, and ideally tell

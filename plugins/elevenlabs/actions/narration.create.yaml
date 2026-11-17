@@ -44,7 +44,7 @@ inputs:
       type: string
       format: passport.audience
       title: Audience
-      description: The MP3 is a protected asset for this audience, its members and staff only.
+      description: The MP3 is a protected asset for this audience, its members and admins only.
     description:
       type: string
       title: Asset description
