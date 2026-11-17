@@ -369,7 +369,7 @@ list_id:
 
 | Key | Meaning |
 |---|---|
-| `action` | A built-in or plugin action whose effect is `read` or `external` (a plugin action's effect is the strongest of its steps'; see [4.2](04-actions.md#42-built-in-actions)). Optional: without it, `items` is evaluated directly |
+| `action` | A built-in or plugin action whose effect is `control`, `read` or `external` (a plugin action's effect is the strongest of its steps'; see [4.2](04-actions.md#42-built-in-actions)). Optional: without it, `items` is evaluated directly |
 | `with` | Its inputs, when it has any. Expressions may read `settings`, `secrets`, and the other fields of the same form as `form.<name>`. An action of the same plugin can read `settings` itself, as `lists.get` does here, and then needs no `with` |
 | `items` | An expression that yields a list: over the action's `outputs`, or, with no action, over `settings`, `channel.settings` or `automation.settings` |
 | `value`, `label` | Expressions over `item` |

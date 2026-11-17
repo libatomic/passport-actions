@@ -399,3 +399,28 @@ fetch of the audio is answered as a missing file.
 | A virtual asset | 64 variants, one per audience |
 | `gzip` / `gunzip` | 1 MiB of text |
 | A webhook's multipart field | 1 MiB |
+
+Every number the engine holds a run and a package to, files or not. This
+table is generated from the engine (`passport-plugin reference`; do not edit
+it by hand):
+
+<!-- reference:begin limits -->
+| Limit | Value | What it bounds |
+|---|---|---|
+| `loop_passes` | 1000 | The most times a while or until loop repeats, whatever its max says. |
+| `foreach_items` | 10000 | The longest list a foreach walks. |
+| `action_depth` | 8 | How deeply plugin actions may call one another. |
+| `package_asset_size` | 256 KiB | The largest file a plugin may ship under assets/. |
+| `runs_per_hour` | 500 | The runs a site starts in an hour, all its workflows together, unless the site's policy says otherwise. |
+| `http_timeout` | 30 seconds | How long an http step waits when it gives no timeout. |
+| `http_response_size` | 10 MiB | The largest response an http step reads into outputs.body when it gives no max_response_size. |
+| `http_response_asset_size` | 200 MiB | The largest response an http step stores with response_asset when it gives no max_size. |
+| `asset_concat_parts` | 500 | The most assets one asset.concat joins. |
+| `audience_view_members` | 10000 | The most members audience.view returns when it gives no max. |
+| `gzip_size` | 1 MiB | The most uncompressed text gzip takes and gunzip gives back. |
+| `random_string_length` | 1024 characters | The longest text randomString makes. |
+| `webhook_multipart_field_size` | 1 MiB | The largest value of one field of a multipart webhook call. |
+| `added_name_length` | 32 characters | The longest short name a publisher gives an automation or channel they add. |
+| `added_label_length` | 128 characters | The longest label a publisher gives an automation or channel they add. |
+| `channel_name_length` | 32 characters | The longest name a plugin's channel may have on a site. |
+<!-- reference:end limits -->

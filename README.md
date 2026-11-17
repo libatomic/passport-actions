@@ -9,7 +9,7 @@ built-in actions.
 |---|---|
 | Build a plugin | [docs/PLUGIN-DEVELOPMENT-GUIDE.md](docs/PLUGIN-DEVELOPMENT-GUIDE.md) |
 | The field schema (forms, inputs, outputs) | [docs/guide/02-field-schema.md](docs/guide/02-field-schema.md) |
-| Built-in actions, events, schemas | [docs/reference/](docs/reference/) |
+| Built-in actions, events, schemas (tables generated from the engine by `passport-plugin reference`) | [docs/reference/](docs/reference/) |
 | Working here with Claude | [CLAUDE.md](CLAUDE.md) |
 
 ## Layout

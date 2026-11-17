@@ -100,6 +100,7 @@ A channel has no `on:` and no `inputs`.
 | `content_type` | yes | `text` or `html`: what the distribution's body is |
 | `max_body_length` | no | A cap on the body, enforced when the distribution is saved |
 | `base_type` | no | `podcast`, `rss`, `email` or `sms`: reuse that built-in channel's editor (a media file for `podcast`, for example) |
+| `media` | no | For a channel with `base_type: podcast`: the kinds of media file a distribution may carry, a list of `audio`, `video` or both. The distribution page offers those in its file picker. Leave it out to offer what the built-in podcast channel takes. An error on any other channel |
 | `requires_audience` | no | A broadcast channel must still be given an audience, to render for it. Unicast always needs one |
 | `application` | no | Offer only this application's audiences |
 | `address` | no | For a unicast channel that needs to know who a member is on the destination: a list of `{ name, label, type, required, placeholder }` with `type` one of `text`, `phone`, `email`, `url`. Leave it out when the member's Passport email or phone is enough |
@@ -216,12 +217,12 @@ What a channel run reads:
 | Name | Holds |
 |---|---|
 | `trigger.action` | One of the five above |
-| `trigger.distribution_id` | The distribution |
+| `trigger.distribution_id` | The distribution. Empty in a preview of a distribution that has not been saved yet |
 | `trigger.user_id` | The member, for a unicast channel |
 | `trigger.preview.body` | In a preview: the body as it is in the editor, unsaved edits included |
 | `trigger.preview.sample` | In a preview started from a paragraph's play button: that paragraph's text. Empty otherwise |
 | `trigger.preview.settings` | In a preview: channel settings the editor is trying out and has not saved. You do not read this yourself; `channel.settings` already reflects it for that run |
-| `distribution` | The whole distribution record as saved, exactly what `distribution.get` returns as `distribution`: `id`, `_id`, `article_id`, `title`, `body`, `summary`, `description`, `language`, `audience_id`, `template_id`, `asset_id`, `scheduled_at`, `settings`, `context` |
+| `distribution` | The whole distribution record as saved, exactly what `distribution.get` returns as `distribution`: `id`, `_id`, `article_id`, `title`, `body`, `summary`, `description`, `language`, `audience_id`, `template_id`, `asset_id`, `scheduled_at`, `settings`, `context`. In a preview of an unsaved distribution: the record as it stands on screen, with no `id` |
 | `article` | The distribution's article, when it has one: `id`, `title`, `slug`, `summary`, `body`, `author`, `image_uri`, `uri`, `published_at`, `metadata` |
 | `fields` | The distribution form's values, with followed defaults resolved. In a preview: the form as it is on screen, resolved the same way |
 | `channel.name`, `.label`, `.settings`, `.secrets` | This channel. In a preview the editor may pass channel settings that are not saved yet (a pronunciation being tried out); `channel.settings` then holds those for that run only |
@@ -271,6 +272,15 @@ run with `trigger.action: preview` and waits up to 60 seconds for the run's
 | `audio`, `audio_type` | Base64 audio and its type, played in place |
 
 A preview must not publish, create an asset or record anything.
+
+A publisher can preview before the first save. The run then has no
+`trigger.distribution_id`; `distribution` and `article` are still there, and
+`distribution.render` given an empty `distribution_id` renders the
+distribution on screen, so `distribution_id: "${{ trigger.distribution_id }}"`
+works in both cases. Do not call `distribution.get` or `distribution.update`
+in a preview: there may be no saved distribution to name. A plugin action
+that renders must not mark `distribution_id` required if it is to serve such
+a preview. Nothing of an unsaved preview is recorded, not even the run.
 
 ### Status
 
@@ -365,6 +375,9 @@ channel:
 |---|---|
 | `required` | `true`: a distribution on this channel cannot be saved without a template. Default `false` |
 | `default` | One of this plugin's templates (below), by name. A new distribution on this channel starts with it chosen |
+
+The publisher may choose None on a menu that is not required, even when
+it has a default.
 
 `template: false` turns the menu off for a channel that renders but must
 not be given a template; `template: {}` is the same as leaving it out. No

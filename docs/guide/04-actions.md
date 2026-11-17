@@ -28,16 +28,20 @@ action. The engine provides the **built-in** actions; a plugin adds its own
 
 Complete inputs and outputs for each are in
 [reference/BUILTINS.md](../reference/BUILTINS.md). Every built-in has an
-**effect class**, which says what kind of thing it does:
+**effect class**, which says what kind of thing it does. The table is
+generated from the engine (`passport-plugin reference`; do not edit it by
+hand), weakest class first:
 
-| Effect | Meaning | Built-ins |
-|---|---|---|
-| `control` | Shapes the run; touches nothing | `set-output`, `vars.set`, `log`, `sleep`, `wait`, `transmute`, `workflow.exit`, `workflow.fail` |
-| `read` | Reads Passport data | `user.get`, `plan.get`, `option.get`, `subscription.get`, `credit.get`, `distribution.get`, `distribution.render`, `asset.get`, `application.get`, `article.get`, `entitlement.get`, `job.get`, `audience.get`, `audience.view`, `template.render` |
-| `write` | Creates or changes Passport data | `user.create`, `user.update`, `user.audienceRefresh`, `user.feed.invalidate`, `instance.cache.flush`, `feed.item.create`, `credit.invite.create`, `distribution.create`, `distribution.update`, `asset.create`, `asset.update`, `asset.concat`, `asset.virtual`, `entitlement.create`, `entitlement.update`, `event.emit`, `workflow.run`, `job.create` |
-| `notify` | Sends a message to a person | `sendmail`, `sendsms` |
-| `external` | Calls another system | `http.get`, `http.post`, `http.put`, `http.patch`, `http.delete` |
-| `destructive` | Removes Passport data | `entitlement.delete`, `asset.delete` |
+<!-- reference:begin effects -->
+| Effect | Meaning | Loads a field's choices | Built-ins |
+|---|---|---|---|
+| `control` | Shapes the run and touches nothing. | yes | `log`, `set-output`, `sleep`, `transmute`, `vars.set`, `wait`, `workflow.exit`, `workflow.fail` |
+| `read` | Reads Passport data. | yes | `application.get`, `article.get`, `asset.get`, `audience.get`, `audience.view`, `credit.get`, `distribution.get`, `distribution.render`, `entitlement.get`, `job.get`, `option.get`, `plan.get`, `subscription.get`, `template.render`, `user.get` |
+| `external` | Calls another system. | yes | `http.delete`, `http.get`, `http.patch`, `http.post`, `http.put` |
+| `notify` | Sends a message to a person. | no | `sendmail`, `sendsms` |
+| `write` | Creates or changes Passport data. | no | `asset.concat`, `asset.create`, `asset.update`, `asset.virtual`, `credit.invite.create`, `distribution.create`, `distribution.update`, `entitlement.create`, `entitlement.update`, `event.emit`, `feed.item.create`, `instance.cache.flush`, `job.create`, `user.audienceRefresh`, `user.create`, `user.feed.invalidate`, `user.update`, `workflow.run` |
+| `destructive` | Removes Passport data. | no | `asset.delete`, `entitlement.delete` |
+<!-- reference:end effects -->
 
 A **plugin action's** effect is worked out from its steps: the strongest of
 them, in the order `control`, `read`, `external`, `notify`, `write`,
@@ -47,7 +51,8 @@ also calls `user.update` is `write`.
 A plugin may use every built-in. The effect class is used in three places:
 the registry shows what a plugin does ("sends email, calls api.example.com");
 a form's [loaded choices](02-field-schema.md#28-choices-loaded-from-an-action)
-may only run `read` and `external` actions; and automations that publishers
+may only run actions of the classes the table marks, nothing that notifies,
+writes or removes; and automations that publishers
 write themselves are limited to a subset (see the Passport Automations
 Guide). None of those limits apply to a plugin's own automations and
 channels.

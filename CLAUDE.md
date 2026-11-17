@@ -32,7 +32,23 @@ syntax into this branch.
 - Always quote expressions: `"${{ … }}"`.
 - Built-in actions and functions are a closed list: `docs/reference/BUILTINS.md`
   and `docs/guide/08-functions.md`. If it is not there, it does not exist.
-  Do not invent one; say what is missing.
+  Do not invent one; say what is missing. Their tables, and those of
+  `docs/reference/EVENTS.md` and `SCHEMAS.md`, are generated from the engine:
+  never edit between a `<!-- reference:begin … -->` and a
+  `<!-- reference:end … -->` comment. To change one, change the engine, then
+  refresh every page with one command (the prose around the tables stays
+  hand-written); CI runs the same command with `--check`, which exits 1 when
+  a table is out of date:
+
+  ```bash
+  passport-plugin reference \
+    --update docs/reference/BUILTINS.md \
+    --update docs/reference/EVENTS.md \
+    --update docs/reference/SCHEMAS.md \
+    --update docs/guide/04-actions.md \
+    --update docs/guide/08-functions.md \
+    --update docs/guide/09-files-and-binary.md
+  ```
 - Do not guess a vendor's API. Use the documentation you were given, or ask
   for it.
 - Every form field has a `title`, and a `description` unless the title is

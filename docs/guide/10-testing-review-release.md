@@ -23,7 +23,8 @@ server uses, so what it accepts is what the server accepts.
 | `passport-plugin run <folder> --channel <name> [--case <name>]` | Dry-runs a channel |
 | `passport-plugin run <folder> --action <name> [--case <name>]` | Dry-runs one plugin action |
 | `passport-plugin info` | The server version the tool was built from |
-| `passport-plugin reference [--actions\|--functions\|--events\|--schemas] [--json\|--md]` | The built-ins, with inputs, outputs and effect |
+| `passport-plugin reference [--functions] [--format json\|markdown --out <folder>]` | Everything a plugin may use, read from the engine the tool was built from: actions with inputs, outputs and effect, functions, events, schemas, formats and limits. JSON by default; `--format markdown` writes reference pages |
+| `passport-plugin reference --update <file> [--check]` | Rewrites the generated tables of a guide or reference page in place (what is between its `reference:begin` and `reference:end` comments). `--check` changes nothing and exits 1 when a table is out of date |
 | `passport-plugin spec [--json]` | The JSON Schemas for every v2 file kind and for the field schema |
 
 Add `--json` to `check` and `run` for output a program can read.
