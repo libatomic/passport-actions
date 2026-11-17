@@ -209,10 +209,13 @@ in `allowed_hosts`, which is useful once, with a real key in `secrets`, to
 capture what a vendor actually returns. Those calls are held to the rules of
 a real run ([1.2](01-project-and-manifest.md#where-http-may-connect)):
 public addresses, ports 80 and 443, redirects to allowed hosts only. So
-`--live-http` cannot reach a service on your own machine (a mock server on
-`localhost`, a vendor's local emulator) or on a private network; today there
-is no way to switch that off. Test against such a service with samples, or
-against the vendor's public sandbox. Keys in test files are never real;
+`--live-http` cannot reach a service on your own machine or on a private
+network. For a mock server or a vendor's local emulator on your own machine,
+use `--live-http-local` instead: it does what `--live-http` does and also
+lets a step reach this machine, on any port, at a host under `.localhost`
+that `allowed_hosts` lists
+([1.2](01-project-and-manifest.md#where-http-may-connect)). A private
+network stays out of reach either way. Keys in test files are never real;
 the tool refuses to push a `tests/` file whose `secrets` look like live keys.
 
 In Passport Studio the **Form** tab shows each form as the publisher will see

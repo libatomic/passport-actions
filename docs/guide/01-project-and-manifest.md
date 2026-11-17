@@ -123,8 +123,17 @@ address, on port 80 or 443, and so must every redirect on the way to the
 file ([9.4](09-files-and-binary.md#94-working-with-assets)).
 
 These rules also hold in a dry run with `--live-http`
-([10.2](10-testing-review-release.md#102-test-cases)), so a mock or a
-service on your own machine cannot be called that way.
+([10.2](10-testing-review-release.md#102-test-cases)). One thing lifts one
+of them, for a stand-in of a vendor's service that runs on your own
+machine: in a dry run with `--live-http-local`, and on the server inside
+Passport desktop, an `http` step may also reach **this machine** (a loopback
+address), on any port. The host must still be in `allowed_hosts`. A manifest
+cannot list `localhost` or an address, so name the stand-in under
+`.localhost` (`stripe.localhost`, called as `http://stripe.localhost:12111`);
+such a name always means this machine. A private network stays out of
+reach, redirects are still checked, and a hosted Passport server never
+allows any of it. Take the `.localhost` host out of `allowed_hosts` before
+the plugin is pushed for review.
 
 Unknown keys are an error in every v2 file. A typo is reported, not ignored.
 
