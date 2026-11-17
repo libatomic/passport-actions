@@ -233,7 +233,7 @@ sequenceDiagram
   participant W as Worker
   V->>API: POST /workflows/{id}/webhook/{token}
   API->>API: token known? IP allowed? signature valid?
-  API->>API: parse body (JSON, form, multipart, XML); apply if:
+  API->>API: parse body (JSON, form, multipart, XML), then apply the trigger's if
   API->>Q: one run per request, or one per element with foreach
   API-->>V: response_status (the run is still pending)
   Q->>W: job(s)
