@@ -59,9 +59,9 @@ step does belongs in `description`.
     mode: "${{ trim(trigger.preview?.sample ?? '') != '' ? 'listen' : 'text' }}"
 ```
 
-A flow of a channel may say the same of itself, with a `description` beside
-its `steps` and `returns` ([6.5.1](06-channels.md#651-a-flow)). An
-extension's flows may not ([5.7](05-automations.md#the-flows)).
+A flow may say the same of itself, with a `description` beside its `steps`
+and `returns`: a channel's flows ([6.5.1](06-channels.md#651-a-flow)) and an
+extension's ([5.7](05-automations.md#the-flows)).
 
 A step has an `action`, or is a branch, or is a loop. Unknown keys are an
 error.

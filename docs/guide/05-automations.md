@@ -407,6 +407,7 @@ it answers. One request is one run, and one run is one flow.
 
 | Key of a flow | Required | Meaning |
 |---|---|---|
+| `description` | no | What the flow does, for a person reading it. Markdown, up to 2,000 characters. Never evaluated |
 | `steps` | yes | The flow's steps, at least one ([chapter 7](07-steps-and-expressions.md)) |
 | `returns` | in `preview`; in `run` when the extension has `outputs` | The flow's result: one value per key, or a single expression for the whole result |
 
@@ -419,9 +420,8 @@ A flow has no other keys.
   flow calls.
 - **Say what each step is for** with its `name` and `description`
   ([7.1](07-steps-and-expressions.md#71-a-step)), in both flows. A
-  channel's flow may also carry a `description` of its own
-  ([6.5.1](06-channels.md#651-a-flow)); an extension's flow may not, so say
-  what a flow is for in a comment above it and in the automation's `help`.
+  flow may also carry a `description` of its own, saying what the flow is
+  for, as a channel's flow may ([6.5.1](06-channels.md#651-a-flow)).
 - **`trigger.action`** is `run` or `preview`: the flow that is running. A
   flow never needs to test it. A plugin action that both flows call may.
 - **`run` behaves as an automation's steps do.** `wait` is allowed at its

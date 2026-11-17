@@ -459,17 +459,17 @@ outputs:
       type: integer
       title: Requests
       description: How many ElevenLabs requests the run made.
-# RUN: what a person starts from the article's page. It reads the article
-# once for each audience chosen and files the MP3s as one narration. The text
-# is prepared for every audience before anything is read, so a run that
-# cannot finish (nothing to read for one audience, or over the limit) fails
-# with nothing sent to ElevenLabs and nothing billed. Running it again on the
-# same article replaces the MP3s and keeps the narration's id and link.
-#
 # The preview flow below has its own steps; the two share the preparation
-# through narration.text. (An extension's flow holds steps and returns and
-# nothing else, so what each flow is for is said here, in a comment.)
+# through narration.text.
 run:
+  description: >-
+    What a person starts from the article's page. It reads the article once
+    for each audience chosen and files the MP3s as one narration. The text
+    is prepared for every audience before anything is read, so a run that
+    cannot finish (nothing to read for one audience, or over the limit)
+    fails with nothing sent to ElevenLabs and nothing billed. Running it
+    again on the same article replaces the MP3s and keeps the narration's
+    id and link.
   steps:
     - id: voice
       name: Pick the voice
@@ -717,16 +717,18 @@ run:
     characters_billed: "${{ sum(map(vars.results, .characters_billed)) }}"
     requests: "${{ sum(map(vars.results, .requests)) }}"
 
-# PREVIEW: what the form's paragraph editor asks for while a person is still
-# filling the form in. Having this flow is what makes the extension answer
-# previews. With no sample (the Spoken text button) it returns the text a run
-# would read for the preview audience; with trigger.preview.sample (a
-# paragraph's play button) it reads that one paragraph aloud and returns the
-# MP3 as base64. It reads the form as it is on screen and the extension's
-# settings as they are being edited, saves nothing and is not recorded. It
-# may only read and call ElevenLabs: the check refuses a step that would
-# change anything. A paragraph played is billed by ElevenLabs.
+# Having this flow is what makes the extension answer previews. It may only
+# read and call ElevenLabs: the check refuses a step that would change
+# anything.
 preview:
+  description: >-
+    What the form's paragraph editor asks for while a person is still
+    filling the form in. With no sample (the **Spoken text** button) it
+    returns the text a run would read for the preview audience; with a
+    sample (a paragraph's play button) it reads that one paragraph aloud
+    and returns the MP3. It reads the form as it is on screen and the
+    extension's settings as they are being edited, saves nothing and is not
+    recorded. A paragraph played is billed by ElevenLabs.
   steps:
     - id: mode
       name: Work out which preview was asked for

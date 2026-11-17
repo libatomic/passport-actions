@@ -280,11 +280,6 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
 
 ## What v2 still expresses awkwardly or not at all
 
-- **A flow cannot say what it is for.** A channel's flow may carry a
-  `description`; an extension's `run:` and `preview:` hold `steps` and
-  `returns` and nothing else, so `narrate.yaml` says it in a comment above
-  each. (Preview results, once undeclared, are now the `preview` flow's
-  `returns`, with a shape Passport fixes and checks.)
 - **The default voice has to be added to its own menu by an expression.**
   See decision 10.
 - **The name of an added automation is not among what a run can read**
