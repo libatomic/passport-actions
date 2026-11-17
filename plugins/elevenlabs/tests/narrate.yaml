@@ -1,0 +1,206 @@
+# Test cases for automations/narrate.yaml, the Create Audio Narration
+# extension. Dry runs only: every step that would reach ElevenLabs or read or
+# change Passport is sampled. Never put a real API key here.
+cases:
+  - name: Create a narration
+    settings: {}
+    secrets: { api_key: test }
+    automation:
+      label: Narration
+      settings: &settings
+        voice_id: JBFqnCBsd6RMkjVDRZzb
+        voice_name: George
+        voices:
+          - { label: Rachel, voice_id: 21m00Tcm4TlvDq8ikWAM }
+        model_id: eleven_flash_v2_5
+        max_characters: 0
+        pronunciations:
+          - { term: Wemby, say_as: Wem-bee }
+        text_cleanup: true
+    # The article the extension is run on: the fields the steps, the form's
+    # defaults and extension.if read.
+    record: &article
+      id: Ar3oep6QbWZm8q5XEjgS5
+      title: Fishing the Ozarks
+      published_at: "2026-11-14T15:00:00Z"
+      body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+    # script is left out: it follows the article's body.
+    inputs: &inputs
+      audience: Au7kep6QbWZm8q5XEjgT2
+      voice: 21m00Tcm4TlvDq8ikWAM
+    samples:
+      steps:
+        render:
+          body: "<p>Fishing the Ozarks was published on Saturday, November 14, 2026. [long pause]</p><p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+        # tts runs inside the foreach: one entry per pass, the last repeated.
+        # Sampling the step that calls speech.create means the action's own
+        # http.post does not run.
+        tts:
+          - { asset_id: As1aep6QbWZm8q5XEjgP1, size: 48211, characters_billed: 118 }
+        join: &joined { asset_id: As2bep6QbWZm8q5XEjgN7, size: 52307, parts: 1, deleted: [As1aep6QbWZm8q5XEjgP1] }
+    expect:
+      status: success
+      outputs:
+        asset_id: As2bep6QbWZm8q5XEjgN7
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+        characters_billed: 118
+        requests: 1
+      steps:
+        mode: { outputs: { mode: run } }
+        voice: { outputs: { id: 21m00Tcm4TlvDq8ikWAM } }
+        tags:
+          outputs:
+            text: |-
+              Fishing the Ozarks was published on Saturday, November 14, 2026. <break time="2s" />
+
+              Wem-bee scored 30 in a 112 to 108 win.
+
+              The team is number 1.
+      not_run: [previewed, sample, no-audience, empty, too-long]
+
+  # The same article and audience again, with the text edited in the form
+  # and another voice: the file name is the same, so the MP3 is replaced
+  # (overwrite keeps the asset's id, which the join sample stands in for).
+  - name: A second run replaces the first
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    inputs:
+      audience: Au7kep6QbWZm8q5XEjgT2
+      voice: JBFqnCBsd6RMkjVDRZzb
+      script: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
+    samples:
+      steps:
+        render:
+          body: '<p>Wemby scored 30 in a 112-108 win.</p><p data-text="skip">The team is No. 1.</p>'
+        tts:
+          - { asset_id: As1aep6QbWZm8q5XEjgP1, size: 30110, characters_billed: 38 }
+        join: *joined
+    expect:
+      status: success
+      outputs:
+        asset_id: As2bep6QbWZm8q5XEjgN7
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+      steps:
+        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
+        tags: { outputs: { text: Wem-bee scored 30 in a 112 to 108 win. } }
+        name: { outputs: { base: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2 } }
+
+  - name: Another audience gets its own file
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    inputs: { audience: Au9zep6QbWZm8q5XEjgF4 }
+    samples:
+      steps:
+        render:
+          body: '<p>Wemby scored 30.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p><p data-narration="fallback">The rest of this section is for subscribers. Subscribe to hear the full article.</p>'
+        tts:
+          - { asset_id: As4dep6QbWZm8q5XEjgK3, size: 40100, characters_billed: 96 }
+        join: { asset_id: As5eep6QbWZm8q5XEjgJ9, size: 44196, parts: 1, deleted: [As4dep6QbWZm8q5XEjgK3] }
+    expect:
+      status: success
+      outputs:
+        asset_id: As5eep6QbWZm8q5XEjgJ9
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au9zep6QbWZm8q5XEjgF4.mp3
+      steps:
+        # no voice picked: the default
+        voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
+        # the spoken note is read once, however many sections are hidden
+        tags:
+          outputs:
+            text: |-
+              Wem-bee scored 30.
+
+              The rest of this section is for subscribers. Subscribe to hear the full article.
+
+  - name: Preview the spoken text
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    trigger: { action: preview }
+    # The form as it is on screen: an unsaved edit, no voice picked yet.
+    inputs:
+      audience: Au7kep6QbWZm8q5XEjgT2
+      script: "<p>An unsaved edit, 50% done.</p>"
+    samples:
+      steps:
+        render:
+          body: "<p>An unsaved edit, 50% done.</p>"
+    expect:
+      status: success
+      outputs:
+        text: An unsaved edit, 50 percent done.
+        characters: 33
+        limit: 0
+        requests: 1
+        note: ""
+      not_run: [sample, name, plan, tts, join]
+
+  - name: Preview a spoken sample
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    trigger:
+      action: preview
+      preview:
+        sample: "Wemby vs. the field"
+    # A paragraph can be played before the audience is chosen.
+    inputs: { voice: 21m00Tcm4TlvDq8ikWAM }
+    samples:
+      steps:
+        sample: { audio: "SUQzBAAAAAAA", audio_type: audio/mpeg }
+    expect:
+      status: success
+      outputs:
+        audio: "SUQzBAAAAAAA"
+        audio_type: audio/mpeg
+        text: Wem-bee versus the field
+      steps:
+        voice: { outputs: { id: 21m00Tcm4TlvDq8ikWAM } }
+      not_run: [render, name, plan, tts, join]
+
+  - name: A sample over 2,000 characters is refused
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record: *article
+    trigger:
+      action: preview
+      preview:
+        # 2,047 characters
+        sample: "This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read. This sentence is repeated until the sample is too long to read."
+    inputs: {}
+    expect:
+      status: failed
+      reason: A sample is at most 2,000 characters
+      not_run: [render, sample, name, plan, tts, join]
+
+  - name: Text over the limit is refused
+    secrets: { api_key: test }
+    automation:
+      settings:
+        voice_id: JBFqnCBsd6RMkjVDRZzb
+        model_id: eleven_flash_v2_5
+        max_characters: 20
+        text_cleanup: true
+    record: *article
+    inputs: *inputs
+    samples:
+      steps:
+        render:
+          body: "<p>Wemby scored 30 in a 112-108 win.</p><p>The team is No. 1.</p>"
+    expect:
+      status: failed
+      reason: over the limit of 20
+      not_run: [name, plan, tts, join]
+
+  - name: Not offered for an article with no body
+    secrets: { api_key: test }
+    automation: { settings: *settings }
+    record:
+      id: Ar8xep6QbWZm8q5XEjgW6
+      title: A draft with nothing in it
+      body: ""
+    inputs: *inputs
+    expect:
+      offered: false

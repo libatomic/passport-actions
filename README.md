@@ -31,7 +31,7 @@ there.
 | Plugin | Provides | State |
 |---|---|---|
 | [campaign-monitor](plugins/campaign-monitor/) | Automations that keep a Campaign Monitor list in step with subscribers | Converted from v1; not yet released |
-| [elevenlabs](plugins/elevenlabs/) | An audio narration channel | Converted from v1; not yet released |
+| [elevenlabs](plugins/elevenlabs/) | Audio narration of an article, as an extension | Converted from v1; not yet released |
 
 Spotify is converted once its v1 work is merged.
 

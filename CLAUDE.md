@@ -18,7 +18,8 @@ syntax into this branch.
    - files, audio, uploads: `09-files-and-binary.md`
    - tests: `10-testing-review-release.md`
 3. `plugins/campaign-monitor/` as a model of automations and actions;
-   `plugins/elevenlabs/` as a model of a channel.
+   `plugins/elevenlabs/` as a model of an extension. No plugin here is a
+   model of a channel yet; follow chapter 6.
 
 ## Rules
 

@@ -2,8 +2,8 @@ format: 2
 id: elevenlabs
 name: ElevenLabs Narration
 description: >-
-  Reads articles aloud with an ElevenLabs voice. Adds an Audio Narration
-  channel: publishing a distribution on it stores the narration as an MP3.
+  Reads articles aloud with an ElevenLabs voice. Adds Create Audio Narration
+  to an article's Extensions menu: running it saves the narration as an MP3.
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
 category: audio
 visibility: public
@@ -26,6 +26,6 @@ settings:
         - Voices: Read
         - User: Read
 
-        Every narration channel and helper in this plugin uses this one key.
+        Create Audio Narration and every helper in this plugin use this one key.
       secret: true
 test: ping

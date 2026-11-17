@@ -355,7 +355,7 @@ steps:
     action: elevenlabs/speech.create
     with:
       text: "${{ inputs.intro + '. ' + htmlText(article.body) }}"
-      voice: "${{ inputs.voice }}"
+      voice_id: "${{ inputs.voice }}"
       model_id: "${{ automation.settings.model_id }}"
       filename: "narration-${{ article.id }}.mp3"
   # …
@@ -439,12 +439,20 @@ a narration made last week is still found on its article.
 
 **What the publisher sees.** On the page of a record of that kind, an
 **Extensions** menu lists each extension that applies, by its label. Choosing
-one shows its form, then the run's progress and result. On the plugin's
-Automations tab an extension is listed with the kind it runs on.
+one shows its form, then the run's progress and result.
+
+Extensions are kept apart from automations and channels wherever a person
+meets them. The file is an automation file, but what it is for is different:
+it works on one record, for the person looking at it, and runs nowhere else.
+The plugin's page has its own **Extensions** tab, beside Automations and
+Channels, listing each extension with the kind of record it runs on; an
+extension is never listed under Automations. Passport Studio shows them
+under their own **Extensions** heading, and the registry lists what a plugin
+provides as automations, channels and extensions.
 
 - With no `settings`, the extension is on the menu as soon as the plugin is
   enabled.
-- With `settings`, the publisher adds it first, like any automation, and it
+- With `settings`, the publisher adds it first, on the Extensions tab, and it
   is on the menu while it is enabled. With `multiple: true` each one added
   is its own menu item, under the label the publisher gave it.
 

@@ -3,7 +3,7 @@
 How to turn a v1 integration (blueprints, recipes, a package, perhaps a
 vendor plugin) into a v2 plugin. Two conversions are in this branch to read
 beside this chapter: `plugins/campaign-monitor/` (automations and actions)
-and `plugins/elevenlabs/` (a channel). Each has a `MIGRATION.md` listing what
+and `plugins/elevenlabs/` (an extension; in v1 it was a channel). Each has a `MIGRATION.md` listing what
 was moved where and what changed.
 
 Nothing forces a conversion. A v1 workflow that is installed keeps running.

@@ -4,9 +4,9 @@ description: >-
   Lists the voices on your ElevenLabs account with their ids, and shows how
   many characters of this month's quota are left.
 help: |
-  Run it to find the id of a voice to list under a narration channel's
-  **Other voices**. The channel's **Default voice** menu already shows your
-  voices by name.
+  Run it to see the id of a voice, the models it is ready on and the quota
+  left. The **Default voice** and **Other voices** menus of Create Audio
+  Narration already show your voices by name.
 
   A professional voice clone shows no models until ElevenLabs has finished
   training it; it cannot be used for narration before then.

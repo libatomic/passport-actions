@@ -37,12 +37,15 @@ accepts today.
 | Plugin actions with declared inputs and outputs | Built |
 | The plugin's settings as a form, with secrets kept apart | Built |
 | The built-in `passport` schemas, the 2.3.0 functions ([chapter 8](guide/08-functions.md)), binary in `http.*` ([chapter 9](guide/09-files-and-binary.md)), the signed-webhook check | Built |
-| Installing a v2 plugin; adding automations and channels with their own settings; tools; the connection test | Built, in review |
-| Effect classes on built-ins ([4.2](guide/04-actions.md)) | Built, in review |
-| Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Not built: the field is a plain box |
-| The distribution form ([6.4](guide/06-channels.md)) | Not built: a channel runs with empty `fields` |
-| Extensions ([5.7](guide/05-automations.md#57-extensions)) | Not built |
-| The publisher's admin pages for v2 plugins | Not built: a v2 plugin is installed and set up through the back office sandbox operations and Passport desktop |
+| Installing a v2 plugin; adding automations and channels with their own settings; tools; the connection test | Built |
+| Effect classes on built-ins ([4.2](guide/04-actions.md)) | Built |
+| Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Built |
+| The distribution form ([6.4](guide/06-channels.md)) | Built in the engine; the admin's distribution page does not show it yet |
+| Extensions, previews and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
+| Templates a plugin ships and the channel template menu ([6.8](guide/06-channels.md#68-templates)) | Built, in review; the admin's template menu is not built |
+| Protected assets and audience ranking | Built. Virtual assets, and audiences on the steps that create assets: in progress |
+| Passport Studio for publishers, direct installs, the community registry ([1.7](guide/01-project-and-manifest.md#17-registries-and-where-a-plugin-can-go)) | Not built |
+| The publisher's admin pages for v2 plugins | Built: Plugins pages, forms with choices, the Extensions menu. Not yet checked against a live site |
 | Passport Studio: the new workbench, help-page editor, Form tab and Test panel | Built |
 | Passport Studio: the Design surface and the form designer | Not built |
 | External Node.js actions (`uses:`), and the 2.3 format this guide replaces (`plugin.yml`, `workflows/`, `recipes/`) | Node actions removed; a `plugin.yml` project still builds and installs as before |

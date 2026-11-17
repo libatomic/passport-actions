@@ -20,7 +20,7 @@ outputs:
           voice_id:
             type: string
             title: Voice id
-            description: What a narration channel's voice settings take.
+            description: What the narration's voice settings take.
           name:
             type: string
             title: Name
