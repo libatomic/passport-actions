@@ -21,10 +21,6 @@ dashboard.
   right-click a word to set its pronunciation; a list of the voice tags the
   model understands.
 - **A Voice menu** in the form, when more than one voice is listed.
-- **List ElevenLabs voices**, a tool that lists your voices with their ids
-  and shows the characters left this month. It has nothing to set up, so it
-  is not added: it sits under **Tools** on the plugin's Automations tab with
-  a **Run** button.
 
 Narration is not a channel. It makes an asset; a channel then publishes it
 (see [Publishing a narration](#publishing-a-narration)).
@@ -187,7 +183,6 @@ out. Tags are suggestions; not every voice responds to every tag.
 | `actions/speech.sample.yaml` | A short sample returned as base64, for previews |
 | `actions/voices.list.yaml` | The account's voices |
 | `actions/usage.get.yaml` | Plan and characters used |
-| `automations/list-voices.yaml` | The List ElevenLabs voices tool (under Tools; never added) |
 | `automations/ping.yaml` | Test connection |
 | `tests/narrate.yaml`, `tests/narration.text.yaml`, `tests/narration.create.yaml` | Dry-run cases |
 

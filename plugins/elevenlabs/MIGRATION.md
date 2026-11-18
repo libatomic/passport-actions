@@ -87,7 +87,7 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
 | the `generate` and `join` steps | action `elevenlabs/narration.create` |
 | the `tts` step's `http.post` | action `elevenlabs/speech.create` |
 | the `sample` step's `http.post` | action `elevenlabs/speech.sample` |
-| blueprint `list-voices` | `automations/list-voices.yaml`, on actions `voices.list` and `usage.get` |
+| blueprint `list-voices` | dropped: the voice settings are menus loaded by action `voices.list`, and Test connection shows the plan and the characters left |
 | (none) | `automations/ping.yaml`, the plugin's Test connection |
 
 ### Where each v1 input went
@@ -178,8 +178,10 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
 14. **`category: audio`** for the plugin (v1 package: `integrations`).
 15. **The YAML anchor** `&expressive_tags` is kept so eleven_v3 and
     eleven_v4 share one tag set.
-16. **`list-voices` is a tool.** Manual, no settings: it is listed under
-    Tools with a Run button and is never added (guide 5.4).
+16. **`list-voices` is gone.** v1 needed it to look up a voice id to paste
+    into the settings. Both voice settings are now menus of the account's
+    voices by name, and Test connection shows the plan and the characters
+    left, so nothing was left for it to do.
 17. **"Preview as" is its own, optional field.** The paragraph editor
     marks restricted sections for one audience, named by a
     `passport.audience` field of the same form (guide 2.6); it cannot name
@@ -253,10 +255,7 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
   must send a paragraph's sample as
   `trigger.preview.sample`, and the pronunciation dialog's unsaved list as
   unsaved settings for that preview (guide 5.7).
-- Whether `list-voices` is still worth shipping now that both voice
-  settings are menus. It remains the only place that shows a voice id and
-  the quota.
-- `list-voices`, `ping` and the actions `speech.create`, `speech.sample`,
+- `ping` and the actions `speech.create`, `speech.sample`,
   `voices.list` and `usage.get` have no test cases of their own
   (`speech.create`'s steps run inside the `narration.create` and `narrate`
   cases).
