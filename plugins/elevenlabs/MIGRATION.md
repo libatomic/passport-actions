@@ -129,12 +129,13 @@ working here. Nothing has been run against a Passport site or ElevenLabs.
    audio. A run of an extension is a person asking for a narration, perhaps
    because the last take sounded wrong, so every run reads again and is
    billed. The hash is still written to `metadata.narration.text_hash`.
-4. **Not `multiple`.** The channel could be added more than once (a second
-   language or show). Two of this extension would write the same file names
-   for the same article and replace each other's narration. Telling
-   them apart needs the added automation's own name in the file name, and
-   the guide does not list one among what a run can read. Until it does, the
-   extension is added once.
+4. **`multiple`.** The extension may be added more than once (another
+   voice, model or language), each with its own settings and its own item
+   on the Extensions menu. Each one's files carry its short name
+   (`automation.name`): `narration-<article id>-<short name>.mp3`, so two
+   never replace each other's narration. A narration made by 1.0.0, when the
+   extension was added once, was named `narration-<article id>.mp3`; it is
+   left as it is, and the next run makes one under the new name.
 5. **The restricted-section rewrite is kept in the steps.** A section an
    editor gave its own line carries it in the text (`data-text="instead"`)
    and it is read. The guide does not say that the editor writes anything

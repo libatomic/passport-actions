@@ -89,7 +89,7 @@ cases:
 |---|---|
 | `name` | Shown in the Test panel and used by `--case` |
 | `settings`, `secrets` | The plugin's, for this case |
-| `automation.settings`, `automation.secrets`, `automation.label` | The automation's own (automation tests) |
+| `automation.settings`, `automation.secrets`, `automation.name`, `automation.label` | The automation's own (automation tests). Without `name` it is the definition's key |
 | `channel.settings`, `channel.secrets`, `channel.name`, `channel.label` | The channel's own (channel tests) |
 | `trigger` | What starts the run. For a channel: `{ action, distribution_id, user_id, preview }`. `action` names the flow the case runs: `publish` (the default), `update`, `delete`, `preview` or `status`. Naming a flow the channel does not have is an error. `preview` (`body`, `sample`, `settings`) is for a `preview` case only. For an extension: `{ action, preview }`. `action` is `run` (the default) or `preview`; a `preview` case of an extension with no `preview` flow fails. `preview: { sample: … }` is the paragraph being played |
 | `inputs` | For a manual run, an extension or an action |

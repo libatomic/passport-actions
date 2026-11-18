@@ -217,7 +217,7 @@ flow's own later steps.
 | Name | Holds |
 |---|---|
 | `settings`, `secrets` | The plugin's settings and secrets |
-| `automation.settings`, `automation.secrets` | This automation's own (automations) |
+| `automation.name`, `.label`, `.settings`, `.secrets` | This automation (automations). `name` is the short name the publisher gave it, or the definition's key for one that is added once: put it in the name of anything a `multiple` definition creates, so two of them never write the same file |
 | `channel.name`, `.label`, `.settings`, `.secrets` | This channel (channels) |
 | `fields` | The distribution form's values (channels) |
 | `distribution`, `article` | The distribution being published and its article (channels; [6.5.2](06-channels.md#652-what-a-flow-reads)) |

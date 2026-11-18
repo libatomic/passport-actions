@@ -625,7 +625,9 @@ The run is recorded with who ran it.
 
 - Make it safe to run twice on the same record: name what it creates after
   the record (`narration-${{ article.id }}.mp3`, with `overwrite: true`) so
-  a second run replaces the first.
+  a second run replaces the first. A `multiple` extension adds its own
+  short name (`automation.name`), so two of them added with different
+  settings (one voice each, say) do not replace each other's.
 - Long work is fine: the run is a job, and the admin shows it running.
 - An extension is not a channel. A channel publishes a distribution
   somewhere; an extension makes or changes something in Passport that a

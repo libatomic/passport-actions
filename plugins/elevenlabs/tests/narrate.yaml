@@ -13,6 +13,7 @@ cases:
     settings: {}
     secrets: { api_key: test }
     automation:
+      name: main
       label: Narration
       settings: &settings
         voice_id: JBFqnCBsd6RMkjVDRZzb
@@ -58,22 +59,22 @@ cases:
           - { asset_id: As5eep6QbWZm8q5XEjgJ9, size: 44196, parts: 1, deleted: [As4dep6QbWZm8q5XEjgK3] }
         asset.virtual: &narration
           asset_id: As8hep6QbWZm8q5XEjgV1
-          url: https://example.test/assets/narration-Ar3oep6QbWZm8q5XEjgS5.mp3
+          url: https://example.test/assets/narration-Ar3oep6QbWZm8q5XEjgS5-main.mp3
     expect:
       status: success
       outputs:
         asset_id: As8hep6QbWZm8q5XEjgV1
-        filename: narration-Ar3oep6QbWZm8q5XEjgS5.mp3
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5-main.mp3
         versions:
           - audience_id: Au7kep6QbWZm8q5XEjgT2
             audience: Paid
-            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-main-Au7kep6QbWZm8q5XEjgT2.mp3
             characters: 147
             characters_billed: 118
             requests: 1
           - audience_id: Au9zep6QbWZm8q5XEjgF4
             audience: Free
-            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au9zep6QbWZm8q5XEjgF4.mp3
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-main-Au9zep6QbWZm8q5XEjgF4.mp3
             characters: 100
             characters_billed: 96
             requests: 1
@@ -98,7 +99,7 @@ cases:
   # stands in for), and each audience's MP3 is replaced under its own name.
   - name: A second run keeps the narration
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     inputs:
       audiences: [Au7kep6QbWZm8q5XEjgT2, Au9zep6QbWZm8q5XEjgF4]
@@ -120,18 +121,18 @@ cases:
       status: success
       outputs:
         asset_id: As8hep6QbWZm8q5XEjgV1
-        filename: narration-Ar3oep6QbWZm8q5XEjgS5.mp3
+        filename: narration-Ar3oep6QbWZm8q5XEjgS5-main.mp3
         requests: 2
       steps:
         voice: { outputs: { id: JBFqnCBsd6RMkjVDRZzb } }
         spoken: { outputs: { text: Wem-bee scored 30 in a 112 to 108 win. } }
-        name: { outputs: { base: narration-Ar3oep6QbWZm8q5XEjgS5 } }
+        name: { outputs: { base: narration-Ar3oep6QbWZm8q5XEjgS5-main } }
 
   # A later run for Paid alone: the narration keeps its id and now has one
   # version. Free's MP3 is not touched by this run.
   - name: A run with fewer audiences keeps the narration
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     inputs: { audiences: [Au7kep6QbWZm8q5XEjgT2] }
     samples:
@@ -152,7 +153,7 @@ cases:
         versions:
           - audience_id: Au7kep6QbWZm8q5XEjgT2
             audience: Paid
-            filename: narration-Ar3oep6QbWZm8q5XEjgS5-Au7kep6QbWZm8q5XEjgT2.mp3
+            filename: narration-Ar3oep6QbWZm8q5XEjgS5-main-Au7kep6QbWZm8q5XEjgT2.mp3
             characters: 61
             characters_billed: 60
             requests: 1
@@ -189,7 +190,7 @@ cases:
   # step runs. (A preview is not held to it; see the sample preview below.)
   - name: A run with no audience is refused
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     inputs: { voice: 21m00Tcm4TlvDq8ikWAM }
     expect:
@@ -199,7 +200,7 @@ cases:
 
   - name: Preview the spoken text
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     trigger: { action: preview }
     # The form as it is on screen: an unsaved edit, no voice picked yet, and
@@ -224,7 +225,7 @@ cases:
 
   - name: Spoken text without Preview as is the first audience's
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     trigger: { action: preview }
     inputs:
@@ -243,7 +244,7 @@ cases:
 
   - name: Preview a spoken sample
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     trigger:
       action: preview
@@ -266,7 +267,7 @@ cases:
 
   - name: A sample over 2,000 characters is refused
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record: *article
     trigger:
       action: preview
@@ -281,7 +282,7 @@ cases:
 
   - name: Not offered for an article with no body
     secrets: { api_key: test }
-    automation: { settings: *settings }
+    automation: { name: main, settings: *settings }
     record:
       id: Ar8xep6QbWZm8q5XEjgW6
       title: A draft with nothing in it

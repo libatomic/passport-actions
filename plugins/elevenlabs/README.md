@@ -42,10 +42,16 @@ Narration is not a channel. It makes an asset; a channel then publishes it
 
 1. Install the plugin and save the API key under **Settings**. **Test
    connection** shows your plan and the characters left.
-2. On **Automations**, add **Create audio narration**. Pick the default voice
-   from the menu, choose the model, and adjust what is read.
-3. Enable it. **Create Audio Narration** appears on the Extensions menu of
-   every article that has a body.
+2. On **Extensions**, add **Create audio narration**. Give it a short name
+   (`main`, say) and a label, pick the default voice from the menu, choose
+   the model, and adjust what is read.
+3. Enable it. It appears under its label on the Extensions menu of every
+   article that has a body.
+
+Add it again for another voice, model or language: each one has its own
+settings and is its own item on the Extensions menu, so give each a label
+that tells them apart ("Narrate in Spanish"). Each makes a narration of its
+own for an article; they never replace one another's.
 
 ## Creating a narration
 
@@ -95,8 +101,10 @@ Files:
 
 | File | Name |
 |---|---|
-| The narration | `narration-<article id>.mp3` |
-| Each audience's MP3 | `narration-<article id>-<audience id>.mp3` |
+| The narration | `narration-<article id>-<short name>.mp3` |
+| Each audience's MP3 | `narration-<article id>-<short name>-<audience id>.mp3` |
+
+The short name is the one given to the extension when it was added.
 
 The names have nothing in them that can change, which is what lets a later
 run replace them. The narration's description is "Narration of" and the
@@ -105,7 +113,7 @@ article's title; each MP3's adds the audience's name.
 ## Publishing a narration
 
 Create a podcast distribution for the article and pick the narration (the
-asset named `narration-<article id>.mp3`, not one of the per-audience MP3s)
+asset named `narration-<article id>-<short name>.mp3`, not one of the per-audience MP3s)
 as its audio. Every reader's feed carries the same address for the episode,
 and each reader's podcast app is given the MP3 for their audience when it
 fetches the audio. One distribution serves every audience the narration was

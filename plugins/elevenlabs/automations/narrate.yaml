@@ -1,4 +1,4 @@
-version: 1.0.0
+version: 1.1.0
 name: Create audio narration
 description: >-
   Reads an article aloud with an ElevenLabs voice, once for each audience
@@ -50,6 +50,11 @@ help: |
   one version can cost; a run that would go over it for any audience reads
   nothing.
 icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/account-voice.svg
+
+# Added as often as wanted: one per voice, model or language, each its own
+# item on the article's Extensions menu under the label the publisher gave it.
+# Each one's files carry its short name, so two never replace each other's.
+multiple: true
 
 extension:
   on: article
@@ -575,15 +580,17 @@ run:
     - id: name
       name: Name the narration's files
       description: >-
-        The narration's file name: the article, and nothing that can change (not
-        the title, not the voice), so a second run finds the same narration and
-        keeps its id and link. Each audience's MP3 adds the audience's id.
+        The narration's file name: the article and this extension's short
+        name, and nothing that can change (not the title, not the voice), so a
+        second run of the same extension finds the same narration and keeps
+        its id and link, and another Create Audio Narration extension makes a
+        narration of its own. Each audience's MP3 adds the audience's id.
       action: set-output
       with:
         base: >-
-          ${{ "narration-" + toString(article.id) }}
+          ${{ "narration-" + toString(article.id) + "-" + automation.name }}
         filename: >-
-          ${{ "narration-" + toString(article.id) + ".mp3" }}
+          ${{ "narration-" + toString(article.id) + "-" + automation.name + ".mp3" }}
 
     - id: prepare
       name: Prepare the text for every audience
@@ -655,7 +662,7 @@ run:
     - id: generate
       name: Read each audience's text to its own MP3
       description: |-
-        Read each audience's text to its own MP3, a protected asset only that audience's members (and admins) can fetch: narration-<article id>-<audience id>.mp3. overwrite keeps the asset's id across runs, and an MP3 is only replaced once every piece of it has been read, so a run that fails partway leaves the versions it did not reach, and the narration, as they were. Every request that reaches ElevenLabs is billed.
+        Read each audience's text to its own MP3, a protected asset only that audience's members (and admins) can fetch: narration-<article id>-<short name>-<audience id>.mp3. overwrite keeps the asset's id across runs, and an MP3 is only replaced once every piece of it has been read, so a run that fails partway leaves the versions it did not reach, and the narration, as they were. Every request that reaches ElevenLabs is billed.
 
         text_hash is kept on the asset (metadata.narration) to tell what it was made from. A run never skips on it: a person asked for this run.
       foreach: "${{ vars.versions }}"
@@ -665,7 +672,7 @@ run:
           name: Read the text into the MP3
           description: >-
             Runs `narration.create`: one request per piece, joined into
-            `narration-<article id>-<audience id>.mp3`.
+            `narration-<article id>-<short name>-<audience id>.mp3`.
           action: elevenlabs/narration.create
           with:
             chunks: "${{ loop.version.chunks }}"
@@ -703,7 +710,7 @@ run:
       name: File the MP3s as one narration
       description: >-
         File the MP3s as the versions of one narration: a virtual asset,
-        narration-<article id>.mp3, that answers each member with the MP3 for
+        narration-<article id>-<short name>.mp3, that answers each member with the MP3 for
         their audience. A narration that is already there is given this run's
         versions in place of the ones it had and keeps its id and link. No
         default: a member in none of the audiences gets no audio. An audience left
