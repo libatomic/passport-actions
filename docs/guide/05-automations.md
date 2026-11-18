@@ -386,6 +386,7 @@ model of an extension.
 | `extension` key | Required | Meaning |
 |---|---|---|
 | `on` | yes | The kind of record it is run on: `article`, `user`, `subscription`, `distribution`, `template`, `asset`, `plan`, `audience` or `category` |
+| `channel` | no | Only with `on: distribution`: makes it a [distribution extension](#58-distribution-extensions), which runs when a distribution is published instead of when a person asks |
 | `label` | no | What the menu item says. Defaults to the automation's `name`. Write it as the thing to do: "Create Audio Narration" |
 | `if` | no | Offer it only when true. It reads only the record: `"${{ subscription.status == 'active' }}"` |
 
@@ -632,3 +633,166 @@ The run is recorded with who ran it.
 - An extension is not a channel. A channel publishes a distribution
   somewhere; an extension makes or changes something in Passport that a
   channel, or a person, may then use.
+
+## 5.8 Distribution extensions
+
+A **distribution extension** is an extension a publisher attaches to a
+distribution on one of Passport's own channels. It runs when the distribution
+is published and changes what that channel sends: rewrites the links in an
+email, watermarks its images, adds a footer or a header, adds elements to a
+podcast's feed item. It is not a channel: the channel still does the
+publishing. The extension changes the content on its way out.
+
+```yaml
+# automations/email-footer.yaml
+version: 1.0.0
+name: Add a footer
+description: Adds a line of text under every email.
+multiple: true
+extension:
+  on: distribution
+  channel: email                 # what makes it a distribution extension
+  label: Footer
+  on_error: skip                 # a missing footer should not stop a send
+settings:
+  type: object
+  required: [text]
+  properties:
+    text: { type: string, title: Footer text, format: html }
+inputs:                          # the form on the distribution page
+  type: object
+  properties:
+    note: { type: string, title: Extra line for this send }
+
+run:                             # once, when the distribution is published
+  steps:
+    - id: add
+      name: Put the footer under the body
+      action: set-output
+      with:
+        body: "${{ content.body + '<footer>' + automation.settings.text + (inputs.note ?? '') + '</footer>' }}"
+  returns:
+    body: "${{ steps.add.outputs.body }}"
+
+member:                          # once for each member, as their email is made
+  steps:
+    - id: greet
+      name: Name the member in a header
+      action: set-output
+      with:
+        headers: "${{ {'X-Member': user.id} }}"
+  returns:
+    headers: "${{ steps.greet.outputs.headers }}"
+```
+
+| `extension` key | Required | Meaning |
+|---|---|---|
+| `on` | yes | `distribution` |
+| `channel` | yes | The one channel it works with: `email`, `podcast` or `rss`. Having it is what makes this a distribution extension. A plugin that works with several channels has one extension file for each |
+| `label` | no | What the distribution page calls it. Defaults to the automation's `name` |
+| `if` | no | Offer it only when true. It reads only the `distribution` |
+| `on_error` | no | `fail` (the default): a failure stops the publish. `skip`: the content goes out as it was before this extension, and the failure is noted on the distribution |
+
+Only Passport's own channels can be extended. A channel a plugin provides
+cannot: its content has no fixed shape for an extension to change. Web has
+no distribution, so there is nothing to attach to.
+
+### The flows
+
+| Flow | Required | Runs | Channels | May run |
+|---|---|---|---|---|
+| `run` | one of `run` and `member` | Once, when the distribution is published, before anything is sent | all | Every action the plugin may use |
+| `member` | one of `run` and `member` | Once for each member, as that member's message is made | `email` | Only `control`, `read` and `external` actions |
+| `preview` | no | When the distribution is previewed in the admin | all | Only `control`, `read` and `external` actions |
+
+An extension may have `run`, `member` or both. They are not alternatives: a
+link rewriter may register the campaign once in `run` and sign each
+member's links in `member`. A podcast or RSS item is published once and
+served to everyone, so those channels have no `member` flow, and the request
+for a feed is never extended.
+
+Each flow's `returns` is the content it changed, with the keys of its
+channel's content (below). A key left out is left as it was. A flow that
+only does something on the side (registers a campaign) has no `returns`.
+`preview` returns what `run` would, and must change nothing outside the run;
+without a `preview` flow the admin's preview shows the content without this
+extension and says so.
+
+`member` runs for every member of the audience, inside the send. Keep it
+short: no waits, a 10-second limit, and an `http.*` request in it is made
+once for every member, within the plugin's limits for that host. Do the
+work that is the same for everyone in `run`.
+
+### The content
+
+A flow reads the content as `content`, and returns the keys it changes.
+
+**Email**
+
+| Key | Type | In `run` | In `member` |
+|---|---|---|---|
+| `subject` | string | The subject, before member values are filled in | This member's subject |
+| `body` | string, HTML | The body, before member values are filled in: it still holds the template's member placeholders, which must be left as they are | This member's HTML, before Passport adds link tracking and the open pixel |
+| `text` | string | not present | This member's plain text. Leave it out of `returns` and it is made again from a changed `body` |
+| `headers` | map of string | Headers added to every message | Headers added to this member's message |
+| `attachments` | array of `{ asset_id, filename }` | Files attached to every message | Files attached to this member's message |
+
+Passport's own headers (`List-Unsubscribe`, `Message-Id`, `Date`, `From`,
+`To` and those starting `X-Atomic-`) cannot be set or removed; returning one
+fails the flow. Attachments are assets on the site, 10 MiB in all.
+
+**Podcast and RSS** (`run` only)
+
+| Key | Type | Meaning |
+|---|---|---|
+| `title`, `link`, `description`, `content` | string | The item's own |
+| `enclosure` | `{ url, length, type }` | The item's file |
+| `elements` | array of `{ name, value, attributes }` | Elements added to the item, such as `podcast:transcript`. `name` carries its namespace prefix; a prefix the feed does not declare is refused |
+
+**What else a flow reads.** `distribution` and its `article`;
+`inputs`, the extension's form on this distribution; `automation.name`,
+`.label`, `.settings`, `.secrets`; the plugin's `settings` and `secrets`. In
+`member`, `user` is the member. `trigger.type` is `distribution`,
+`trigger.action` is the flow's name.
+
+### On the publisher's site
+
+- **Adding.** On the plugin's Extensions tab, like any extension: with its
+  own settings, and more than once when it is `multiple`. An added
+  distribution extension has one more switch, **Use on every new
+  distribution**: when on, each new distribution of its channel starts with
+  it attached.
+- **Attaching.** The distribution page has an **Extensions** section listing
+  the enabled extensions for the distribution's channel. The publisher ticks
+  the ones to use, puts them in order, and fills in each one's form
+  (`inputs`) when it has one. A `default` in that form may follow the
+  distribution or its article, as in a channel's distribution form
+  ([2.10](02-field-schema.md#210-defaults-that-follow-another-value)).
+- **Order.** They run in the order listed. Each is handed the content as the
+  one before it left it.
+- **Publish.** `run` flows run before the audience is queued; `member` flows
+  run as each message is made. A distribution republished runs them again.
+  These runs do not count toward the site's hourly run limit.
+- **Failure.** With `on_error: fail`, a failed `run` fails the publish and
+  nothing is sent; a failed `member` fails that member's message only, and
+  it is in the delivery log. With `skip` the content passes through
+  unchanged.
+- An extension disabled or removed after it was attached is passed over at
+  publish, and the distribution says so.
+
+### Testing
+
+A case for a distribution extension names the flow and gives the content:
+
+```yaml
+cases:
+  - name: The footer goes under the body
+    flow: run                       # run (the default), member or preview
+    automation: { name: main, settings: { text: "<p>Sent by us</p>" } }
+    distribution: { id: Di1, channel: email }
+    content: { subject: Hello, body: "<p>Hi</p>" }
+    expect:
+      outputs: { body: "<p>Hi</p><footer><p>Sent by us</p></footer>" }
+```
+
+A `member` case also gives `user`.
