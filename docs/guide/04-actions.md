@@ -36,7 +36,7 @@ hand), weakest class first:
 | Effect | Meaning | Loads a field's choices | Built-ins |
 |---|---|---|---|
 | `control` | Shapes the run and touches nothing. | yes | `log`, `set-output`, `sleep`, `transmute`, `vars.set`, `wait`, `workflow.exit`, `workflow.fail` |
-| `read` | Reads Passport data. | yes | `application.get`, `article.get`, `asset.get`, `audience.get`, `audience.view`, `credit.get`, `distribution.deliveries`, `distribution.get`, `distribution.render`, `entitlement.get`, `job.get`, `option.get`, `plan.get`, `subscription.get`, `template.render`, `user.get` |
+| `read` | Reads Passport data. | yes | `application.get`, `article.get`, `asset.get`, `audience.get`, `audience.list`, `audience.view`, `category.list`, `credit.get`, `distribution.deliveries`, `distribution.get`, `distribution.render`, `entitlement.get`, `job.get`, `option.get`, `plan.get`, `plan.list`, `subscription.get`, `template.list`, `template.render`, `user.get` |
 | `external` | Calls another system. | yes | `http.delete`, `http.get`, `http.patch`, `http.post`, `http.put` |
 | `notify` | Sends a message to a person. | no | `sendmail`, `sendsms` |
 | `write` | Creates or changes Passport data. | no | `asset.concat`, `asset.create`, `asset.update`, `asset.virtual`, `credit.invite.create`, `distribution.create`, `distribution.update`, `entitlement.create`, `entitlement.update`, `event.emit`, `feed.item.create`, `instance.cache.flush`, `job.create`, `user.audienceRefresh`, `user.create`, `user.feed.invalidate`, `user.update`, `workflow.run` |

@@ -422,6 +422,25 @@ voice:
       label: "${{ item.name }}"
 ```
 
+The choices can also be the site's own records. Four built-in actions list
+them by name, [`audience.list`, `category.list`, `plan.list` and
+`template.list`](../reference/BUILTINS.md#audiencelist), so a publisher picks
+from a menu instead of typing an id:
+
+```yaml
+audiences:
+  type: array
+  title: Audiences
+  uniqueItems: true
+  items: { type: string }
+  ui:
+    options:
+      action: audience.list
+      items: "${{ outputs.audiences }}"
+      value: "${{ item.id }}"
+      label: "${{ item.name }}"
+```
+
 `items` and `value` are required; `label` defaults to the value. Each is
 exactly one expression. `options` goes on a string or a list of strings, and
 not together with `enum`.
@@ -432,7 +451,8 @@ How the menu is shown:
   marked "(default)". If the default is not among the items it is added
   first; name it with `default_label` (an expression or text), or it shows as
   its value.
-- When the list is empty and the field is not required, the field is hidden.
+- When the list is empty and the field is not required, the field is hidden,
+  default or not.
 - `ui.options` may be used on a property inside an array's `items`, giving a
   menu per row.
 

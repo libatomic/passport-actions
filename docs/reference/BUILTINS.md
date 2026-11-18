@@ -34,8 +34,8 @@ this page does not exist. The functions an expression may call are in
 - **[Builtin Actions](#builtin-actions)**: steps you run with `action:`, with their inputs and outputs
   - [User](#user): [`user.get`](#userget) · [`user.create`](#usercreate) · [`user.update`](#userupdate) · [`user.audienceRefresh`](#useraudiencerefresh) · [`user.feed.invalidate`](#userfeedinvalidate)
   - [Messaging](#messaging): [`sendmail`](#sendmail) · [`sendsms`](#sendsms)
-  - [Data & Templates](#data--templates): [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
-  - [Commerce & Content](#commerce--content): [`plan.get`](#planget) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`distribution.deliveries`](#distributiondeliveries) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`asset.virtual`](#assetvirtual) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
+  - [Data & Templates](#data--templates): [`audience.view`](#audienceview) · [`audience.get`](#audienceget) · [`audience.list`](#audiencelist) · [`category.list`](#categorylist) · [`application.get`](#applicationget) · [`template.render`](#templaterender) · [`template.list`](#templatelist) · [`instance.cache.flush`](#instancecacheflush) · [`transmute`](#transmute) · [`job.get`](#jobget) · [`job.create`](#jobcreate)
+  - [Commerce & Content](#commerce--content): [`plan.get`](#planget) · [`plan.list`](#planlist) · [`option.get`](#optionget) · [`subscription.get`](#subscriptionget) · [`credit.get`](#creditget) · [`credit.invite.create`](#creditinvitecreate) · [`feed.item.create`](#feeditemcreate) · [`distribution.get`](#distributionget) · [`distribution.render`](#distributionrender) · [`distribution.create`](#distributioncreate) · [`distribution.update`](#distributionupdate) · [`distribution.deliveries`](#distributiondeliveries) · [`asset.create`](#assetcreate) · [`asset.update`](#assetupdate) · [`asset.get`](#assetget) · [`asset.delete`](#assetdelete) · [`asset.concat`](#assetconcat) · [`asset.virtual`](#assetvirtual) · [`article.get`](#articleget) · [`entitlement.get`](#entitlementget) · [`entitlement.create`](#entitlementcreate) · [`entitlement.update`](#entitlementupdate) · [`entitlement.delete`](#entitlementdelete)
   - [HTTP](#http): [`http.get` / `http.post` / `http.put` / `http.patch` / `http.delete`](#httpget--httppost--httpput--httppatch--httpdelete)
   - [Utility & Flow Control](#utility--flow-control): [`log`](#log) · [`sleep`](#sleep) · [`set-output`](#set-output) · [`vars.set`](#varsset) · [`event.emit`](#eventemit) · [`workflow.run`](#workflowrun) · [`workflow.exit`](#workflowexit) · [`workflow.fail`](#workflowfail) · [`wait`](#wait)
 - **[Expression Functions](#expression-functions)**: in [chapter 8](../guide/08-functions.md); the expression language's own are tabled here
@@ -315,6 +315,64 @@ One of `audience_id` and `audience` is required.
 
 An audience that doesn't filter on categories returns empty arrays (i.e. ungated).
 
+### `audience.list`
+List the site's audiences by name. Most often it fills a form's menu (`ui.options`), so a publisher picks an audience instead of typing its id.
+
+<!-- reference:begin action:audience.list -->
+Effect: `read`. Automations a publisher writes: yes.
+
+| Input | Required | Type | Description |
+|---|---|---|---|
+| `static` | no | boolean | true: only the audiences whose members are set by hand or by import; false: only the ones worked out from a filter. Left out, both. Anything but true or false fails the step. |
+| `internal` | no | boolean | false: only the audiences the site's admins made; true: only the ones Passport keeps for itself. Left out, both. Anything but true or false fails the step. |
+| `limit` | no | number | The most audiences to return: 100 when it is left out or is not a positive number, and never more than 500, to which a larger limit is cut. Default `100`. |
+| `offset` | no | number | How many audiences to pass over first, in the order they are listed in. Left out, none; past the end, the step returns none. Default `0`. |
+
+| Output | Type | Description |
+|---|---|---|
+| `audiences` | array | The audiences, each as audience.get returns one, less the counts |
+| `audiences.id` | text | Audience ID |
+| `audiences.name` | text | Name |
+| `audiences.slug` | text | Slug; not set on an audience that has none |
+| `audiences.static` | boolean | True when its members are set by hand or by import |
+| `audiences.internal` | boolean | True when Passport keeps it for itself; not set otherwise |
+| `audiences.rank` | number | Its place in the site's order, 1 the best; not set when it is unranked |
+| `audiences.expr` | object | The source and filter its members are worked out from |
+| `audiences.application_id` | text | The application it belongs to; not set when it has none |
+| `audiences.metadata` | object | Its metadata; not set when it has none |
+| `audiences.created_at` | text | When it was made |
+| `audiences.last_built_at` | text | When its members were last worked out; not set when they never were |
+| `count` | number | Number of audiences returned |
+| `total` | number | Number of audiences that fit the filters, before limit and offset |
+<!-- reference:end action:audience.list -->
+
+### `category.list`
+List the site's content categories. Use it for a menu of categories, or pass `slugs` to look up a known few.
+
+<!-- reference:begin action:category.list -->
+Effect: `read`. Automations a publisher writes: yes.
+
+| Input | Required | Type | Description |
+|---|---|---|---|
+| `slugs` | no | list | Only the categories with one of these slugs: a list, or one slug as text. Left out, every category. |
+| `limit` | no | number | The most categories to return: 100 when it is left out or is not a positive number, and never more than 500, to which a larger limit is cut. Default `100`. |
+| `offset` | no | number | How many categories to pass over first, in the order they are listed in. Left out, none; past the end, the step returns none. Default `0`. |
+
+| Output | Type | Description |
+|---|---|---|
+| `categories` | array | The categories |
+| `categories.id` | text | Category ID |
+| `categories.name` | text | Name |
+| `categories.slug` | text | Slug |
+| `categories.description` | text | Description; not set when it has none |
+| `categories.active` | boolean | True when it is active |
+| `categories.hidden` | boolean | True when it is hidden |
+| `categories.metadata` | object | Its metadata; not set when it has none |
+| `categories.created_at` | text | When it was made |
+| `count` | number | Number of categories returned |
+| `total` | number | Number of categories that fit the filters, before limit and offset |
+<!-- reference:end action:category.list -->
+
 ### `application.get`
 Load an application with its audiences, plus only the metadata paths you ask for. Use it
 to read an integration's settings from a workflow — e.g. the Spotify integration
@@ -401,6 +459,30 @@ One of `template`, `template_id` and `body` is required. At most one of `audienc
 <!-- reference:end action:template.render -->
 
 `article_id` and `audience_id` need Passport 2.3.0; a render as an audience is described under [Rendering as an audience](#rendering-as-an-audience). `transmute` is off by default.
+
+### `template.list`
+List the site's templates by name and type, without their bodies. Use it for a menu of templates; render the chosen one with `template.render`.
+
+<!-- reference:begin action:template.list -->
+Effect: `read`. Automations a publisher writes: yes.
+
+| Input | Required | Type | Description |
+|---|---|---|---|
+| `type` | no | list | Only the templates of these types (article, admin, report, system): a list, or one type as text. Left out, every type. |
+| `limit` | no | number | The most templates to return: 100 when it is left out or is not a positive number, and never more than 500, to which a larger limit is cut. Default `100`. |
+| `offset` | no | number | How many templates to pass over first, in the order they are listed in. Left out, none; past the end, the step returns none. Default `0`. |
+
+| Output | Type | Description |
+|---|---|---|
+| `templates` | array | The templates, by what names them |
+| `templates.id` | text | Template ID |
+| `templates.name` | text | Name |
+| `templates.slug` | text | Slug |
+| `templates.type` | text | article, admin, report or system |
+| `templates.title` | text | Title; not set when it has none |
+| `count` | number | Number of templates returned |
+| `total` | number | Number of templates that fit the filters, before limit and offset |
+<!-- reference:end action:template.list -->
 
 ### `instance.cache.flush`
 Flushes the instance cache.
@@ -498,6 +580,37 @@ One of `plan_id`, `stripe_product` and `addon_plan_id` is required.
 |---|---|---|
 | `plan` | object | The plan object |
 <!-- reference:end action:plan.get -->
+
+### `plan.list`
+List the site's plans. Use it for a menu of plans; a plan's password is never returned.
+
+<!-- reference:begin action:plan.list -->
+Effect: `read`. Automations a publisher writes: yes.
+
+| Input | Required | Type | Description |
+|---|---|---|---|
+| `type` | no | list | Only the plans of these types (free, paid, enterprise): a list, or one type as text. Left out, every type. A list without enterprise leaves out the plans confined to email domains. |
+| `active` | no | boolean | true: only the plans that are active; false: only the ones that are not. Left out, both. Anything but true or false fails the step. |
+| `hidden` | no | boolean | false: only the plans that are not hidden; true: only the hidden ones. Left out, both. Anything but true or false fails the step. |
+| `limit` | no | number | The most plans to return: 100 when it is left out or is not a positive number, and never more than 500, to which a larger limit is cut. Default `100`. |
+| `offset` | no | number | How many plans to pass over first, in the order they are listed in. Left out, none; past the end, the step returns none. Default `0`. |
+
+| Output | Type | Description |
+|---|---|---|
+| `plans` | array | The plans, each as plan.get returns one, less its prices, categories, audiences and password |
+| `plans.id` | text | Plan ID |
+| `plans.name` | text | Name |
+| `plans.description` | text | Description; not set when it has none |
+| `plans.type` | text | free, paid or enterprise |
+| `plans.active` | boolean | True when it is active |
+| `plans.hidden` | boolean | True when it is hidden |
+| `plans.default` | boolean | True for the site's default plan |
+| `plans.stripe_product` | text | Its Stripe product; not set when it has none |
+| `plans.metadata` | object | Its metadata; not set when it has none |
+| `plans.created_at` | text | When it was made |
+| `count` | number | Number of plans returned |
+| `total` | number | Number of plans that fit the filters, before limit and offset |
+<!-- reference:end action:plan.list -->
 
 ### `option.get`
 Read an instance option value by name. Protected options are **not** overridden, so protected values are not exposed to a workflow.

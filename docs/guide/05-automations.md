@@ -614,8 +614,9 @@ provides as automations, channels and extensions.
 - With no `settings`, the extension is on the menu as soon as the plugin is
   enabled.
 - With `settings`, the publisher adds it first, on the Extensions tab, and it
-  is on the menu while it is enabled. With `multiple: true` each one added
-  is its own menu item, under the label the publisher gave it.
+  is on the menu while it is enabled, under the label the publisher gave it
+  (the definition's label when they gave none). With `multiple: true` each
+  one added is its own menu item.
 
 A person needs permission to change the record to run an extension on it.
 The run is recorded with who ran it.

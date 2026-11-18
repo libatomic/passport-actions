@@ -466,6 +466,7 @@ hand):
 | `run_retention` | 180 days | The longest an automation's retention may keep its run history. |
 | `package_size` | 1 MiB | The largest package a site installs, all its files together. |
 | `audience_view_members` | 10000 | The most members audience.view returns when it gives no max. |
+| `list_action_records` | 500 | The most records audience.list, category.list, plan.list or template.list returns in one step; a larger limit is cut to it. |
 | `gzip_size` | 1 MiB | The most uncompressed text gzip takes and gunzip gives back. |
 | `random_string_length` | 1024 characters | The longest text randomString makes. |
 | `webhook_multipart_field_size` | 1 MiB | The largest value of one field of a multipart webhook call. |
