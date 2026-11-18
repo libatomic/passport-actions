@@ -28,6 +28,10 @@ A Passport record id (`passport.id`) is short text such as
 | `channel.status.result` | `passport/schemas/channel.status.result@^1` | channel | What a channel's status flow returns: what the destination says became of what was published. |
 | `channel.update.result` | `passport/schemas/channel.update.result@^1` | channel | What a channel's update flow returns. The keys are those of a publish; an id, url or data left out stays as Passport has it. It is handed to every later flow as published. |
 | `entitlement` | `passport/schemas/entitlement@^1` | record | A Passport entitlement, as event bodies and API responses carry it. |
+| `extension.distribution.email.member.result` | `passport/schemas/extension.distribution.email.member.result@^1` | extension | What the member flow of a distribution extension on the email channel returns: the keys of this member's message it changed. A key left out is left as it was. |
+| `extension.distribution.email.result` | `passport/schemas/extension.distribution.email.result@^1` | extension | What the run flow, or the preview flow, of a distribution extension on the email channel returns: the keys of the email it changed. A key left out is left as it was. |
+| `extension.distribution.feed.result` | `passport/schemas/extension.distribution.feed.result@^1` | extension | What the run flow, or the preview flow, of a distribution extension on the podcast or the rss channel returns: the keys of the feed item it changed. A key left out is left as it was. |
+| `extension.distribution.sms.result` | `passport/schemas/extension.distribution.sms.result@^1` | extension | What a flow of a distribution extension on the sms channel returns: the message, when it changed it. In the run and preview flows it is the message before member values are filled in; in the member flow it is this member's message as it will be sent. |
 | `extension.preview.result` | `passport/schemas/extension.preview.result@^1` | extension | What an extension's preview flow returns: what to play, or the text that would be worked on. At least one of text and audio is there. |
 | `instance` | `passport/schemas/instance@^1` | record | A Passport instance (a site), as event bodies carry it, with its configuration. |
 | `job` | `passport/schemas/job@^1` | record | A Passport job, as event bodies carry it. |
@@ -203,6 +207,58 @@ Version 1.0.0, referred to as `passport/schemas/entitlement@^1`.
 | `stripe_invoice` | string | no |  |
 | `subscription_id` | string (`passport.id`) | no |  |
 | `status` | string | no |  |
+
+#### `extension.distribution.email.member.result`
+
+What the member flow of a distribution extension on the email channel returns: the keys of this member's message it changed. A key left out is left as it was.
+
+Version 1.0.0, referred to as `passport/schemas/extension.distribution.email.member.result@^1`.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `subject` | string | no | This member's subject. |
+| `body` | string | no | This member's HTML, before link tracking and the open pixel are added. |
+| `text` | string | no | This member's plain text. Left out, it is made again from a changed body. |
+| `headers` | object | no | Headers added to this member's message. Passport's own headers cannot be set. |
+| `attachments` | array of object | no | Files attached to this member's message, each an asset on the site. 10 MiB in all. |
+
+#### `extension.distribution.email.result`
+
+What the run flow, or the preview flow, of a distribution extension on the email channel returns: the keys of the email it changed. A key left out is left as it was.
+
+Version 1.0.0, referred to as `passport/schemas/extension.distribution.email.result@^1`.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `subject` | string | no | The subject, before member values are filled in. |
+| `body` | string | no | The HTML body, before member values are filled in. The template's member placeholders are left as they are. |
+| `headers` | object | no | Headers added to every message. Passport's own headers cannot be set. |
+| `attachments` | array of object | no | Files attached to every message, each an asset on the site. 10 MiB in all. |
+
+#### `extension.distribution.feed.result`
+
+What the run flow, or the preview flow, of a distribution extension on the podcast or the rss channel returns: the keys of the feed item it changed. A key left out is left as it was.
+
+Version 1.0.0, referred to as `passport/schemas/extension.distribution.feed.result@^1`.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `title` | string | no | The item's title. |
+| `link` | string | no | The item's link. |
+| `description` | string | no | The item's description. |
+| `content` | string | no | The item's content, as HTML. |
+| `enclosure` | object | no | The item's file. |
+| `elements` | array of object | no | Elements added to the item, such as podcast:transcript. |
+
+#### `extension.distribution.sms.result`
+
+What a flow of a distribution extension on the sms channel returns: the message, when it changed it. In the run and preview flows it is the message before member values are filled in; in the member flow it is this member's message as it will be sent.
+
+Version 1.0.0, referred to as `passport/schemas/extension.distribution.sms.result@^1`.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `body` | string | no | The message, as plain text. It is held to the length Passport allows a text message. |
 
 #### `extension.preview.result`
 
