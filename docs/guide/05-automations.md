@@ -719,7 +719,7 @@ without a `preview` flow the admin's preview shows the content without this
 extension and says so.
 
 `member` runs for every member of the audience, inside the send. Keep it
-short: no waits, a 10-second limit, and an `http.*` request in it is made
+short: no `wait` anywhere in it (nor in `preview`), a 10-second limit, and an `http.*` request in it is made
 once for every member, within the plugin's limits for that host. Do the
 work that is the same for everyone in `run`.
 
@@ -737,9 +737,15 @@ A flow reads the content as `content`, and returns the keys it changes.
 | `headers` | map of string | Headers added to every message | Headers added to this member's message |
 | `attachments` | array of `{ asset_id, filename }` | Files attached to every message | Files attached to this member's message |
 
-Passport's own headers (`List-Unsubscribe`, `Message-Id`, `Date`, `From`,
-`To` and those starting `X-Atomic-`) cannot be set or removed; returning one
-fails the flow. Attachments are assets on the site, 10 MiB in all.
+Returned `headers` are merged with those already there, name by name; an
+empty value removes one. Every other key replaces what was there. Headers
+that decide who gets the message or how it is handled cannot be set or
+removed, and returning one fails the flow: `From`, `To`, `Cc`, `Bcc`,
+`Reply-To`, `Sender`, `Return-Path`, `Subject` (return `subject` instead),
+`Date`, `Message-Id`, `Received`, `MIME-Version`, `Content-Type`,
+`Content-Transfer-Encoding`, `DKIM-Signature`, `List-Unsubscribe`,
+`List-Unsubscribe-Post` and those starting `X-Atomic-`. Attachments are
+assets on the site, 10 MiB in all.
 
 **SMS**
 
@@ -747,7 +753,7 @@ fails the flow. Attachments are assets on the site, 10 MiB in all.
 |---|---|---|---|
 | `body` | string, plain text | The message, before member values are filled in: it still holds the template's member placeholders, which must be left as they are | This member's message, as it will be sent |
 
-A changed `body` is still held to the length Passport allows a text message.
+A returned `body` may be 1,600 characters at most.
 
 **Podcast and RSS** (`run` only)
 
@@ -755,12 +761,13 @@ A changed `body` is still held to the length Passport allows a text message.
 |---|---|---|
 | `title`, `link`, `description`, `content` | string | The item's own |
 | `enclosure` | `{ url, length, type }` | The item's file |
-| `elements` | array of `{ name, value, attributes }` | Elements added to the item, such as `podcast:transcript`. `name` carries its namespace prefix; a prefix the feed does not declare is refused |
+| `elements` | array of `{ name, value, attributes }` | Elements added to the item, such as `podcast:transcript`. `name` carries its namespace prefix; a prefix the feed does not declare is refused, and so is Passport's own `atomic:`. Every feed declares `podcast:` |
 
 **What else a flow reads.** `distribution` and its `article`;
 `inputs`, the extension's form on this distribution; `automation.name`,
 `.label`, `.settings`, `.secrets`; the plugin's `settings` and `secrets`. In
-`member`, `user` is the member. `trigger.type` is `distribution`,
+`member`, `user` is the member: `id`, `login`, `name` and `email`, and no
+more, to keep each member's run cheap. `trigger.type` is `distribution`,
 `trigger.action` is the flow's name.
 
 ### On the publisher's site
@@ -784,7 +791,9 @@ A changed `body` is still held to the length Passport allows a text message.
 - **Failure.** With `on_error: fail`, a failed `run` fails the publish and
   nothing is sent; a failed `member` fails that member's message only, and
   it is in the delivery log. With `skip` the content passes through
-  unchanged.
+  unchanged; a skipped `run` is noted on the distribution.
+- **Adding comes first.** A distribution extension is always added before it
+  can be attached, even when it has no settings.
 - An extension disabled or removed after it was attached is passed over at
   publish, and the distribution says so.
 
