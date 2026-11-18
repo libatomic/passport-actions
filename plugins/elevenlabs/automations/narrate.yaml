@@ -301,20 +301,26 @@ inputs:
       default: "${{ automation.settings.voice_id }}"
       ui:
         options:
-          # The default voice, then the other voices. The form lists the
-          # choice equal to the default first and marks it "(default)"
-          # (guide 2.8). The default voice is not one of the "Other voices"
-          # rows, so it is added here; with no other voices the list is
-          # empty and the menu is hidden, as in v1. The map literal is in
-          # parentheses so the expression engine does not read its braces as
-          # a closure.
+          # The default voice, then the other voices. The account's voices
+          # are read from ElevenLabs only to name the default voice: its
+          # name there is what the menu calls it, unless the settings give
+          # it another ("Default voice name"). The other voices go by the
+          # names the settings give them. With no other voices the list is
+          # empty, and the form shows the default alone, named by
+          # default_label. The map literal is in parentheses so the
+          # expression engine does not read its braces as a closure.
+          action: elevenlabs/voices.list
           items: >-
             ${{ len(automation.settings.voices ?? []) == 0 ? []
             : concat([({"voice_id": automation.settings.voice_id,
-            "label": trim(automation.settings.voice_name ?? "") != "" ? trim(automation.settings.voice_name) : "Default voice"})],
+            "label": trim(automation.settings.voice_name ?? "") != "" ? trim(automation.settings.voice_name)
+            : (first(filter(outputs.voices ?? [], .voice_id == automation.settings.voice_id))?.name ?? "Default voice")})],
             automation.settings.voices) }}
           value: "${{ item.voice_id }}"
           label: "${{ item.label }}"
+          default_label: >-
+            ${{ trim(automation.settings.voice_name ?? "") != "" ? trim(automation.settings.voice_name)
+            : (first(filter(outputs.voices ?? [], .voice_id == automation.settings.voice_id))?.name ?? "Default voice") }}
     script:
       type: string
       format: html
