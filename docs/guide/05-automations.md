@@ -688,7 +688,7 @@ member:                          # once for each member, as their email is made
 | `extension` key | Required | Meaning |
 |---|---|---|
 | `on` | yes | `distribution` |
-| `channel` | yes | The one channel it works with: `email`, `podcast` or `rss`. Having it is what makes this a distribution extension. A plugin that works with several channels has one extension file for each |
+| `channel` | yes | The one channel it works with: `email`, `sms`, `podcast` or `rss`. Having it is what makes this a distribution extension. A plugin that works with several channels has one extension file for each |
 | `label` | no | What the distribution page calls it. Defaults to the automation's `name` |
 | `if` | no | Offer it only when true. It reads only the `distribution` |
 | `on_error` | no | `fail` (the default): a failure stops the publish. `skip`: the content goes out as it was before this extension, and the failure is noted on the distribution |
@@ -702,7 +702,7 @@ no distribution, so there is nothing to attach to.
 | Flow | Required | Runs | Channels | May run |
 |---|---|---|---|---|
 | `run` | one of `run` and `member` | Once, when the distribution is published, before anything is sent | all | Every action the plugin may use |
-| `member` | one of `run` and `member` | Once for each member, as that member's message is made | `email` | Only `control`, `read` and `external` actions |
+| `member` | one of `run` and `member` | Once for each member, as that member's message is made | `email`, `sms` | Only `control`, `read` and `external` actions |
 | `preview` | no | When the distribution is previewed in the admin | all | Only `control`, `read` and `external` actions |
 
 An extension may have `run`, `member` or both. They are not alternatives: a
@@ -740,6 +740,14 @@ A flow reads the content as `content`, and returns the keys it changes.
 Passport's own headers (`List-Unsubscribe`, `Message-Id`, `Date`, `From`,
 `To` and those starting `X-Atomic-`) cannot be set or removed; returning one
 fails the flow. Attachments are assets on the site, 10 MiB in all.
+
+**SMS**
+
+| Key | Type | In `run` | In `member` |
+|---|---|---|---|
+| `body` | string, plain text | The message, before member values are filled in: it still holds the template's member placeholders, which must be left as they are | This member's message, as it will be sent |
+
+A changed `body` is still held to the length Passport allows a text message.
 
 **Podcast and RSS** (`run` only)
 

@@ -42,7 +42,7 @@ accepts today.
 | Choices loaded from an action ([2.8](guide/02-field-schema.md)) | Built |
 | The distribution form ([6.4](guide/06-channels.md)) | Built in the engine; the admin's distribution page does not show it yet |
 | Extensions, with a `run` flow and a `preview` flow whose result is fixed, and the paragraph editor ([5.7](guide/05-automations.md#57-extensions), [2.6](guide/02-field-schema.md#the-paragraph-editor)) | Built |
-| Distribution extensions: extensions attached to an email, podcast or RSS distribution, run at publish, once and for each member ([5.8](guide/05-automations.md#58-distribution-extensions)) | Specified, not built (PSPT-1096) |
+| Distribution extensions: extensions attached to an email, SMS, podcast or RSS distribution, run at publish, once and for each member ([5.8](guide/05-automations.md#58-distribution-extensions)) | Specified, not built (PSPT-1096) |
 | A `name` and a `description` on every step, and a `description` on a channel's flow ([7.1](guide/07-steps-and-expressions.md#71-a-step)) | Built |
 | `http.*` held to public addresses, ports 80 and 443, and redirects to allowed hosts ([1.2](guide/01-project-and-manifest.md#where-http-may-connect)) | Built |
 | Channel flows: `publish`, `update`, `delete`, `preview` and `status` in the channel file, each with a fixed result, and `published` ([6.5](guide/06-channels.md#65-the-flows)); `channel.delivery` and `channel.audience` in place of `mode` and `requires_audience` ([6.2](guide/06-channels.md#62-the-channel-block)) | Specified 16 November; not built. Until it is, `passport-plugin check` refuses the examples in chapter 6 |
