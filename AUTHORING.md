@@ -84,12 +84,13 @@ its only one.
 | `application` | Offer only that application's audiences in the picker |
 | `address`, `connect_url` | Member identity fields and a Connect button (unicast) |
 | `preview` | `true`: the workflow answers `trigger.action: "preview"` with no side effects (see Previews) |
+| `upload` | `true`: the destination hosts the media and the workflow answers `trigger.action: "upload"`; the editor sends the file from the browser to the destination instead of offering Passport's assets (see Direct media upload) |
 | `ui` | Free-form hints for the admin's distribution editor (see [Admin editor hints](#admin-editor-hints-ui)) |
 
 `trigger.action` tells the run what to do: `publish`, `republish` (update what
 you published, don't duplicate it), `delete` (remove it; runs before the row is
-deleted, a failure keeps the distribution), and `preview` (manual, only with
-`preview: true`).
+deleted, a failure keeps the distribution), `preview` (manual, only with
+`preview: true`) and `upload` (manual, only with `upload: true`).
 
 ## Step kinds
 
@@ -199,6 +200,31 @@ effect, and add `if: ${{ steps.mode.outputs.mode == "run" }}` to the side-effect
 steps as a backstop. A preview may return media as base64 in an output when the
 API offers it (e.g. ElevenLabs' `with-timestamps`), never as a saved asset.
 
+### Direct media upload
+
+When the destination hosts the media (Spotify), don't make the file a Passport
+asset first: declare `upload: true` on a `base_type: podcast` trigger and
+answer `trigger.action: "upload"`. The editor then shows a file input in place
+of the asset picker and talks to the workflow twice:
+
+1. **Start**, `trigger.upload: {content_type, filename, size}`. Create whatever
+   the media belongs to if it doesn't exist yet (a draft episode), open an
+   upload session, then `distribution.update` the context with your own ids and
+   `channel_upload: {id, filename, content_type, size, status: "pending",
+   requested_at}`, and return `upload_url` as a named output (`upload_id` and
+   `upload_expires_at` are optional). `workflow.exit` after.
+2. The browser `PUT`s the file to `upload_url` (the Cloud Storage resumable
+   protocol; see `atomic/docs/WORKFLOW.md`, *Direct media upload*).
+3. **Finish**, `trigger.upload: {complete: true}`. Merge `status: "uploaded"`
+   into `channel_upload` and exit.
+
+In the publish path, read `context.channel_upload.status`: `uploaded` means
+publish without an asset, `pending` means `workflow.fail` ("the upload did not
+finish"). The platform runs your `delete` action for a draft that has
+`channel_upload`, so remove what the start created there. Never write
+`upload_url` to the context: it is a bearer address. The reference is the
+`upload` branch of `spotify/create-episode`.
+
 ### Status of what was published
 
 A separate manual blueprint with a top-level `channel: <name>` becomes the
@@ -215,6 +241,7 @@ Keys and settings the admin understands without knowing the channel:
 |---|---|---|
 | Distribution `context` | `channel_link` | *Open on <label>* |
 | Distribution `context` | `asset_id` (+ `generated_at`, `characters_billed`) | An inline player or file link, its duration and those details |
+| Distribution `context` | `channel_upload` (`{id, filename, content_type, size, status}`) | The uploaded file in a podcast-shaped editor, *Replace file*, and whether Publish is enabled (`status: uploaded`); only for a trigger with `upload: true` |
 | Distribution `context` | `channel_error` | *Last run stopped: …* (prefer `workflow.fail`) |
 | Distribution `context` | `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_status_checked_at` | Status, failures, an **Error** state |
 | Distribution `context` | `body_edited` | Set by the admin when the body was edited; **Update Distribution** asks before replacing it |

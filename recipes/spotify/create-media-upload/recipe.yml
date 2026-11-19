@@ -1,0 +1,76 @@
+name: spotify-create-media-upload
+version: "1.0"
+description: >
+  Request a direct media upload for a Spotify episode via the Distribution API
+  (pinned to Api-Version 2026-04-01). Returns a resumable upload session URL
+  the file is sent to with PUT.
+
+inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  episode_id:
+    required: true
+    type: string
+    label: Episode ID
+    description: >
+      Spotify episode id — the base-62 id at the end of the episode URI
+      (spotify:episode:<id>).
+  content_type:
+    required: true
+    type: string
+    label: Content Type
+    description: >
+      MIME type of the file that will be uploaded: audio/mpeg, audio/mp3,
+      audio/mp4, audio/m4a, audio/x-m4a, video/mp4 or video/quicktime. Spotify
+      rejects anything else (422).
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # Response body: upload_url (a Cloud Storage resumable session; anyone
+  # holding it can upload, so treat it as a credential), upload_expires_at
+  # (7 days out) and media_id, which identifies this upload in
+  # GET /episodes/{id}/latest-media and /availability.
+  #
+  # ONE attempt: every successful request opens a new session and a new
+  # media_id, and the newest session wins when its upload completes — a retry
+  # of a request Spotify had accepted would leave the caller holding the
+  # older session's URL.
+  - id: upload
+    action: http.post
+    with:
+      url: "https://distribution.spotify.com/episodes/${{ inputs.episode_id }}/media"
+      retries: 1
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Content-Type: application/json
+        Api-Version: ${{ inputs.api_version }}
+      body:
+        content_type: ${{ inputs.content_type }}
+      expect_status: [201]

@@ -39,19 +39,70 @@ Steps, in order:
 | Step | Action | Purpose |
 |---|---|---|
 | `load` | `distribution.get` | Load the episode metadata the editor collected |
-| `existing` | `set-output` | `context.spotify_episode_id` from a previous publish, or `""` |
+| `existing` | `set-output` | `context.spotify_episode_id` from a previous publish or upload, or `""` |
+| `uploaded` | `set-output` | `context.channel_upload.status`: `""`, `pending` or `uploaded` |
+| `upload` | `if trigger.action == "upload"` | The editor's direct media upload (see [Media upload](#media-upload)), then `workflow.exit` |
 | `teardown` | `if trigger.action == "delete"` | recipe `spotify/delete-episode` for the recorded episode (nothing to do if none), then `workflow.exit` |
-| `no-media` | `workflow.fail` | Stop with a plain reason when the distribution has no media file |
+| `no-media` | `workflow.fail` | Stop with a plain reason when the distribution has neither an uploaded file nor a Passport media file |
+| `upload-unfinished` | `workflow.fail` | Stop when a file was chosen but its upload never finished |
 | `render` | `distribution.render` | Render the template into the episode summary |
-| `media` | `asset.get` (`link: true`, `application: spotify`) | Resolve the enclosure asset to a URL signed with the Spotify app's feed token |
+| `media` | `asset.get` (`link: true`, `application: spotify`) | Only without a direct upload: resolve the Passport media file to a URL signed with the Spotify app's feed token |
 | `unsupported-media` | `workflow.fail` | Stop when the file is plainly not audio or video (its type is set and is neither `audio/*` nor `video/*`) |
 | `app` | `application.get` | Load the Spotify application (if installed) for its open categories |
 | `audience` | `audience.get` | Read the audience's categories |
 | `entitlements` | `set-output` | Apply the podcast-feed rule: slugs, or `[]` if a category is open |
-| `update` | `if existing != ""` | recipe `spotify/update-episode` (`clear_entitlements: true`, so an episode can go from gated to open; `missing_ok: true`, so a 404 falls through to a create) |
+| `update` | `if existing != ""` | recipe `spotify/update-episode` (`clear_entitlements: true`, so an episode can go from gated to open; `missing_ok: true`, so a 404 falls through to a create). After a direct upload no media URL is sent, so Spotify keeps the uploaded file |
 | `target` | `set-output` | `create` is true when nothing was published yet or the update answered 404 |
 | `publish` | `if target.create` | recipe `spotify/create-episode` + `distribution.update` (`remember`) recording the episode in `context` |
 | `schedule-status` | `workflow.run` (async, `run_at`) | Run the status workflow for this distribution after `status_check_after` |
+
+## Media upload
+
+The trigger declares `upload: true`: Spotify hosts the media, so the editor
+sends the chosen file **from the browser straight to Spotify**. It is not
+stored in Passport. Your Spotify organization must be enabled for direct
+upload (`POST /episodes/{id}/media` answers 403 until it is).
+
+1. **Choosing a file** runs this workflow with `trigger.action: "upload"` and
+   `trigger.upload: {content_type, filename, size}`. An upload session belongs
+   to an episode, so if the distribution has none yet the workflow creates it
+   now as a hidden draft: `pubdate` 2099-01-01, no entitlements. It then asks
+   Spotify for an upload session (recipe
+   [`spotify/create-media-upload`](../../../recipes/spotify/create-media-upload/)),
+   records the episode and `context.channel_upload` (`status: pending`) on the
+   distribution, and returns `upload_url` to the editor.
+2. **The browser uploads** the file to that URL in 8 MiB chunks, resuming
+   after a dropped connection. The page has to stay open until it finishes.
+3. **When it finishes**, the editor runs the workflow again with
+   `trigger.upload: {complete: true}` and `channel_upload.status` becomes
+   `uploaded`. Publish is enabled from then on.
+4. **Publishing** updates the draft episode with the real `pubdate`, title,
+   summary and entitlements. No media URL is sent.
+
+Choosing another file later (*Replace file*) opens a new session for the same
+episode; Spotify keeps serving the previous media until the new upload has
+been processed. Deleting the distribution deletes the episode, also when it
+was never published.
+
+Things to know:
+
+- **The draft episode needs a media URL.** Spotify refuses to create an episode
+  without one (422 "Passthrough url must be provided"), so the draft is created
+  with a placeholder on this instance (`/spotify-upload-pending.mp3`) that
+  serves no media. Spotify logs one failed fetch for it; the upload replaces
+  it. If *Check status* is run before the upload has been processed, it shows
+  that failure.
+- **The browser can't see the upload complete.** Spotify's upload session
+  doesn't let the browser read the response to the request that finishes the
+  upload, so the editor treats "the last chunk failed and the session no longer
+  answers" as done. Whether Spotify accepted the file is known from the status
+  check after publish (below), not from the upload.
+- **The upload URL is a bearer address.** Anyone holding it can upload to the
+  episode for 7 days. It is returned to the editor as a run output — and so is
+  stored with that workflow run — and is never written to the distribution.
+- **Older distributions.** A distribution that already has a Passport media
+  file (`asset_id`) is published from that file through `media_file_url`, as
+  before; the editor keeps showing its file.
 
 ## Failure handling
 
@@ -65,9 +116,13 @@ Steps, in order:
   again starts clean.
 - **Episodes removed on Spotify.** A republish of an episode Spotify no longer
   has creates it again; a delete of one succeeds.
-- **Missing or wrong media.** A distribution without a file, or with a file that
-  is not audio or video, fails the publish with a reason the admin shows on the
-  distribution, before anything is sent to Spotify.
+- **Missing or wrong media.** A distribution without a file, with an upload
+  that never finished, or with a Passport file that is not audio or video,
+  fails the publish with a reason the admin shows on the distribution, before
+  anything is sent to Spotify.
+- **Uploaded episode removed on Spotify.** The file went with it and Passport
+  has no copy, so the republish fails and asks for the file to be uploaded
+  again.
 
 ## Status after a publish
 
@@ -98,7 +153,7 @@ Field mapping:
 | `title` | `distribution.title` |
 | `pubdate` | `distribution.published_at` |
 | `summary` | the rendered template body |
-| `media_file_url` | the enclosure asset's public URL |
+| media | the file the editor uploaded to Spotify; for a distribution with a Passport media file, `media_file_url` = that asset's public URL |
 | `guid` | `trigger.distribution_id` (create only) |
 | `entitlements` | the audience's category slugs, or `[]` if one is an open category of the Spotify application |
 | `content_rating` / `explicit` / `episode_type` | blueprint inputs |
@@ -115,11 +170,15 @@ on:
       content_type: html
       requires_audience: true
       application: spotify
+      upload: true
 ```
 
 **`base_type: podcast`** — the Add Distribution editor shows the familiar
-podcast form (title, summary, and an **audio/video file picker**) rather than a
-plain body box. The chosen media file arrives on the distribution as `asset_id`.
+podcast form (title, summary, and an **audio/video file**) rather than a plain
+body box.
+
+**`upload: true`** — the file control uploads to Spotify instead of picking a
+Passport asset (see [Media upload](#media-upload)).
 
 **`requires_audience: true` on a broadcast channel** — this is the unusual bit.
 The episode is posted **once**, not per member, but you must still select an
@@ -166,9 +225,10 @@ accounts.spotify.com
 distribution.spotify.com
 ```
 
-**Media** — MP3, M4A, MP4 or MOV; MP4/MOV are published as video. The publish
-stops early if the distribution has no file or the file is not audio or video.
-The asset URL must be publicly reachable by Spotify.
+**Media** — MP3, M4A, MP4 or MOV; MP4/MOV are published as video. The file is
+uploaded from the editor to Spotify, which requires direct upload to be enabled
+for your Spotify organization. The publish stops early if the distribution has
+no file.
 
 ## Setup
 
@@ -177,7 +237,7 @@ The asset URL must be publicly reachable by Spotify.
 3. Add both Spotify hosts to the allowlist.
 4. Save, then **enable** the workflow — this registers the channel.
 5. On an article: **Add distribution → Spotify**, choose the audience whose
-   categories should gate playback, upload/select the media file, pick a
+   categories should gate playback, choose the media file (it uploads to Spotify), pick a
    template, then publish.
 
 ## Authentication
