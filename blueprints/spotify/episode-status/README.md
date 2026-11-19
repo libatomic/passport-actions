@@ -4,8 +4,18 @@ A manual workflow that reports Spotify's **processing status** for an episode
 published by the Spotify channel, with the failure events and reasons when
 processing did not succeed.
 
+It looks at three things, because the episode's own status can read `success`
+while its media is still processing and nothing can be played:
+
+- the **episode** status (`GET /episodes/{id}/status`),
+- the **media file** last submitted for it, by upload or by URL
+  (`GET /episodes/{id}/latest-media`),
+- its **availability**, whether Spotify is serving it
+  (`GET /episodes/{id}/availability`).
+
 Built on the [`spotify/get-episode-status`](../../../recipes/spotify/get-episode-status/)
-recipe. Installed by the `spotify` package alongside the channel workflow.
+and [`spotify/get-episode-media`](../../../recipes/spotify/get-episode-media/)
+recipes. Installed by the `spotify` package alongside the channel workflow.
 
 ## How it is used
 
@@ -37,13 +47,16 @@ normalized so the admin never has to know Spotify.
 |---|---|
 | `episode_id` / `episode_uri` | The episode, from the distribution's context |
 | `spotify_status` | Spotify's raw `processing_status` |
-| `status` | Contract status: `success`, `pending`, `failed`, `removed` (`no_content`/`unknown` → `pending`) |
+| `status` | Contract status, the worst of the three checks: `removed`, then `failed` (episode or media), then `pending` (episode or media still processing, or not being served); `success` only when nothing is pending |
+| `checks` | `[{label, state, detail, updated_at}]`: *Episode*, *Media file* and *Availability*, each with Spotify's own word as `detail`. The admin shows one chip per check |
+| `summary` | One sentence saying where things stand, e.g. "Spotify is still processing the media file." |
+| `media_status`, `availability` | Spotify's raw media status and availability state |
 | `status_updated_at` | When Spotify last updated the status |
-| `failures` | `[{type, occurred_at, messages: [..]}]` — each Spotify failure event's `error_message` or `issues[]` as its messages |
+| `failures` | `[{type, occurred_at, messages: [..]}]` — the episode's failure events followed by the media's, each one's `error_message` or `issues[]` as its messages |
 
 The result is also written to the distribution's `context` as
-`channel_status`, `channel_status_updated_at`, `channel_failures` and
-`channel_status_checked_at`, so the admin shows the last known state without
+`channel_status`, `channel_status_updated_at`, `channel_failures`,
+`channel_checks`, `channel_status_summary` and `channel_status_checked_at`, so the admin shows the last known state without
 re-running the check and lists a `failed` episode as **Error**. A failed
 episode is fixed by either deleting the distribution (which removes the
 episode from Spotify) or correcting the media and publishing again (which

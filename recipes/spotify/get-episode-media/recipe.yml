@@ -1,0 +1,73 @@
+name: spotify-get-episode-media
+version: "1.0"
+description: >
+  Get the latest media submitted for a Spotify episode and whether the
+  episode is being served, via the Distribution API (pinned to Api-Version
+  2026-04-01).
+
+inputs:
+  api_version:
+    default: "2026-04-01"
+    type: string
+    label: API Version
+    description: >
+      CalVer date of the Distribution API version to use (Api-Version header).
+      Spotify resolves it to the latest version on or before this date; without
+      it, the API defaults to the version current when the credentials were
+      issued.
+  client_id:
+    required: true
+    type: string
+    label: Client ID
+    description: Spotify application client id (or use secrets.SPOTIFY_CLIENT_ID).
+  client_secret:
+    secret: true
+    required: true
+    type: string
+    label: Client Secret
+    description: Spotify application client secret (or use secrets.SPOTIFY_CLIENT_SECRET).
+  episode_id:
+    required: true
+    type: string
+    label: Episode ID
+    description: >
+      Spotify episode id — the base-62 id at the end of the episode URI
+      (spotify:episode:<id>).
+
+steps:
+  - id: token
+    action: http.post
+    with:
+      url: "https://accounts.spotify.com/api/token"
+      headers:
+        Authorization: "Basic ${{ base64Encode(inputs.client_id + ':' + inputs.client_secret) }}"
+        Content-Type: application/x-www-form-urlencoded
+      body: "grant_type=client_credentials"
+      expect_status: [200]
+
+  # Response body: episode_uri and latest_media {media_id, content_type,
+  # submitted_at, status, failures[]} — the newest media submitted for the
+  # episode, by direct upload or by URL. status is "processing" until Spotify
+  # has accepted or rejected the file. A 404 (no media, or no such episode)
+  # is not an error here: the caller reads what is present.
+  - id: latest
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/episodes/${{ inputs.episode_id }}/latest-media"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200, 404]
+
+  # Response body: episode_uri and availability {state, served_media_id,
+  # served_passthrough_url}. state is "not_available" while Spotify serves
+  # nothing for the episode; served_media_id / served_passthrough_url say
+  # what it serves once it does.
+  - id: availability
+    action: http.get
+    with:
+      url: "https://distribution.spotify.com/episodes/${{ inputs.episode_id }}/availability"
+      headers:
+        Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
+        Api-Version: ${{ inputs.api_version }}
+      expect_status: [200, 404]

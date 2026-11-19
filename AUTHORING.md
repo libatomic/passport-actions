@@ -246,7 +246,12 @@ A separate manual blueprint with a top-level `channel: <name>` becomes the
 channel's status check (*Check status* in the admin). It takes a `runtime: true`
 `distribution_id` and returns `status` (`success` | `pending` | `failed` |
 `removed`), `status_updated_at`, `failures`, and writes them to context as
-`channel_status` etc. See `spotify/episode-status`.
+`channel_status` etc. When the status comes from more than one place (the
+object, its media, whether it is being served), also return `checks`, a list
+of `{label, state, detail, updated_at}` (`state` uses the status values) that
+the admin shows as one chip each, and `summary`, one plain sentence; persist
+them as `channel_checks` and `channel_status_summary`. See
+`spotify/episode-status`.
 
 ## Admin contracts
 
@@ -258,7 +263,7 @@ Keys and settings the admin understands without knowing the channel:
 | Distribution `context` | `asset_id` (+ `generated_at`, `characters_billed`) | An inline player or file link, its duration and those details |
 | Distribution `context` | `channel_upload` (`{id, filename, content_type, size, status}`) | The uploaded file in a podcast-shaped editor, *Replace file*, and whether Publish is enabled (`status: uploaded`); only for a trigger with the `ui.upload` hint |
 | Distribution `context` | `channel_error` | *Last run stopped: …* (prefer `workflow.fail`) |
-| Distribution `context` | `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_status_checked_at` | Status, failures, an **Error** state |
+| Distribution `context` | `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_checks`, `channel_status_summary`, `channel_status_checked_at` | Status, a chip per check, a summary line, failures, an **Error** state |
 | Distribution `context` | `body_edited` | Set by the admin when the body was edited; **Update Distribution** asks before replacing it |
 | Run outputs | `status`, `failures` (status companion); anything (manual runs, previews) | Shown or consumed by the caller |
 | Workflow inputs | `label`, `hint`, `description`, `type`, `enum`, `items`, `runtime` | Install wizard, Settings page, Run dialog |

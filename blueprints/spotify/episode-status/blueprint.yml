@@ -76,25 +76,99 @@ definition:
         client_id: ${{ inputs.spotify_client_id }}
         client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
         episode_id: ${{ outputs.episode_id }}
-      # Normalize Spotify's shape to the channel-status contract the admin
-      # reads from the run outputs (see docs/DISTRO.md):
-      #   status            success | pending | failed | removed
-      #   status_updated_at RFC3339
-      #   failures          [{ type, occurred_at, messages: [..] }]
       # Spotify: processing_status success/pending/failed/removed/no_content/
       # unknown; failure_events[].details carries error_message or issues[].
       outputs:
         spotify_status: ${{ steps.check.outputs.status.outputs.body.processing_status ?? "unknown" }}
-        status: >-
+        episode_state: >-
           ${{ {"success": "success", "pending": "pending", "failed": "failed", "removed": "removed",
           "no_content": "pending", "unknown": "pending"}[steps.check.outputs.status.outputs.body.processing_status ?? "unknown"] ?? "pending" }}
         status_updated_at: ${{ steps.check.outputs.status.outputs.body.status_updated_at ?? "" }}
         # The object literal is parenthesised: a bare `{` after the list is
         # read by the engine as a closure block, not a map.
-        failures: >-
+        episode_failures: >-
           ${{ map(steps.check.outputs.status.outputs.body.failure_events ?? [],
           ({"type": .type, "occurred_at": .occurred_at,
           "messages": .details?.error_message != nil ? [.details.error_message] : (.details?.issues ?? [])})) }}
+
+    # The episode-level status alone is not the whole story: it can read
+    # "success" while the media file is still processing and Spotify serves
+    # nothing. So also ask for the latest media (what was uploaded or
+    # fetched, and how far Spotify has got with it) and the availability
+    # (whether the episode can be played). continue-on-error: without these
+    # the check still reports the episode status.
+    - id: media
+      continue-on-error: true
+      includes: libatomic/passport-actions/recipes/spotify/get-episode-media@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        episode_id: ${{ outputs.episode_id }}
+      outputs:
+        media_status: ${{ steps.media?.outputs?.latest?.outputs?.body?.latest_media?.status ?? "" }}
+        media_submitted_at: ${{ steps.media?.outputs?.latest?.outputs?.body?.latest_media?.submitted_at ?? "" }}
+        # "processing" is the only in-progress value seen so far; anything
+        # that isn't plainly a failure or a finished state counts as pending.
+        media_state: >-
+          ${{ let s = lower(steps.media?.outputs?.latest?.outputs?.body?.latest_media?.status ?? "");
+          s == "" ? "" : ((len(steps.media?.outputs?.latest?.outputs?.body?.latest_media?.failures ?? []) > 0
+          || s contains "fail" || s contains "reject") ? "failed"
+          : (s in ["success", "succeeded", "ready", "available", "complete", "completed", "processed", "live"]
+          ? "success" : "pending")) }}
+        media_failures: >-
+          ${{ map(steps.media?.outputs?.latest?.outputs?.body?.latest_media?.failures ?? [],
+          ({"type": .type ?? "media_failed", "occurred_at": .occurred_at ?? "",
+          "messages": .details?.error_message != nil ? [.details.error_message] : (.details?.issues ?? [])})) }}
+        availability: ${{ steps.media?.outputs?.availability?.outputs?.body?.availability?.state ?? "" }}
+        availability_state: >-
+          ${{ let a = steps.media?.outputs?.availability?.outputs?.body?.availability?.state ?? "";
+          a == "" ? "" : (a == "available" ? "success" : "pending") }}
+
+    # Normalize to the channel-status contract the admin reads from the run
+    # outputs (see AUTHORING.md, "Status of what was published"):
+    #   status            success | pending | failed | removed
+    #   status_updated_at RFC3339
+    #   failures          [{ type, occurred_at, messages: [..] }]
+    #   checks            [{ label, state, detail, updated_at }], one per
+    #                     thing that was looked at
+    #   summary           one plain sentence
+    # The overall status is the worst of the three: removed, then failed,
+    # then pending while the media is processing or nothing is served; only
+    # an episode Spotify is serving is a success.
+    - id: verdict
+      action: set-output
+      with:
+        done: true
+      outputs:
+        status: >-
+          ${{ outputs.episode_state == "removed" ? "removed"
+          : ((outputs.episode_state == "failed" || outputs.media_state == "failed") ? "failed"
+          : ((outputs.episode_state == "pending" || outputs.media_state == "pending"
+          || outputs.availability_state == "pending") ? "pending" : "success")) }}
+        failures: ${{ concat(outputs.episode_failures, outputs.media_failures ?? []) }}
+        checks: >-
+          ${{ filter([
+          {"label": "Episode", "state": outputs.episode_state, "detail": outputs.spotify_status,
+          "updated_at": outputs.status_updated_at},
+          {"label": "Media file", "state": outputs.media_state ?? "", "detail": outputs.media_status ?? "",
+          "updated_at": outputs.media_submitted_at ?? ""},
+          {"label": "Availability", "state": outputs.availability_state ?? "",
+          "detail": replace(outputs.availability ?? "", "_", " "), "updated_at": ""}
+          ], .detail != "") }}
+
+    - id: explain
+      action: set-output
+      with:
+        done: true
+      outputs:
+        summary: >-
+          ${{ outputs.status == "removed" ? "The episode has been removed from Spotify."
+          : (outputs.status == "failed" ? "Spotify rejected the episode or its media file."
+          : (outputs.status == "success" ? ((outputs.availability_state ?? "") == "success"
+          ? "The episode is available on Spotify." : "Spotify has accepted the episode.")
+          : (outputs.media_state == "pending" ? "Spotify is still processing the media file. The episode can't be played until that finishes."
+          : (outputs.episode_state == "pending" ? "Spotify is still processing the episode."
+          : "Spotify has processed the episode but is not serving it yet.")))) }}
 
     # Persist the result on the distribution (context-only updates are
     # allowed while it is active) so the admin shows the last known state
@@ -107,10 +181,12 @@ definition:
           ${{ merge({"channel_status": outputs.status,
           "channel_status_updated_at": outputs.status_updated_at,
           "channel_failures": outputs.failures,
+          "channel_checks": outputs.checks,
+          "channel_status_summary": outputs.summary,
           "channel_status_checked_at": now()},
           steps.load.outputs.distribution.context) }}
 
     - id: report
       action: log
       with:
-        message: "episode ${{ outputs.episode_id }}: ${{ outputs.spotify_status }} → ${{ outputs.status }} (${{ len(outputs.failures) }} failure(s))"
+        message: "episode ${{ outputs.episode_id }}: episode ${{ outputs.spotify_status }}, media ${{ outputs.media_status ?? \"\" }}, ${{ outputs.availability ?? \"\" }} → ${{ outputs.status }} (${{ len(outputs.failures) }} failure(s))"

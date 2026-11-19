@@ -263,6 +263,7 @@ client-credentials exchange themselves from a `client_id`/`client_secret` pair.
 | `libatomic/passport-actions/recipes/spotify/update-episode` | Partial update (e.g. backfill video onto an audio episode) |
 | `libatomic/passport-actions/recipes/spotify/delete-episode` | Delete an episode |
 | `libatomic/passport-actions/recipes/spotify/get-episode-status` | Media processing status + failure events |
+| `libatomic/passport-actions/recipes/spotify/get-episode-media` | Latest submitted media and whether the episode is being served |
 | `libatomic/passport-actions/recipes/spotify/create-media-upload` | Open a direct media upload session for an episode (returns `upload_url`) |
 | `libatomic/passport-actions/recipes/spotify/create-show` | Create a show |
 | `libatomic/passport-actions/recipes/spotify/update-show` | Partial show update (e.g. flip `is_sandbox` to go live) |
