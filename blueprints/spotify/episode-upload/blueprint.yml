@@ -147,8 +147,10 @@ definition:
 
     # This workflow is run by hand (by the form), so nothing has checked that
     # the distribution belongs to the Spotify channel. Refuse any other.
+    # string(): the channel is a typed value, which never equals a plain
+    # string in a comparison.
     - id: wrong-channel
-      if: ${{ steps.load.outputs.distribution.channel != "spotify" }}
+      if: ${{ string(steps.load.outputs.distribution.channel) != "spotify" }}
       action: workflow.fail
       with:
         reason: >-
