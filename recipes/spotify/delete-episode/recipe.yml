@@ -1,5 +1,5 @@
 name: spotify-delete-episode
-version: "1.0"
+version: "1.1"
 description: >
   Delete an episode from Spotify via the Distribution API
   (pinned to Api-Version 2026-04-01).
@@ -44,7 +44,10 @@ steps:
       body: "grant_type=client_credentials"
       expect_status: [200]
 
-  # Succeeds with 204 No Content; there is no response body.
+  # Succeeds with 204 No Content; there is no response body. A 404 also counts
+  # as success: the episode is already gone from Spotify (deleted there, or by
+  # an earlier attempt), which is the state the caller asked for. Read
+  # steps.<id>.outputs.episode.outputs.status to tell the two apart.
   - id: episode
     action: http.delete
     with:
@@ -52,4 +55,4 @@ steps:
       headers:
         Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
         Api-Version: ${{ inputs.api_version }}
-      expect_status: [204]
+      expect_status: [204, 404]

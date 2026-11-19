@@ -1,5 +1,5 @@
 name: spotify-update-episode
-version: "1.1"
+version: "1.2"
 description: >
   Update an existing Spotify episode via the Distribution API
   (pinned to Api-Version 2026-04-01). Partial update — only the
@@ -114,6 +114,15 @@ inputs:
       becomes open (ungated). Use when the caller owns the episode's gating,
       e.g. a distribution republish that recomputes entitlements from the
       audience.
+  missing_ok:
+    default: false
+    type: boolean
+    label: Succeed When The Episode Is Missing
+    description: >
+      When true, a 404 from Spotify (the episode no longer exists) does not
+      fail the step: check steps.<id>.outputs.episode.outputs.status == 404
+      and create the episode again. Off by default, so an update of a missing
+      episode fails.
 
 steps:
   - id: token
@@ -156,4 +165,4 @@ steps:
         Content-Type: application/json
         Api-Version: ${{ inputs.api_version }}
       body: ${{ steps.payload.outputs.body }}
-      expect_status: [200]
+      expect_status: ${{ ternary(toBool(inputs.missing_ok), [200, 404], [200]) }}

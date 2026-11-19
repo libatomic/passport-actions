@@ -1,5 +1,5 @@
 name: spotify-create-episode
-version: "1.1"
+version: "1.2"
 description: >
   Publish an episode to a Spotify show via the Distribution API
   (pinned to Api-Version 2026-04-01).
@@ -156,10 +156,17 @@ steps:
         ternary(empty(inputs.episode_number), {}, {"episode_number": toInt(inputs.episode_number)}),
         ternary(empty(inputs.season_number), {}, {"season_number": toInt(inputs.season_number)})) }}
 
+  # ONE attempt, no automatic retry: Spotify's create is not idempotent on
+  # guid, so a retry after a 5xx or a dropped connection that Spotify had in
+  # fact accepted would create a second episode. A failure here fails the
+  # step; the caller decides whether to run again. The longer timeout keeps a
+  # slow-but-successful create from being reported as a failure.
   - id: episode
     action: http.post
     with:
       url: "https://distribution.spotify.com/shows/${{ inputs.show_id }}/episodes"
+      retries: 1
+      timeout: 60s
       headers:
         Authorization: "Bearer ${{ steps.token.outputs.body.access_token }}"
         Content-Type: application/json

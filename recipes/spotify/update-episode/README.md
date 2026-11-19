@@ -35,6 +35,7 @@ libatomic/passport-actions/recipes/spotify/update-episode
 | `episode_number`, `season_number` | no | `""` | Integers; sent as numbers, omitted when empty |
 | `entitlements` | no | `[]` | Open Access entitlement ids; omitted when empty (unless `clear_entitlements`) |
 | `clear_entitlements` | no | `false` | Send an empty `entitlements` as `[]` to make the episode open — for callers that own the gating (e.g. a distribution republish) |
+| `missing_ok` | no | `false` | A 404 (the episode no longer exists on Spotify) does not fail the step. Check `steps.<id>.outputs.episode.outputs.status == 404` and create the episode again |
 
 ## Outputs
 

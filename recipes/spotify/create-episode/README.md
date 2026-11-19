@@ -109,3 +109,11 @@ confirming which API version served the request.
 See `blueprints/spotify/create-episode` for the complete distribution-channel
 workflow, and `recipes/spotify/update-episode` for backfilling video onto an
 existing audio episode.
+
+## Retries
+
+The create call is made **once** (`retries: 1`, 60 s timeout). Spotify's create
+is not idempotent on `guid`, so an automatic retry after a 5xx or a dropped
+connection that Spotify had in fact accepted would publish a second episode. A
+failure fails the step; before running it again, check whether the episode
+appeared on the show.
