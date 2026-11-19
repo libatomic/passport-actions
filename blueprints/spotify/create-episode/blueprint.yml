@@ -22,13 +22,15 @@ description: |
   already gone from Spotify counts as deleted, and a republish of one is
   published again as a new episode.
 
-  MEDIA: the editor uploads the audio or video file straight from the
-  browser to Spotify; it is not stored in Passport. Choosing a file creates
-  the episode on Spotify as a hidden draft (dated far in the future) and
-  opens an upload session for it; publishing then sets the real date, summary
-  and entitlements. Your Spotify organization must be enabled for direct
-  upload. A distribution that still has a Passport media file from before is
-  published from that file, as it used to be.
+  MEDIA: the editor takes the audio or video file from either of two places.
+  A file from Passport's media library is fetched by Spotify from its URL.
+  A file from your computer (dropped onto the form, or chosen) uploads
+  straight from the browser to Spotify and is not stored in Passport, which
+  suits very large video files. Uploading creates the episode on Spotify as
+  a hidden draft (dated far in the future) and opens an upload session for
+  it; publishing then sets the real date, summary and entitlements. Your
+  Spotify organization must be enabled for direct upload. When a
+  distribution has a library file, that file is the one published.
 
   STATUS: Spotify processes the media after the publish returns. A while
   after each publish ("Check status after", 10 minutes by default) the
@@ -107,9 +109,12 @@ definition:
         # the entitlements Spotify Open Access can resolve for this instance.
         application: spotify
         # Spotify hosts the media: the editor uploads the chosen file straight
-        # to Spotify (this workflow's "upload" action hands it a session URL)
-        # instead of storing it as a Passport asset first.
-        upload: true
+        # to Spotify instead of storing it as a Passport asset first. The
+        # named workflow (spotify/episode-upload, installed with the package)
+        # opens the upload session; the engine doesn't read this hint.
+        ui:
+          upload:
+            workflow: spotify-episode-upload
 
   inputs:
     spotify_client_id:
@@ -165,112 +170,21 @@ definition:
       with:
         id: ${{ steps.load.outputs.distribution.context?.spotify_episode_id ?? "" }}
 
-    # What the editor's direct upload has recorded for this distribution, if
-    # anything: {id, filename, content_type, size, status: pending|uploaded}.
+    # What the editor's direct upload (the Spotify Episode Upload workflow)
+    # has recorded for this distribution, if anything:
+    # {id, filename, content_type, size, status: pending|uploaded}.
+    #
+    # The editor offers two sources for the media: a file from Passport's
+    # library (asset_id, which Spotify fetches by URL) or a file uploaded
+    # from the browser straight to Spotify. When the distribution has a
+    # Passport file, that is the one to publish, so an earlier upload is
+    # ignored (status "").
     - id: uploaded
       action: set-output
       with:
-        status: ${{ steps.load.outputs.distribution.context?.channel_upload?.status ?? "" }}
-
-    # UPLOAD: the editor runs this workflow with trigger.action = "upload"
-    # when a media file is chosen (the trigger declares upload: true). Spotify
-    # hosts the media, so the file goes from the browser straight to Spotify
-    # and never becomes a Passport asset.
-    #
-    #   start   trigger.upload = {content_type, filename, size}
-    #           → outputs upload_url (+ upload_id, upload_expires_at); the
-    #             browser PUTs the file there
-    #   finish  trigger.upload = {complete: true}
-    #           → marks context.channel_upload as uploaded
-    - id: upload
-      if: ${{ trigger.action == "upload" }}
-      then:
-        - id: finish
-          if: ${{ trigger.upload?.complete == true }}
-          then:
-            - id: mark-uploaded
-              action: distribution.update
-              with:
-                distribution_id: ${{ trigger.distribution_id }}
-                context: >-
-                  ${{ merge({"channel_upload": merge({"status": "uploaded", "uploaded_at": now()},
-                  steps.load.outputs.distribution.context?.channel_upload ?? {})},
-                  steps.load.outputs.distribution.context) }}
-              outputs:
-                status: uploaded
-            - id: finished
-              action: workflow.exit
-              with:
-                reason: "media upload for distribution ${{ trigger.distribution_id }} recorded"
-
-        # An upload session belongs to an episode, so the episode has to
-        # exist before the file can be sent. Create it now as a draft:
-        # dated far in the future so it stays hidden until a publish sets
-        # the real date, and ungated until a publish sends the entitlements.
-        #
-        # Spotify refuses an episode without a media URL (422 "Passthrough
-        # url must be provided"), so the create names a placeholder on this
-        # instance that serves no media. Spotify records one failed fetch for
-        # it; the upload that follows replaces it.
-        - id: draft
-          if: ${{ steps.existing.outputs.id == "" }}
-          includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
-          with:
-            client_id: ${{ inputs.spotify_client_id }}
-            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-            show_id: ${{ inputs.spotify_show_id }}
-            title: ${{ steps.load.outputs.distribution.title }}
-            pubdate: "2099-01-01T00:00:00.000Z"
-            media_file_url: ${{ publicURL("/spotify-upload-pending.mp3") }}
-            # The distribution id doubles as the episode's guid.
-            guid: ${{ trigger.distribution_id }}
-            content_rating: ${{ inputs.content_rating }}
-            explicit: ${{ inputs.explicit }}
-            episode_type: ${{ inputs.episode_type }}
-
-        - id: episode
-          action: set-output
-          with:
-            id: ${{ coalesce(steps.existing.outputs.id, steps.draft?.outputs?.episode?.outputs?.body?.episode_id) }}
-
-        - id: session
-          includes: libatomic/passport-actions/recipes/spotify/create-media-upload@spotify
-          with:
-            client_id: ${{ inputs.spotify_client_id }}
-            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-            episode_id: ${{ steps.episode.outputs.id }}
-            content_type: ${{ trigger.upload.content_type }}
-
-        # Record the episode (so publish updates it and delete removes it)
-        # and the upload, pending until the editor reports it finished. The
-        # platform runs this workflow's delete for a draft that has
-        # channel_upload, so an abandoned draft doesn't leave its episode on
-        # Spotify. upload_url is returned to the editor only; it is never
-        # written to the distribution.
-        - id: remember-upload
-          action: distribution.update
-          with:
-            distribution_id: ${{ trigger.distribution_id }}
-            context: >-
-              ${{ merge({"spotify_episode_id": steps.episode.outputs.id,
-              "spotify_show_id": inputs.spotify_show_id,
-              "channel_link": "https://open.spotify.com/episode/" + steps.episode.outputs.id,
-              "channel_upload": {"id": steps.session.outputs.upload.outputs.body.media_id,
-              "filename": trigger.upload?.filename ?? "",
-              "content_type": trigger.upload.content_type,
-              "size": trigger.upload?.size ?? 0,
-              "status": "pending",
-              "requested_at": now()} },
-              steps.load.outputs.distribution.context) }}
-          outputs:
-            upload_url: ${{ steps.session.outputs.upload.outputs.body.upload_url }}
-            upload_id: ${{ steps.session.outputs.upload.outputs.body.media_id }}
-            upload_expires_at: ${{ steps.session.outputs.upload.outputs.body.upload_expires_at }}
-
-        - id: prepared
-          action: workflow.exit
-          with:
-            reason: "upload session opened for spotify episode ${{ steps.episode.outputs.id }}"
+        status: >-
+          ${{ (steps.load.outputs.distribution.asset_id ?? "") != "" ? ""
+          : (steps.load.outputs.distribution.context?.channel_upload?.status ?? "") }}
 
     # DELETE: the admin's Delete button runs this workflow synchronously with
     # trigger.action = "delete" BEFORE removing the distribution. Delete the

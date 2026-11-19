@@ -62,7 +62,7 @@ fails too" as done, and confirm through Spotify
     client_id: ${{ inputs.spotify_client_id }}
     client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
     episode_id: ${{ steps.existing.outputs.id }}
-    content_type: ${{ trigger.upload.content_type }}
+    content_type: ${{ inputs.content_type }}
 ```
 
 Both `accounts.spotify.com` and `distribution.spotify.com` must be on the

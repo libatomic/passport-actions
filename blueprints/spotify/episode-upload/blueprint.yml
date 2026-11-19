@@ -1,0 +1,286 @@
+name: Spotify Episode Upload
+icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+description: |
+  Lets the Spotify channel's distribution form upload an episode's audio or
+  video file straight from the browser to Spotify, so the file is never
+  stored in Passport.
+
+  The form runs this workflow when a media file is chosen: it creates the
+  episode on Spotify as a hidden draft (dated far in the future), opens an
+  upload session for it and hands the form the address to send the file to.
+  The form runs it again when the upload has finished, and once more to
+  remove the draft episode when a never-published distribution is deleted.
+  Publishing is still done by the Spotify Episode (Distribution) workflow,
+  which names this one in its trigger (ui.upload.workflow).
+
+  Your Spotify organization must be enabled for direct upload.
+
+  Requires the SPOTIFY_CLIENT_SECRET secret, plus client id and show id
+  inputs. accounts.spotify.com and distribution.spotify.com must be on the
+  instance's HTTP allowlist.
+category: content
+inputs:
+  spotify_client_id:
+    description: Spotify application client id
+    type: string
+    required: true
+    default: ""
+  spotify_show_id:
+    description: Spotify show id — the base-62 id from spotify:show:<id>
+    type: string
+    required: true
+    default: ""
+  content_rating:
+    description: Video content rating — unspecified, or eighteen_plus for 18+ video
+    type: string
+    default: unspecified
+  explicit:
+    description: Whether episodes contain explicit content (no, yes, clean)
+    type: string
+    default: "no"
+  episode_type:
+    description: Episode type — full, bonus, or trailer
+    type: string
+    default: full
+  distribution_id:
+    label: Distribution ID
+    description: The Spotify-channel distribution the file belongs to
+    type: string
+    required: true
+    runtime: true
+    default: ""
+  action:
+    label: Action
+    description: start (open an upload session), finish (the upload completed) or discard (remove the draft episode)
+    type: string
+    runtime: true
+    default: start
+  content_type:
+    label: Content type
+    description: MIME type of the file, e.g. audio/mpeg or video/mp4 (start only)
+    type: string
+    runtime: true
+    default: ""
+  filename:
+    label: File name
+    description: Name of the file, shown in the form afterwards (start only)
+    type: string
+    runtime: true
+    default: ""
+  size:
+    label: Size
+    description: Size of the file in bytes, shown in the form afterwards (start only)
+    type: string
+    runtime: true
+    default: ""
+definition:
+  name: Spotify Episode Upload
+  description: >-
+    Opens a direct media upload to Spotify for a Spotify-channel distribution.
+    Run by the distribution form when a media file is chosen.
+  icon: https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/spotify.svg
+  version: 1
+
+  on:
+    - manual: true
+
+  inputs:
+    spotify_client_id:
+      description: Spotify application client id
+      type: string
+      required: true
+      default: ""
+    spotify_show_id:
+      description: Spotify show id — the base-62 id from spotify:show:<id>
+      type: string
+      required: true
+      default: ""
+    content_rating:
+      description: Video content rating — unspecified, or eighteen_plus for 18+ video
+      type: string
+      default: unspecified
+    explicit:
+      description: Whether episodes contain explicit content (no, yes, clean)
+      type: string
+      default: "no"
+    episode_type:
+      description: Episode type — full, bonus, or trailer
+      type: string
+      default: full
+    distribution_id:
+      label: Distribution ID
+      description: The Spotify-channel distribution the file belongs to
+      type: string
+      required: true
+      runtime: true
+      default: ""
+    action:
+      label: Action
+      description: start (open an upload session), finish (the upload completed) or discard (remove the draft episode)
+      type: string
+      runtime: true
+      default: start
+    content_type:
+      label: Content type
+      description: MIME type of the file, e.g. audio/mpeg or video/mp4 (start only)
+      type: string
+      runtime: true
+      default: ""
+    filename:
+      label: File name
+      description: Name of the file, shown in the form afterwards (start only)
+      type: string
+      runtime: true
+      default: ""
+    size:
+      label: Size
+      description: Size of the file in bytes, shown in the form afterwards (start only)
+      type: string
+      runtime: true
+      default: ""
+
+  steps:
+    - id: load
+      action: distribution.get
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+
+    # This workflow is run by hand (by the form), so nothing has checked that
+    # the distribution belongs to the Spotify channel. Refuse any other.
+    - id: wrong-channel
+      if: ${{ steps.load.outputs.distribution.channel != "spotify" }}
+      action: workflow.fail
+      with:
+        reason: >-
+          Distribution ${{ inputs.distribution_id }} is not on the Spotify
+          channel.
+
+    # The episode recorded on the distribution, by an earlier upload or by a
+    # publish.
+    - id: existing
+      action: set-output
+      with:
+        id: ${{ steps.load.outputs.distribution.context?.spotify_episode_id ?? "" }}
+
+    # FINISH: the form reports that the file has been sent. Mark the upload
+    # as uploaded, keeping what start recorded about it.
+    - id: finish
+      if: ${{ inputs.action == "finish" }}
+      then:
+        - id: nothing-to-finish
+          if: ${{ (steps.load.outputs.distribution.context?.channel_upload?.status ?? "") == "" }}
+          action: workflow.fail
+          with:
+            reason: No upload was started for this distribution.
+        - id: mark-uploaded
+          action: distribution.update
+          with:
+            distribution_id: ${{ inputs.distribution_id }}
+            context: >-
+              ${{ merge({"channel_upload": merge({"status": "uploaded", "uploaded_at": now()},
+              steps.load.outputs.distribution.context?.channel_upload ?? {})},
+              steps.load.outputs.distribution.context) }}
+          outputs:
+            status: uploaded
+        - id: finished
+          action: workflow.exit
+          with:
+            reason: "media upload for distribution ${{ inputs.distribution_id }} recorded"
+
+    # DISCARD: the form is about to delete a distribution that was never
+    # published. The platform only runs the channel workflow's delete for a
+    # distribution that has been published, so the draft episode an upload
+    # created would stay on Spotify; remove it here. An episode that is
+    # already gone counts as removed (the recipe accepts its 404). The
+    # context is cleared too, in case the distribution is kept after all.
+    - id: discard
+      if: ${{ inputs.action == "discard" }}
+      then:
+        - id: remove
+          if: ${{ steps.existing.outputs.id != "" }}
+          includes: libatomic/passport-actions/recipes/spotify/delete-episode@spotify
+          with:
+            client_id: ${{ inputs.spotify_client_id }}
+            client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+            episode_id: ${{ steps.existing.outputs.id }}
+        - id: forget
+          action: distribution.update
+          with:
+            distribution_id: ${{ inputs.distribution_id }}
+            context: >-
+              ${{ merge({"spotify_episode_id": "", "channel_link": "", "channel_upload": {} },
+              steps.load.outputs.distribution.context) }}
+          outputs:
+            status: discarded
+        - id: discarded
+          action: workflow.exit
+          with:
+            reason: "draft spotify episode for distribution ${{ inputs.distribution_id }} removed"
+
+    # START (the default): open an upload session for the chosen file.
+    - id: no-type
+      if: ${{ (inputs.content_type ?? "") == "" }}
+      action: workflow.fail
+      with:
+        reason: The file's content type is needed to start an upload.
+
+    # An upload session belongs to an episode, so the episode has to exist
+    # before the file can be sent. Create it now as a draft: dated far in the
+    # future so it stays hidden until a publish sets the real date, and
+    # ungated until a publish sends the entitlements.
+    #
+    # Spotify refuses an episode without a media URL (422 "Passthrough url
+    # must be provided"), so the create names a placeholder on this instance
+    # that serves no media. Spotify records one failed fetch for it; the
+    # upload that follows replaces it.
+    - id: draft
+      if: ${{ steps.existing.outputs.id == "" }}
+      includes: libatomic/passport-actions/recipes/spotify/create-episode@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        show_id: ${{ inputs.spotify_show_id }}
+        title: ${{ steps.load.outputs.distribution.title }}
+        pubdate: "2099-01-01T00:00:00.000Z"
+        media_file_url: ${{ publicURL("/spotify-upload-pending.mp3") }}
+        # The distribution id doubles as the episode's guid.
+        guid: ${{ inputs.distribution_id }}
+        content_rating: ${{ inputs.content_rating }}
+        explicit: ${{ inputs.explicit }}
+        episode_type: ${{ inputs.episode_type }}
+
+    - id: episode
+      action: set-output
+      with:
+        id: ${{ coalesce(steps.existing.outputs.id, steps.draft?.outputs?.episode?.outputs?.body?.episode_id) }}
+
+    - id: session
+      includes: libatomic/passport-actions/recipes/spotify/create-media-upload@spotify
+      with:
+        client_id: ${{ inputs.spotify_client_id }}
+        client_secret: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        episode_id: ${{ steps.episode.outputs.id }}
+        content_type: ${{ inputs.content_type }}
+
+    # Record the episode (so publish updates it and delete removes it) and
+    # the upload, pending until the form reports it finished. upload_url is
+    # returned to the form only; it is never written to the distribution.
+    - id: remember
+      action: distribution.update
+      with:
+        distribution_id: ${{ inputs.distribution_id }}
+        context: >-
+          ${{ merge({"spotify_episode_id": steps.episode.outputs.id,
+          "spotify_show_id": inputs.spotify_show_id,
+          "channel_link": "https://open.spotify.com/episode/" + steps.episode.outputs.id,
+          "channel_upload": {"id": steps.session.outputs.upload.outputs.body.media_id,
+          "filename": inputs.filename ?? "",
+          "content_type": inputs.content_type,
+          "size": inputs.size ?? "",
+          "status": "pending",
+          "requested_at": now()} },
+          steps.load.outputs.distribution.context) }}
+      outputs:
+        upload_url: ${{ steps.session.outputs.upload.outputs.body.upload_url }}
+        upload_id: ${{ steps.session.outputs.upload.outputs.body.media_id }}
+        upload_expires_at: ${{ steps.session.outputs.upload.outputs.body.upload_expires_at }}

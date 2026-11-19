@@ -41,7 +41,6 @@ Steps, in order:
 | `load` | `distribution.get` | Load the episode metadata the editor collected |
 | `existing` | `set-output` | `context.spotify_episode_id` from a previous publish or upload, or `""` |
 | `uploaded` | `set-output` | `context.channel_upload.status`: `""`, `pending` or `uploaded` |
-| `upload` | `if trigger.action == "upload"` | The editor's direct media upload (see [Media upload](#media-upload)), then `workflow.exit` |
 | `teardown` | `if trigger.action == "delete"` | recipe `spotify/delete-episode` for the recorded episode (nothing to do if none), then `workflow.exit` |
 | `no-media` | `workflow.fail` | Stop with a plain reason when the distribution has neither an uploaded file nor a Passport media file |
 | `upload-unfinished` | `workflow.fail` | Stop when a file was chosen but its upload never finished |
@@ -58,31 +57,43 @@ Steps, in order:
 
 ## Media upload
 
-The trigger declares `upload: true`: Spotify hosts the media, so the editor
-sends the chosen file **from the browser straight to Spotify**. It is not
-stored in Passport. Your Spotify organization must be enabled for direct
-upload (`POST /episodes/{id}/media` answers 403 until it is).
+The editor takes the media from either of two places:
 
-1. **Choosing a file** runs this workflow with `trigger.action: "upload"` and
-   `trigger.upload: {content_type, filename, size}`. An upload session belongs
-   to an episode, so if the distribution has none yet the workflow creates it
-   now as a hidden draft: `pubdate` 2099-01-01, no entitlements. It then asks
-   Spotify for an upload session (recipe
-   [`spotify/create-media-upload`](../../../recipes/spotify/create-media-upload/)),
-   records the episode and `context.channel_upload` (`status: pending`) on the
-   distribution, and returns `upload_url` to the editor.
-2. **The browser uploads** the file to that URL in 8 MiB chunks, resuming
-   after a dropped connection. The page has to stay open until it finishes.
-3. **When it finishes**, the editor runs the workflow again with
-   `trigger.upload: {complete: true}` and `channel_upload.status` becomes
-   `uploaded`. Publish is enabled from then on.
-4. **Publishing** updates the draft episode with the real `pubdate`, title,
-   summary and entitlements. No media URL is sent.
+- **The media library.** A file already in Passport is sent as
+  `media_file_url`; Spotify fetches it from that URL when the distribution is
+  published.
+- **Your computer.** A file dropped onto the form (or chosen) goes **from the
+  browser straight to Spotify** and is not stored in Passport, so a
+  multi-gigabyte video travels once, from the desktop to Spotify.
+
+When a distribution has a library file, that file is the one published and
+an earlier upload is ignored; remove it to go back to the upload.
+
+The second is enabled by the trigger hint
+`ui: {upload: {workflow: spotify-episode-upload}}`. The upload itself is
+handled by the [Spotify Episode Upload](../episode-upload/) workflow, installed
+with the package; this workflow only publishes what it prepared. Your Spotify
+organization must be enabled for direct upload (`POST /episodes/{id}/media`
+answers 403 until it is).
+
+1. **Choosing a file** runs Spotify Episode Upload, which creates the episode
+   as a hidden draft if the distribution has none yet, opens an upload session
+   and records the episode and `context.channel_upload` (`status: pending`) on
+   the distribution.
+2. **The browser uploads** the file in 8 MiB chunks, resuming after a dropped
+   connection. The page has to stay open until it finishes.
+3. **When it finishes**, `channel_upload.status` becomes `uploaded`. Publish is
+   enabled from then on.
+4. **Publishing** (this workflow) updates the draft episode with the real
+   `pubdate`, title, summary and entitlements. No media URL is sent.
 
 Choosing another file later (*Replace file*) opens a new session for the same
 episode; Spotify keeps serving the previous media until the new upload has
-been processed. Deleting the distribution deletes the episode, also when it
-was never published.
+been processed. Deleting a published distribution deletes the episode through
+this workflow's `delete` action. Deleting one that was never published does
+not run this workflow; the editor has Spotify Episode Upload remove the draft
+episode first. A draft deleted through the API or CLI leaves its hidden
+episode on Spotify.
 
 Things to know:
 
@@ -100,9 +111,8 @@ Things to know:
 - **The upload URL is a bearer address.** Anyone holding it can upload to the
   episode for 7 days. It is returned to the editor as a run output — and so is
   stored with that workflow run — and is never written to the distribution.
-- **Older distributions.** A distribution that already has a Passport media
-  file (`asset_id`) is published from that file through `media_file_url`, as
-  before; the editor keeps showing its file.
+- **Library files.** A distribution with a Passport media file (`asset_id`)
+  is published from that file through `media_file_url`; the editor shows it.
 
 ## Failure handling
 
@@ -170,15 +180,18 @@ on:
       content_type: html
       requires_audience: true
       application: spotify
-      upload: true
+      ui:
+        upload:
+          workflow: spotify-episode-upload
 ```
 
 **`base_type: podcast`** — the Add Distribution editor shows the familiar
 podcast form (title, summary, and an **audio/video file**) rather than a plain
 body box.
 
-**`upload: true`** — the file control uploads to Spotify instead of picking a
-Passport asset (see [Media upload](#media-upload)).
+**`ui.upload.workflow`** — the file control uploads to Spotify through the
+named workflow instead of picking a Passport asset (see
+[Media upload](#media-upload)). Change it if that workflow was renamed.
 
 **`requires_audience: true` on a broadcast channel** — this is the unusual bit.
 The episode is posted **once**, not per member, but you must still select an

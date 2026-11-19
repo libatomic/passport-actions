@@ -84,13 +84,12 @@ its only one.
 | `application` | Offer only that application's audiences in the picker |
 | `address`, `connect_url` | Member identity fields and a Connect button (unicast) |
 | `preview` | `true`: the workflow answers `trigger.action: "preview"` with no side effects (see Previews) |
-| `upload` | `true`: the destination hosts the media and the workflow answers `trigger.action: "upload"`; the editor sends the file from the browser to the destination instead of offering Passport's assets (see Direct media upload) |
 | `ui` | Free-form hints for the admin's distribution editor (see [Admin editor hints](#admin-editor-hints-ui)) |
 
 `trigger.action` tells the run what to do: `publish`, `republish` (update what
 you published, don't duplicate it), `delete` (remove it; runs before the row is
-deleted, a failure keeps the distribution), `preview` (manual, only with
-`preview: true`) and `upload` (manual, only with `upload: true`).
+deleted, a failure keeps the distribution) and `preview` (manual, only with
+`preview: true`).
 
 ## Step kinds
 
@@ -203,27 +202,43 @@ API offers it (e.g. ElevenLabs' `with-timestamps`), never as a saved asset.
 ### Direct media upload
 
 When the destination hosts the media (Spotify), don't make the file a Passport
-asset first: declare `upload: true` on a `base_type: podcast` trigger and
-answer `trigger.action: "upload"`. The editor then shows a file input in place
-of the asset picker and talks to the workflow twice:
+asset first. Ship a second, **manual** blueprint that opens the upload, and name
+it on the channel's `base_type: podcast` trigger with the hint
+`ui: {upload: {workflow: <slug or id>}}`. The editor then shows a file input in
+place of the asset picker and runs that workflow with `inputs`:
 
-1. **Start**, `trigger.upload: {content_type, filename, size}`. Create whatever
-   the media belongs to if it doesn't exist yet (a draft episode), open an
-   upload session, then `distribution.update` the context with your own ids and
-   `channel_upload: {id, filename, content_type, size, status: "pending",
-   requested_at}`, and return `upload_url` as a named output (`upload_id` and
-   `upload_expires_at` are optional). `workflow.exit` after.
-2. The browser `PUT`s the file to `upload_url` (the Cloud Storage resumable
-   protocol; see `atomic/docs/WORKFLOW.md`, *Direct media upload*).
-3. **Finish**, `trigger.upload: {complete: true}`. Merge `status: "uploaded"`
-   into `channel_upload` and exit.
+1. **Start**, `{distribution_id, action: "start", content_type, filename,
+   size}`. Check the distribution is on your channel (nothing else does: this
+   is a manual run). Create whatever the media belongs to if it doesn't exist
+   yet (a draft episode), open an upload session, then `distribution.update`
+   the context with your own ids and `channel_upload: {id, filename,
+   content_type, size, status: "pending", requested_at}`, and return
+   `upload_url` as a named output (`upload_id` and `upload_expires_at` are
+   optional).
+2. The browser `PUT`s the file to `upload_url` as a resumable upload (the Cloud
+   Storage protocol): chunked `PUT`s with `Content-Range: bytes a-b/total`,
+   every chunk but the last a multiple of 256 KiB; `308` with a `Range` header
+   while incomplete, `200`/`201` when done. A session that doesn't let the
+   browser read the completing response is tolerated: a failed last chunk
+   followed by a failed status query counts as complete.
+3. **Finish**, `{distribution_id, action: "finish"}`. Merge `status:
+   "uploaded"` into `channel_upload`.
+4. **Discard**, `{distribution_id, action: "discard"}`, run by the editor
+   before it deletes a distribution that has `channel_upload` and was never
+   published. The platform runs the channel workflow's `delete` only after a
+   publish, so remove what start created here and clear your context keys.
+   A draft deleted through the API or CLI skips this: what start created
+   stays at the destination.
 
-In the publish path, read `context.channel_upload.status`: `uploaded` means
-publish without an asset, `pending` means `workflow.fail` ("the upload did not
-finish"). The platform runs your `delete` action for a draft that has
-`channel_upload`, so remove what the start created there. Never write
-`upload_url` to the context: it is a bearer address. The reference is the
-`upload` branch of `spotify/create-episode`.
+The inputs above are `runtime: true`; the settings both workflows need (client
+id, show id) are ordinary inputs with the same keys, so the package's settings
+page fills them together.
+
+In the channel workflow's publish path, read `context.channel_upload.status`:
+`uploaded` means publish without an asset, `pending` means `workflow.fail`
+("the upload did not finish"). Never write `upload_url` to the context: it is a
+bearer address. The reference is `spotify/episode-upload`, with
+`spotify/create-episode` as its channel workflow.
 
 ### Status of what was published
 
@@ -241,7 +256,7 @@ Keys and settings the admin understands without knowing the channel:
 |---|---|---|
 | Distribution `context` | `channel_link` | *Open on <label>* |
 | Distribution `context` | `asset_id` (+ `generated_at`, `characters_billed`) | An inline player or file link, its duration and those details |
-| Distribution `context` | `channel_upload` (`{id, filename, content_type, size, status}`) | The uploaded file in a podcast-shaped editor, *Replace file*, and whether Publish is enabled (`status: uploaded`); only for a trigger with `upload: true` |
+| Distribution `context` | `channel_upload` (`{id, filename, content_type, size, status}`) | The uploaded file in a podcast-shaped editor, *Replace file*, and whether Publish is enabled (`status: uploaded`); only for a trigger with the `ui.upload` hint |
 | Distribution `context` | `channel_error` | *Last run stopped: …* (prefer `workflow.fail`) |
 | Distribution `context` | `channel_status`, `channel_status_updated_at`, `channel_failures`, `channel_status_checked_at` | Status, failures, an **Error** state |
 | Distribution `context` | `body_edited` | Set by the admin when the body was edited; **Update Distribution** asks before replacing it |
@@ -263,6 +278,7 @@ from the channel's workflow.
 | `sample: audio` | A play button per paragraph: a preview run with `inputs.listen` set to the paragraph, expecting an `audio` output (base64, `audio_type` optional); needs `preview: true` |
 | `term_list: {input, find, replace, label}` | Right-click a word to add or edit a row in that list input (e.g. pronunciations), saved across the package; chips show the rows that match a paragraph; the dialog's sample passes the unsaved list as that input |
 | `choice: {key, title, input, value, label, default_input, default_label_input, help}` | A menu on the distribution of the rows of the list input `input` (each row's `value` key, shown as its `label` key), first the value of `default_input` marked "(default)" and named by the input `default_label_input` when it is set. Shown only when the list has a row. The pick is saved in the distribution's `context.<key>`; a preview passes an unsaved pick as `trigger.preview.context.<key>`. The workflow decides what a pick that is no longer listed means (fall back to the default) |
+| `upload: {workflow}` | On a `base_type: podcast` channel: the media control uploads the chosen file from the browser to the destination through the named manual workflow (slug or id), instead of picking a Passport asset (see [Direct media upload](#direct-media-upload)) |
 | `tags: {input, title, sets}` | A button listing tags editors can type into the text, by the value of `input`: `sets.<value>` (or `sets.default`) is `{note, groups: [{label, tags: ["[tag]" or {tag, hint}]}]}`. Clicking a tag inserts it at the cursor. The tags are plain text in the body; the workflow turns them into what its API understands (e.g. with `replaceEach` rules) |
 
 The preview button runs a preview without `inputs.listen` and shows outputs

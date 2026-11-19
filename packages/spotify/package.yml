@@ -11,7 +11,8 @@ description: |
   renders the distribution's template and publishes the episode. The
   audience's category slugs become Spotify Open Access entitlements
   gating playback — an audience with no category filter publishes an
-  ungated episode. Also installs three manual helpers: Show Settings for
+  ungated episode. Also installs four manual helpers: Episode Upload, which
+  the distribution form runs to open that upload, Show Settings for
   updating show metadata — e.g. flipping the sandbox flag to take a
   show live — Import Show for moving a show that is already on
   Spotify via RSS under the API (after which Spotify stops polling its
@@ -27,6 +28,7 @@ description: |
 
 blueprints:
   - spotify/create-episode
+  - spotify/episode-upload
   - spotify/update-show
   - spotify/import-show
   - spotify/episode-status
