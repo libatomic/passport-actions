@@ -64,6 +64,7 @@ step, then fetch it in a second step with the headers it needs and
 | `form` (a map) | `application/x-www-form-urlencoded` | 2.3.0 |
 | `body_base64` | The decoded bytes; set `Content-Type` yourself | 2.3.0 |
 | `multipart` | `multipart/form-data`: fields and files | 2.3.0 |
+| `body_asset` | An asset's bytes as the whole body | 2.3.0, not built yet (PSPT-1101) |
 
 ```yaml
 - id: upload
@@ -78,9 +79,9 @@ step, then fetch it in a second step with the headers it needs and
           asset_id: "${{ distribution.asset_id }}"
 ```
 
-Only one of `body`, `form`, `body_base64` and `multipart` may be given. A
-file in `multipart` is always an asset; it is streamed from storage and never
-enters the run's state.
+Only one of `body`, `form`, `body_base64`, `multipart` and `body_asset` may
+be given. A file in `multipart` is always an asset; it is streamed from
+storage and never enters the run's state.
 
 - `http.get` and `http.delete` send no body: `form`, `body_base64` and
   `multipart` there are an error.
@@ -91,6 +92,57 @@ enters the run's state.
   sent as JSON text, and a null is left out.
 - A multipart file's `filename` and `content_type` default to the asset's.
   The asset must be one of this site's.
+
+### An asset as the whole body
+
+Not built yet (PSPT-1101). Many destinations hand back an upload address and
+expect the file itself as the body of a `PUT` or `POST`. `body_asset` sends
+an asset that way, streamed from storage like a multipart file:
+
+```yaml
+- id: upload
+  action: http.put
+  with:
+    url: "${{ steps.session.outputs.body.upload_url }}"
+    body_asset:
+      asset_id: "${{ fields.media }}"
+      content_type: video/mp4
+```
+
+| Key | Required | Meaning |
+|---|---|---|
+| `asset_id` | yes | The asset to send. It must be one of this site's |
+| `content_type` | no | The `Content-Type` sent. The asset's own when left out; a `Content-Type` header on the step wins over both |
+
+`Content-Length` is the asset's size. Use `multipart` when the destination
+wants a form upload, and `body_asset` when it wants the bytes alone.
+
+### Compressing what is sent
+
+Not built yet (PSPT-1101). `content_encoding: gzip` compresses the request
+body as it is sent and sets the `Content-Encoding` header:
+
+```yaml
+- id: send
+  action: http.post
+  with:
+    url: https://api.acme.example/v1/import
+    body: "${{ vars.rows }}"
+    content_encoding: gzip
+```
+
+- It works with `body`, `form`, `body_base64` and `body_asset`. With
+  `multipart` it is an error, as is setting a `Content-Encoding` header
+  yourself.
+- `gzip` is the only value.
+- A compressed `body_asset` is sent without a `Content-Length`, which signed
+  upload addresses usually refuse. Audio, video and images are compressed
+  already and gain nothing; use it for JSON, CSV and text.
+- Use this, not `gzip()` with `body_base64`: the function stops at 1 MiB.
+
+Responses need nothing: Passport asks for gzip and unpacks what comes back,
+and `max_response_size` counts the unpacked bytes. Do not set an
+`Accept-Encoding` header; a step that does is an error.
 
 ## 9.3 Receiving bytes without an asset
 

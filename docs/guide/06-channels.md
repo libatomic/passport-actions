@@ -457,7 +457,7 @@ the step's `name` and `description`
 | `trigger.preview.body` | The body as it is in the editor, unsaved edits included | `preview` only |
 | `trigger.preview.sample` | In a preview started from a paragraph's play button: that paragraph's text. Empty otherwise | `preview` only |
 | `trigger.preview.settings` | Channel settings the editor is trying out and has not saved. You do not read this yourself; `channel.settings` already reflects it for that run | `preview` only |
-| `published` | What Passport kept from the last successful `publish` or `update` of this distribution: `id`, `url`, `data`, `status`, `at`, `note` ([6.5.10](#6510-what-passport-keeps)). Empty until there is one | every flow |
+| `published` | What Passport kept from the last `publish` or `update` of this distribution that returned a result: `id`, `url`, `data`, `status`, `at`, `note` ([6.5.10](#6510-what-passport-keeps)). Empty until there is one | every flow |
 | `distribution` | The whole distribution record as saved, what `distribution.get` returns as `distribution` less `published`, the last status check and the delivery counts, which a flow reads from `published` and the log: `id`, `_id`, `article_id`, `title`, `body`, `summary`, `description`, `language`, `audience_id`, `template_id`, `asset_id`, `scheduled_at`, `settings`, `context`. In a preview of an unsaved distribution: the record as it stands on screen, with no `id` | every flow |
 | `article` | The distribution's article, when it has one: `id`, `title`, `slug`, `summary`, `body`, `author`, `image_uri`, `uri`, `published_at`, `metadata` | every flow |
 | `fields` | The distribution form's values, with followed defaults resolved. In a preview: the form as it is on screen, resolved the same way | every flow |
@@ -519,7 +519,7 @@ for each member ([6.5.9](#659-per-member-channels)).
 
 **Reads.** Everything in [6.5.2](#652-what-a-flow-reads). `published` is
 empty on a first publish. On a publish after `failed` or `removed` it still
-holds what the last successful run kept, `data` included.
+holds what the last result kept, `data` included.
 
 **May do.** Anything the plugin may.
 
@@ -527,15 +527,27 @@ holds what the last successful run kept, `data` included.
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `status` | `published` or `pending` | yes | `published`: it is live. `pending`: the destination accepted it and it is not live yet; Passport asks `status` later, if the channel has that flow. A failure is not a status: fail the run |
+| `status` | `published`, `pending` or `failed` | yes | `published`: it is live. `pending`: the destination accepted it and it is not live yet; Passport asks `status` later, if the channel has that flow. `failed`: the destination refused it (below; not built yet, PSPT-1101) |
 | `id` | string, up to 255 characters | no | The thing's id at the destination. `update`, `delete` and `status` find it by this, as `published.id` |
 | `url` | string, `format: uri` | no | Where a person can see it. The admin shows it as the link on the distribution |
 | `data` | object | no | Anything the channel needs later. Passport keeps it for this distribution and hands it back as `published.data`. Up to 64 KB as JSON; never a secret, never binary |
-| `note` | string, up to 500 characters | no | A short line the admin shows on the distribution |
+| `note` | string, up to 500 characters | with `failed` | A short line the admin shows on the distribution. Required with `failed`: why, in words the publisher can act on |
 
-If the channel cannot publish, use `workflow.fail` with a reason the
-publisher can act on. The distribution is marked failed and shows that
-reason.
+There are two ways to say a publish did not work, and they are not the same:
+
+- **The destination said no:** return `status: failed` with a `note`, and
+  the `id` and `data` of anything the flow already made there (an uploaded
+  file, a draft). The distribution is marked failed and shows the note, and
+  Passport keeps the result ([6.5.10](#6510-what-passport-keeps)). The next
+  publish runs this flow again with `published.id` and `published.data`
+  set, so it can reuse or remove what is there and not make a second copy.
+- **The channel could not ask** (the request did not get through, a setting
+  is wrong, the answer made no sense): use `workflow.fail` with a reason
+  the publisher can act on. The distribution is marked failed and shows
+  that reason. Nothing is kept.
+
+`failed` is for a `delivery: once` channel. On a `per_member` channel a
+failure is one member's ([6.5.9](#659-per-member-channels)).
 
 A channel with no `status` flow should return `published`, not `pending`:
 nothing would ever move it on. The checker warns about a literal `pending`
@@ -553,8 +565,8 @@ always set. Find the remote thing by `published.id`.
 a second copy.
 
 **Returns** (`passport/schemas/channel.update.result@1`): the same keys as
-`publish`, with the same meanings. `id`, `url` and `data` may be left out;
-what is left out stays as Passport has it
+`publish`, with the same meanings, `failed` included. `id`, `url` and
+`data` may be left out; what is left out stays as Passport has it
 ([6.5.10](#6510-what-passport-keeps)).
 
 If the thing is no longer at the destination, either create it again and
@@ -719,8 +731,8 @@ Most per-member channels send a message and have neither `update` nor
 
 ### 6.5.10 What Passport keeps
 
-Passport stores the result of the last successful `publish` or `update` with
-the distribution. Every later flow reads it as `published`:
+Passport stores the result of the last `publish` or `update` that returned
+one with the distribution, a `failed` result included. Every later flow reads it as `published`:
 
 | Name | Holds |
 |---|---|
@@ -738,7 +750,9 @@ the distribution. Every later flow reads it as `published`:
   each replace the stored one when returned, and leave it when left out.
   `data` is replaced whole, never merged: to keep a key, return it again
   (`merge({'etag': …}, published.data)`).
-- A run that fails changes nothing in `published`.
+- A run that fails changes nothing in `published`. A result of `failed` is
+  a result: it is stored like any other, with `published.status` as
+  `failed`.
 - `published` is the channel's and Passport's. A channel does not write it
   with a step; `returns` is the only way in.
 
