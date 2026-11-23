@@ -914,7 +914,7 @@ flows. It does not need to know the channel.
 
 | From | Key | Shown as |
 |---|---|---|
-| `publish`, `update` | `status` | Published, or Pending |
+| `publish`, `update` | `status` | Published, Pending, or Failed |
 | | `url` | The link on the distribution: "Open on <label>" |
 | | `note` | A line under the status |
 | | `id` | In the distribution's details |
