@@ -64,7 +64,7 @@ step, then fetch it in a second step with the headers it needs and
 | `form` (a map) | `application/x-www-form-urlencoded` | 2.3.0 |
 | `body_base64` | The decoded bytes; set `Content-Type` yourself | 2.3.0 |
 | `multipart` | `multipart/form-data`: fields and files | 2.3.0 |
-| `body_asset` | An asset's bytes as the whole body | 2.3.0, not built yet (PSPT-1101) |
+| `body_asset` | An asset's bytes as the whole body | 2.3.0 |
 
 ```yaml
 - id: upload
@@ -95,7 +95,7 @@ storage and never enters the run's state.
 
 ### An asset as the whole body
 
-Not built yet (PSPT-1101). Many destinations hand back an upload address and
+Many destinations hand back an upload address and
 expect the file itself as the body of a `PUT` or `POST`. `body_asset` sends
 an asset that way, streamed from storage like a multipart file:
 
@@ -119,7 +119,7 @@ wants a form upload, and `body_asset` when it wants the bytes alone.
 
 ### Compressing what is sent
 
-Not built yet (PSPT-1101). `content_encoding: gzip` compresses the request
+`content_encoding: gzip` compresses the request
 body as it is sent and sets the `Content-Encoding` header:
 
 ```yaml
@@ -136,13 +136,15 @@ body as it is sent and sets the `Content-Encoding` header:
   yourself.
 - `gzip` is the only value.
 - A compressed `body_asset` is sent without a `Content-Length`, which signed
-  upload addresses usually refuse. Audio, video and images are compressed
+  upload addresses usually refuse. The other bodies keep theirs. Audio, video and images are compressed
   already and gain nothing; use it for JSON, CSV and text.
 - Use this, not `gzip()` with `body_base64`: the function stops at 1 MiB.
 
 Responses need nothing: Passport asks for gzip and unpacks what comes back,
-and `max_response_size` counts the unpacked bytes. Do not set an
-`Accept-Encoding` header; a step that does is an error.
+and `max_response_size` counts the unpacked bytes. Leave `Accept-Encoding`
+out of a step's headers. A step that sets it still gets a gzip response
+unpacked, and fails when the response comes back in an encoding Passport
+does not read, such as `br`.
 
 ## 9.3 Receiving bytes without an asset
 

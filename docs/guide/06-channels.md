@@ -527,7 +527,7 @@ holds what the last result kept, `data` included.
 
 | Key | Type | Required | Meaning |
 |---|---|---|---|
-| `status` | `published`, `pending` or `failed` | yes | `published`: it is live. `pending`: the destination accepted it and it is not live yet; Passport asks `status` later, if the channel has that flow. `failed`: the destination refused it (below; not built yet, PSPT-1101) |
+| `status` | `published`, `pending` or `failed` | yes | `published`: it is live. `pending`: the destination accepted it and it is not live yet; Passport asks `status` later, if the channel has that flow. `failed`: the destination refused it (below) |
 | `id` | string, up to 255 characters | no | The thing's id at the destination. `update`, `delete` and `status` find it by this, as `published.id` |
 | `url` | string, `format: uri` | no | Where a person can see it. The admin shows it as the link on the distribution |
 | `data` | object | no | Anything the channel needs later. Passport keeps it for this distribution and hands it back as `published.data`. Up to 64 KB as JSON; never a secret, never binary |
@@ -547,7 +547,13 @@ There are two ways to say a publish did not work, and they are not the same:
   that reason. Nothing is kept.
 
 `failed` is for a `delivery: once` channel. On a `per_member` channel a
-failure is one member's ([6.5.9](#659-per-member-channels)).
+failure is one member's ([6.5.9](#659-per-member-channels)); a member's
+result is never `failed`, and an `update` there that returns `failed` is
+kept and shown without failing the distribution, whose messages are already
+on their way.
+
+A result that is always `failed` with no `note` is an error when the plugin
+is checked; one that turns out `failed` with no `note` fails the run.
 
 A channel with no `status` flow should return `published`, not `pending`:
 nothing would ever move it on. The checker warns about a literal `pending`
